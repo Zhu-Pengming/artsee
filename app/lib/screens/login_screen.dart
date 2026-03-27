@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'main_screen.dart';
+import 'onboarding_screen.dart';
 
 // 导入配色常量（从 main.dart 复制一份或共享）
 class _PorcelainColors {
@@ -116,11 +117,21 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     if (result['success'] == true) {
-      // 登录成功后进入主导航页，保持与 PRD 的五 Tab 结构一致
+      // 登录成功后，检查是否为新用户
+      final isNewUser = result['isNewUser'] == true;
+      
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-        );
+        if (isNewUser) {
+          // 新用户进入引导页面
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+          );
+        } else {
+          // 老用户直接进入主页
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainScreen()),
+          );
+        }
       }
     } else {
       setState(() {
@@ -146,6 +157,50 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _isLoading = false;
     });
+  }
+
+  // 开发者一键登录
+  Future<void> _devLogin() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final result = await _authService.devLogin();
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (result['success'] == true) {
+      // 登录成功后，检查是否为新用户
+      final isNewUser = result['isNewUser'] == true;
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('开发者登录成功！角色: ${result['user']?['role'] ?? 'admin'}'),
+            backgroundColor: const Color(0xFF07C160),
+          ),
+        );
+        
+        if (isNewUser) {
+          // 新用户进入引导页面
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+          );
+        } else {
+          // 老用户直接进入主页
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainScreen()),
+          );
+        }
+      }
+    } else {
+      setState(() {
+        _errorMessage = result['error'] ?? '开发者登录失败';
+      });
+    }
   }
 
   @override
@@ -468,6 +523,44 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ],
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // 开发者一键登录按钮
+              InkWell(
+                onTap: _isLoading ? null : _devLogin,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _PorcelainColors.porcelain.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _PorcelainColors.porcelain.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.developer_mode,
+                        color: _PorcelainColors.porcelain,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '开发者一键登录',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _PorcelainColors.porcelain,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
               
               const SizedBox(height: 32),

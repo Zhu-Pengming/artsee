@@ -27,5 +27,9 @@
     "supabase"
   ],
   "author": "Artsee Team",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.13.6",
+    "pg": "^8.20.0"
+  }
 }
