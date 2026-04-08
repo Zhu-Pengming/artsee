@@ -1,33 +1,26 @@
 name: artsee_app
-description: "A new Flutter project."
+description: "艺见心 - 英国艺术留学平台"
 publish_to: 'none'
 
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.11.3
+  sdk: ^3.5.0
 
 dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  shared_preferences: ^2.3.5
-  http: ^1.2.2
-
-flutter:
-  uses-material-design: true
-
-  assets:
-    - assets/fonts/NotoSansSC-Regular.ttf
-
-  fonts:
-    # Noto Sans SC - 四元黑体风格
-    - family: NotoSansSC
-      fonts:
-        - asset: assets/fonts/NotoSansSC-Regular.ttf
-          weight: 400
+  supabase_flutter: ^2.5.0
+  go_router: ^14.2.0
+  timeago: ^3.7.0
+  shared_preferences: ^2.2.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+

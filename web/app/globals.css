@@ -8,52 +8,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-poppins), var(--font-noto-sc), var(--font-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  
-  /* ========================================
-     青花配色 - 浅色霁风 (Blue & White Porcelain)
-     灵感来源：中国传统青花瓷配色
-     ======================================== */
-  
-  /* 核心四色 - 来自配色图 */
-  --color-porcelain-deep: #183b90;      /* 珠明料 - 最深强调色 */
-  --color-porcelain-dark: #425691;      /* 元子 - 深色强调 */
-  --color-porcelain: #4074b1;           /* 平等青 - 主色调 */
-  --color-porcelain-white: #f2f0e9;     /* 高白泥 - 米白背景 */
-  
-  /* 扩展色阶 */
-  --color-porcelain-light: #5A8FC9;     /* 浅平等青 - hover状态 */
-  --color-porcelain-pale: #A8C4E0;      /* 霁蓝 - 装饰色 */
-  --color-porcelain-muted: #D4E4F0;     /* 极浅蓝 - 淡背景 */
-  
-  /* 背景系列 */
-  --color-porcelain-ivory: #E8E6DF;     /* 浅白泥 - 输入框背景 */
-  --color-porcelain-cream: #DEDCD5;     /* 奶油白 - 分隔线 */
-  --color-porcelain-pure: #FFFFFF;      /* 纯白 - 卡片背景 */
-  
-  /* 文字颜色 */
-  --color-ink-black: #1A2332;           /* 墨黑 - 主标题 */
-  --color-ink-gray: #3A4A5C;            /* 灰黑 - 次要文字 */
-  --color-ink-light: #6A7A8C;           /* 浅灰 - 提示文字 */
-  --color-ink-muted: #9AA8B8;           /* 更浅灰 - 禁用状态 */
-  
-  /* 辅助色 */
-  --color-porcelain-danger: #B85C5C;    /* 危险红 */
-  --color-porcelain-success: #5C8B7A;   /* 成功绿 */
-  --color-porcelain-warning: #B89A5C;   /* 警告橙 */
-  
-  /* ========================================
-     向后兼容的旧变量名 (Legacy Support)
-     ======================================== */
-  --color-porcelain-blue-dark: #183b90;
-  --color-porcelain-blue: #4074b1;
-  --color-porcelain-blue-light: #5A8FC9;
-  --color-porcelain-blue-pale: #A8C4E0;
-  --color-porcelain-white-ivory: #E8E6DF;
-  --color-porcelain-white-cream: #DEDCD5;
-  
+  --font-heading: var(--font-poppins), var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -90,77 +47,47 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* 艺见心品牌色 — 青花瓷 */
+  --color-art-primary: #1A4B8C;
+  --color-art-primary-light: #EEF4FB;
+  --color-art-primary-dark: #0D2E5A;
 }
 
 :root {
-  /* 青花配色 - 浅色霁风 浅色模式 */
-  --background: #f2f0e9;
-  --foreground: #1A2332;
-  --card: #FFFFFF;
-  --card-foreground: #1A2332;
-  --popover: #FFFFFF;
-  --popover-foreground: #1A2332;
-  --primary: #4074b1;
-  --primary-foreground: #FFFFFF;
-  --secondary: #E8E6DF;
-  --secondary-foreground: #4074b1;
-  --muted: #DEDCD5;
-  --muted-foreground: #6A7A8C;
-  --accent: #A8C4E0;
-  --accent-foreground: #183b90;
-  --destructive: #B85C5C;
-  --border: #D4D2CB;
-  --input: #D4D2CB;
-  --ring: #4074b1;
-  --chart-1: #183b90;
-  --chart-2: #425691;
-  --chart-3: #4074b1;
-  --chart-4: #A8C4E0;
-  --chart-5: #D4E4F0;
-  --radius: 0.625rem;
-  --sidebar: #E8E6DF;
-  --sidebar-foreground: #1A2332;
-  --sidebar-primary: #4074b1;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #D4D2CB;
-  --sidebar-accent-foreground: #183b90;
-  --sidebar-border: #D4D2CB;
-  --sidebar-ring: #4074b1;
-}
-
-.dark {
-  /* 青花配色 - 浅色霁风 深色模式 */
-  --background: #0F1520;
-  --foreground: #E8EEF4;
-  --card: #1A2332;
-  --card-foreground: #E8EEF4;
-  --popover: #1A2332;
-  --popover-foreground: #E8EEF4;
-  --primary: #5A8FC9;
-  --primary-foreground: #0F1520;
-  --secondary: #253045;
-  --secondary-foreground: #E8EEF4;
-  --muted: #1A2332;
-  --muted-foreground: #8A9AA8;
-  --accent: #425691;
-  --accent-foreground: #f2f0e9;
-  --destructive: #D48888;
-  --border: rgba(255, 255, 255, 0.1);
-  --input: rgba(255, 255, 255, 0.15);
-  --ring: #5A8FC9;
-  --chart-1: #5A8FC9;
-  --chart-2: #4074b1;
-  --chart-3: #425691;
-  --chart-4: #253045;
-  --chart-5: #A8C4E0;
-  --sidebar: #1A2332;
-  --sidebar-foreground: #E8EEF4;
-  --sidebar-primary: #5A8FC9;
-  --sidebar-primary-foreground: #0F1520;
-  --sidebar-accent: #253045;
-  --sidebar-accent-foreground: #E8EEF4;
-  --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: #5A8FC9;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  /* 青花瓷蓝作为主色 oklch(0.38 0.10 252) ≈ #1A4B8C */
+  --primary: oklch(0.38 0.10 252);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.38 0.10 252);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.38 0.10 252);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.38 0.10 252);
 }
 
 @layer base {
@@ -183,102 +110,13 @@
   html {
     @apply font-sans;
   }
-  
-  /* 标题样式 - 青花配色 */
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 
-      "Noto Sans SC", 
-      "Source Han Sans SC", 
-      "PingFang SC", 
-      "Microsoft YaHei",
-      sans-serif;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: #1A2332;
-  }
 }
 
-/* 青花配色特效 */
-@layer utilities {
-  /* 霁风光泽效果 */
-  .porcelain-gloss {
-    background: linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.5) 0%,
-      rgba(255, 255, 255, 0.2) 50%,
-      rgba(255, 255, 255, 0) 100%
-    );
-  }
-  
-  /* 青花主渐变 - 从深到浅 */
-  .porcelain-gradient {
-    background: linear-gradient(
-      135deg,
-      #183b90 0%,
-      #425691 25%,
-      #4074b1 100%
-    );
-  }
-  
-  /* 柔和渐变 */
-  .porcelain-soft {
-    background: linear-gradient(
-      135deg,
-      #4074b1 0%,
-      #A8C4E0 100%
-    );
-  }
-  
-  /* 山水意境渐变 */
-  .porcelain-mist {
-    background: linear-gradient(
-      180deg,
-      rgba(64, 116, 177, 0.08) 0%,
-      transparent 100%
-    );
-  }
-  
-  /* 背景渐变 - 高白泥 */
-  .porcelain-white-gradient {
-    background: linear-gradient(
-      180deg,
-      #FFFFFF 0%,
-      #f2f0e9 50%,
-      #E8E6DF 100%
-    );
-  }
-  
-  /* 青花纹理背景 - 山水画意境 */
-  .porcelain-pattern {
-    background-color: #f2f0e9;
-    background-image: 
-      radial-gradient(circle at 20% 30%, rgba(64, 116, 177, 0.04) 0%, transparent 40%),
-      radial-gradient(circle at 80% 70%, rgba(24, 59, 144, 0.03) 0%, transparent 50%),
-      radial-gradient(circle at 50% 50%, rgba(66, 86, 145, 0.02) 0%, transparent 60%);
-  }
-  
-  /* 玻璃效果 */
-  .glass-porcelain {
-    background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.6);
-  }
-  
-  /* 文字渐变 */
-  .text-gradient-porcelain {
-    background: linear-gradient(135deg, #183b90 0%, #425691 25%, #4074b1 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  
-  /* 悬浮效果 */
-  .hover-lift {
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-  }
-  .hover-lift:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 40px rgba(64, 116, 177, 0.14);
-  }
+/* 隐藏滚动条但保留滚动功能 */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
