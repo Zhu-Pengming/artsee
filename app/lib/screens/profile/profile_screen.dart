@@ -5,6 +5,10 @@ import '../../widgets/common.dart';
 import '../auth/login_screen.dart';
 import '../cases/case_detail_screen.dart';
 
+/// ═══════════════════════════════════════════════════════════════
+/// 青花瓷典藏版 - 我的（个人中心）
+/// ═══════════════════════════════════════════════════════════════
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -22,8 +26,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _load();
-    // Listen for auth state changes
-    SupabaseService.isLoggedIn ? _load() : null;
   }
 
   Future<void> _load() async {
@@ -51,29 +53,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F8),
+      backgroundColor: kPorcelain,
       body: RefreshIndicator(
-        color: kPrimary,
+        color: kCobalt,
+        backgroundColor: Colors.white,
         onRefresh: _load,
         child: CustomScrollView(
           slivers: [
-            // Profile header
+            // ═══════════════════════════════════════════════════
+            // 顶部背景（青花瓷风格）
+            // ═══════════════════════════════════════════════════
             SliverToBoxAdapter(child: _buildHeader()),
 
-            // Stats
+            // ═══════════════════════════════════════════════════
+            // 统计数据
+            // ═══════════════════════════════════════════════════
             SliverToBoxAdapter(child: _buildStats()),
 
-            // Quick actions
+            // ═══════════════════════════════════════════════════
+            // 快捷操作
+            // ═══════════════════════════════════════════════════
             SliverToBoxAdapter(child: _buildQuickActions()),
 
-            // Tab selector
+            // ═══════════════════════════════════════════════════
+            // Tab 选择器
+            // ═══════════════════════════════════════════════════
             SliverToBoxAdapter(child: _buildTabs()),
 
-            // Tab content
+            // ═══════════════════════════════════════════════════
+            // Tab 内容
+            // ═══════════════════════════════════════════════════
             if (_loading)
               const SliverFillRemaining(child: LoadingIndicator())
             else
               SliverToBoxAdapter(child: _buildTabContent()),
+
+            // 底部留白
+            const SliverToBoxAdapter(child: SizedBox(height: 20)),
           ],
         ),
       ),
@@ -81,20 +97,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildHeader() {
+    final nickname = _profile?['nickname'] as String? ?? '艺见用户';
+    final bio = _profile?['bio'] as String? ?? '目标：英国艺术院校';
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
+        // 背景渐变
         Container(
-          height: 110,
+          height: 140,
           decoration: const BoxDecoration(
-            gradient: LinearGradient(colors: [kPrimary, kPrimaryLight], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            gradient: LinearGradient(
+              colors: [kCobalt, kCobaltMuted],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
         ),
+        // 设置按钮
         Positioned(
-          top: 8, right: 12,
+          top: 8,
+          right: 8,
           child: SafeArea(
             child: IconButton(
-              icon: const Icon(Icons.settings_outlined, color: Colors.white),
+              icon: const Icon(Icons.settings_outlined, color: Colors.white70),
               onPressed: () async {
                 await SupabaseService.signOut();
                 setState(() { _profile = null; _myCases = []; });
@@ -102,49 +128,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
+        // 头像
         Positioned(
-          bottom: -30, left: 16,
+          bottom: -40,
+          left: 24,
           child: Container(
-            width: 60, height: 60,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white, border: Border.all(color: Colors.white, width: 3),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8)]),
-            child: const Center(child: Text('🎨', style: TextStyle(fontSize: 28))),
+            width: 84,
+            height: 84,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              border: Border.all(color: Colors.white, width: 4),
+              boxShadow: [
+                BoxShadow(
+                  color: kInk.withOpacity(0.1),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Center(
+              child: Text(
+                '艺',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: kCobalt,
+                ),
+              ),
+            ),
+          ),
+        ),
+        // 用户信息
+        Positioned(
+          bottom: 16,
+          left: 120,
+          right: 16,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                nickname,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                bio,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withOpacity(0.7),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildUserInfo() {
-    final nickname = _profile?['nickname'] as String? ?? '艺见用户';
-    final bio = _profile?['bio'] as String? ?? '目标：英国艺术院校';
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 40, 16, 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(nickname, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black87)),
-              Text(bio, style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
-            ],
-          ),
-          const Spacer(),
-          OutlinedButton(
-            onPressed: () {},
-            style: OutlinedButton.styleFrom(
-              foregroundColor: kPrimary,
-              side: const BorderSide(color: kPrimary),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              minimumSize: Size.zero,
-              textStyle: const TextStyle(fontSize: 12),
-            ),
-            child: const Text('编辑资料'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -153,18 +197,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final followers = _profile?['followers_count'] as int? ?? 0;
 
     return Container(
-      color: Colors.white,
-      margin: const EdgeInsets.only(top: 36),
+      margin: const EdgeInsets.only(top: 52),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(kRadiusLarge),
+        boxShadow: [
+          BoxShadow(
+            color: kInk.withOpacity(0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          _buildStatItem('关注', '$following'),
+          Container(
+            width: 1,
+            height: 30,
+            color: kSilver,
+          ),
+          _buildStatItem('粉丝', '$followers'),
+          Container(
+            width: 1,
+            height: 30,
+            color: kSilver,
+          ),
+          _buildStatItem('案例', '${_myCases.length}'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value) {
+    return Expanded(
       child: Column(
         children: [
-          _buildUserInfo(),
-          const Divider(height: 1),
-          Row(
-            children: [
-              _StatItem(label: '关注', value: '$following'),
-              _StatItem(label: '粉丝', value: '$followers'),
-              _StatItem(label: '案例', value: '${_myCases.length}'),
-            ],
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: kCobalt,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: kInk.withOpacity(0.5),
+            ),
           ),
         ],
       ),
@@ -172,38 +256,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildQuickActions() {
+    final actions = [
+      _QuickActionData(icon: Icons.school_outlined, label: '选校清单', color: kCobalt),
+      _QuickActionData(icon: Icons.favorite_outline, label: '我的收藏', color: const Color(0xFFE11D48)),
+      _QuickActionData(icon: Icons.description_outlined, label: '文书草稿', color: const Color(0xFF7C3AED)),
+      _QuickActionData(icon: Icons.add, label: '分享案例', color: const Color(0xFF10B981)),
+    ];
+
     return Container(
-      color: Colors.white,
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _QuickAction(icon: Icons.school_outlined, label: '选校清单', color: const Color(0xFFEFF6FF), iconColor: const Color(0xFF3B82F6)),
-          _QuickAction(icon: Icons.favorite_outline, label: '我的收藏', color: const Color(0xFFFFF1F2), iconColor: const Color(0xFFE11D48)),
-          _QuickAction(icon: Icons.description_outlined, label: '文书草稿', color: const Color(0xFFF5F3FF), iconColor: const Color(0xFF7C3AED)),
-          _QuickAction(icon: Icons.add, label: '分享案例', color: const Color(0xFFFFF7ED), iconColor: kPrimary),
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(kRadiusLarge),
+        boxShadow: [
+          BoxShadow(
+            color: kInk.withOpacity(0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: actions.map((a) => _buildQuickAction(a)).toList(),
+      ),
+    );
+  }
+
+  Widget _buildQuickAction(_QuickActionData action) {
+    return Column(
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: action.color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(action.icon, color: action.color, size: 24),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          action.label,
+          style: TextStyle(
+            fontSize: 11,
+            color: kInk.withOpacity(0.7),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildTabs() {
     final tabs = ['申请追踪', '我的案例'];
     return Container(
-      color: Colors.white,
-      margin: const EdgeInsets.only(top: 8),
+      margin: const EdgeInsets.only(top: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(kRadiusLarge),
+      ),
       child: Row(
         children: List.generate(tabs.length, (i) => Expanded(
           child: GestureDetector(
             onTap: () => setState(() => _tabIndex = i),
             child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: _tabIndex == i ? kPrimary : Colors.transparent, width: 2)),
+                border: Border(
+                  bottom: BorderSide(
+                    color: _tabIndex == i ? kCobalt : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
               ),
-              child: Text(tabs[i], textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _tabIndex == i ? kPrimary : Colors.grey)),
+              child: Text(
+                tabs[i],
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: _tabIndex == i ? kCobalt : kInk.withOpacity(0.4),
+                ),
+              ),
             ),
           ),
         )),
@@ -213,36 +349,100 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildTabContent() {
     if (_tabIndex == 0) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
-        child: EmptyState(emoji: '📋', message: '暂无申请追踪\n前往探索页添加心仪院校'),
+      return Container(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(kRadiusLarge),
+        ),
+        child: const EmptyState(
+          emoji: '📋',
+          message: '暂无申请追踪\n前往探索页添加心仪院校',
+        ),
       );
     }
     if (_myCases.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
-        child: EmptyState(emoji: '📝', message: '还没有分享过案例'),
+      return Container(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(kRadiusLarge),
+        ),
+        child: const EmptyState(emoji: '📝', message: '还没有分享过案例'),
       );
     }
     return Column(
       children: _myCases.map((c) => GestureDetector(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CaseDetailScreen(caseId: c.id))),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => CaseDetailScreen(caseId: c.id)),
+        ),
         child: Container(
-          margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.only(top: 10),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(kRadiusLarge),
+            boxShadow: [
+              BoxShadow(
+                color: kInk.withOpacity(0.03),
+                blurRadius: 12,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
           child: Row(
             children: [
-              Container(width: 44, height: 44, decoration: BoxDecoration(gradient: resultGradient(c.result), borderRadius: BorderRadius.circular(10))),
-              const SizedBox(width: 10),
-              Expanded(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(c.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  Text(c.targetSchool ?? '', style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
-                ],
-              )),
-              Text(resultLabel(c.result), style: TextStyle(fontSize: 10, color: resultBadgeColor(c.result), fontWeight: FontWeight.w600)),
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: resultGradient(c.result),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      c.title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      c.targetSchool ?? '',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: kInk.withOpacity(0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: resultBadgeColor(c.result).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  resultLabel(c.result),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: resultBadgeColor(c.result),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -255,26 +455,64 @@ class _NotLoggedInView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F8),
+      backgroundColor: kPorcelain,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('🎨', style: TextStyle(fontSize: 60)),
-            const SizedBox(height: 16),
-            const Text('登录后解锁全部功能', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.black87)),
-            const SizedBox(height: 6),
-            Text('申请追踪 · 案例分享 · 论坛互动', style: TextStyle(fontSize: 13, color: Colors.grey.shade500)),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen())),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kPrimary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: kSilver.withOpacity(0.5),
+                shape: BoxShape.circle,
               ),
-              child: const Text('登录 / 注册', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              child: const Text(
+                '艺',
+                style: TextStyle(
+                  fontSize: 48,
+                  fontWeight: FontWeight.w700,
+                  color: kCobalt,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              '登录后解锁全部功能',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: kInk,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '申请追踪 · 案例分享 · 论坛互动',
+              style: TextStyle(
+                fontSize: 13,
+                color: kInk.withOpacity(0.5),
+              ),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kCobalt,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(kRadiusMedium),
+                ),
+              ),
+              child: const Text(
+                '登录 / 注册',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ],
         ),
@@ -283,38 +521,9 @@ class _NotLoggedInView extends StatelessWidget {
   }
 }
 
-class _StatItem extends StatelessWidget {
-  final String label;
-  final String value;
-  const _StatItem({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Column(children: [
-        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black87)),
-        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
-      ]),
-    ));
-  }
-}
-
-class _QuickAction extends StatelessWidget {
+class _QuickActionData {
   final IconData icon;
   final String label;
   final Color color;
-  final Color iconColor;
-
-  const _QuickAction({required this.icon, required this.label, required this.color, required this.iconColor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(children: [
-      Container(width: 44, height: 44, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(14)),
-        child: Icon(icon, color: iconColor, size: 20)),
-      const SizedBox(height: 4),
-      Text(label, style: const TextStyle(fontSize: 9, color: Colors.grey)),
-    ]);
-  }
+  _QuickActionData({required this.icon, required this.label, required this.color});
 }

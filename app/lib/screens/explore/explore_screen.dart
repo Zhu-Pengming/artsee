@@ -4,6 +4,10 @@ import '../../services/supabase_service.dart';
 import '../../widgets/common.dart';
 import 'program_detail_screen.dart';
 
+/// ═══════════════════════════════════════════════════════════════
+/// 青花瓷典藏版 - 发现（探索院校）
+/// ═══════════════════════════════════════════════════════════════
+
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
 
@@ -59,43 +63,66 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F8),
+      backgroundColor: kPorcelain,
       body: CustomScrollView(
         slivers: [
+          // ═══════════════════════════════════════════════════
+          // 顶部搜索栏（青花瓷风格）
+          // ═══════════════════════════════════════════════════
           SliverAppBar(
-            title: const Text('探索院校', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-            backgroundColor: Colors.white,
             floating: true,
             snap: true,
+            backgroundColor: Colors.white,
+            elevation: 0,
+            title: const Text(
+              '发现院校',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: kInk,
+              ),
+            ),
             bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(44),
+              preferredSize: const Size.fromHeight(60),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: TextField(
-                  onChanged: (v) => setState(() { _search = v; _filter(); }),
-                  decoration: InputDecoration(
-                    hintText: '搜索学校或专业...',
-                    hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
-                    prefixIcon: Icon(Icons.search, size: 18, color: Colors.grey.shade400),
-                    filled: true,
-                    fillColor: Colors.grey.shade100,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: kSilver.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(kRadiusMedium),
+                  ),
+                  child: TextField(
+                    onChanged: (v) => setState(() { _search = v; _filter(); }),
+                    decoration: InputDecoration(
+                      hintText: '搜索学校或专业...',
+                      hintStyle: TextStyle(
+                        fontSize: 13,
+                        color: kInk.withOpacity(0.4),
+                      ),
+                      prefixIcon: Icon(Icons.search, size: 20, color: kInk.withOpacity(0.4)),
+                      filled: false,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
 
-          // Degree filter
+          // ═══════════════════════════════════════════════════
+          // 学位筛选
+          // ═══════════════════════════════════════════════════
           SliverToBoxAdapter(
             child: SizedBox(
-              height: 36,
+              height: 44,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: _degreeOptions.map((d) => Padding(
-                  padding: const EdgeInsets.only(right: 6),
+                  padding: const EdgeInsets.only(right: 8),
                   child: TagChip(
                     label: d,
                     active: _degreeFilter == d,
@@ -106,15 +133,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ),
 
-          // Major filter
+          // ═══════════════════════════════════════════════════
+          // 专业筛选
+          // ═══════════════════════════════════════════════════
           SliverToBoxAdapter(
             child: SizedBox(
-              height: 36,
+              height: 44,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: _majorOptions.map((m) => Padding(
-                  padding: const EdgeInsets.only(right: 6),
+                  padding: const EdgeInsets.only(right: 8),
                   child: TagChip(
                     label: m,
                     active: _majorFilter == m,
@@ -125,7 +154,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 8)),
+          const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
           if (_loading)
             const SliverFillRemaining(child: LoadingIndicator())
@@ -143,12 +172,18 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 childCount: _filtered.length,
               ),
             ),
+
+          // 底部留白
+          const SliverToBoxAdapter(child: SizedBox(height: 20)),
         ],
       ),
     );
   }
 }
 
+/// ═══════════════════════════════════════════════════════════════
+/// 项目卡片（青花瓷风格）
+/// ═══════════════════════════════════════════════════════════════
 class _ProgramCard extends StatelessWidget {
   final AppProgram program;
   final VoidCallback onTap;
@@ -160,60 +195,105 @@ class _ProgramCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
+          borderRadius: BorderRadius.circular(kRadiusLarge),
+          boxShadow: [
+            BoxShadow(
+              color: kInk.withOpacity(0.04),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           children: [
-            Container(
-              height: 80,
-              decoration: BoxDecoration(
-                gradient: schoolGradient(program.schoolNameZh),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              ),
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(program.schoolNameZh ?? '', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 2),
-                        Text(program.programName, style: const TextStyle(color: Colors.white70, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ],
+            // 顶部学校信息
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(kRadiusLarge)),
+              child: Container(
+                height: 90,
+                decoration: BoxDecoration(
+                  gradient: schoolGradient(program.schoolNameZh),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            program.schoolNameZh ?? '',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            program.programName,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  if (program.qsArtRank != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
-                      child: Text('QS #${program.qsArtRank}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
-                    ),
-                ],
+                    if (program.qsArtRank != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(kRadiusSmall),
+                        ),
+                        child: Text(
+                          'QS #${program.qsArtRank}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
+            // 底部信息
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
                   _MetaChip(icon: Icons.school_outlined, label: program.degreeType ?? 'MA'),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   if (program.ieltsOverall != null)
                     _MetaChip(icon: Icons.language_outlined, label: 'IELTS ${program.ieltsOverall}'),
-                  const SizedBox(width: 8),
+                  if (program.ieltsOverall != null) const SizedBox(width: 12),
                   if (program.durationText != null)
                     _MetaChip(icon: Icons.schedule_outlined, label: program.durationText!),
                   const Spacer(),
                   if (program.requiresPortfolio)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(6)),
-                      child: const Text('需作品集', style: TextStyle(fontSize: 9, color: kPrimary, fontWeight: FontWeight.w600)),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: kCobalt.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        '需作品集',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: kCobalt,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -236,9 +316,16 @@ class _MetaChip extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 11, color: Colors.grey.shade500),
-        const SizedBox(width: 3),
-        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+        Icon(icon, size: 14, color: kInk.withOpacity(0.4)),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: kInk.withOpacity(0.6),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ],
     );
   }

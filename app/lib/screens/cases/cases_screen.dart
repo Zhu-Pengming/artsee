@@ -5,6 +5,10 @@ import '../../widgets/common.dart';
 import 'case_detail_screen.dart';
 import 'new_case_screen.dart';
 
+/// ═══════════════════════════════════════════════════════════════
+/// 青花瓷典藏版 - 合作（案例）
+/// ═══════════════════════════════════════════════════════════════
+
 class CasesScreen extends StatefulWidget {
   const CasesScreen({super.key});
 
@@ -45,34 +49,78 @@ class _CasesScreenState extends State<CasesScreen> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F8),
+      backgroundColor: kPorcelain,
       appBar: AppBar(
-        title: const Text('申请案例', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        title: const Text(
+          '合作案例',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: kInk,
+          ),
+        ),
         backgroundColor: Colors.white,
+        elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add, color: kPrimary),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NewCaseScreen())).then((_) => _load()),
+          // 发布按钮
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const NewCaseScreen()),
+              ).then((_) => _load()),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: kCobalt,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add, color: Colors.white, size: 16),
+                    SizedBox(width: 4),
+                    Text(
+                      '发布',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
-          labelColor: kPrimary,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: kPrimary,
+          labelColor: kCobalt,
+          unselectedLabelColor: kInk.withOpacity(0.4),
+          indicatorColor: kCobalt,
+          indicatorWeight: 2.5,
+          indicatorSize: TabBarIndicatorSize.label,
           labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          tabs: const [Tab(text: '全部案例'), Tab(text: '录取'), Tab(text: '等候')],
+          unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+          tabs: const [
+            Tab(text: '全部案例'),
+            Tab(text: '录取'),
+            Tab(text: '等候'),
+          ],
         ),
       ),
       body: RefreshIndicator(
-        color: kPrimary,
+        color: kCobalt,
+        backgroundColor: Colors.white,
         onRefresh: _load,
         child: _loading
           ? const LoadingIndicator()
           : _filtered.isEmpty
             ? const EmptyState(emoji: '📝', message: '暂无案例，来第一个分享吧！')
             : ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 itemCount: _filtered.length,
                 itemBuilder: (ctx, i) => _CaseCard(
                   c: _filtered[i],
@@ -86,6 +134,9 @@ class _CasesScreenState extends State<CasesScreen> with SingleTickerProviderStat
   }
 }
 
+/// ═══════════════════════════════════════════════════════════════
+/// 案例卡片（青花瓷风格）
+/// ═══════════════════════════════════════════════════════════════
 class _CaseCard extends StatelessWidget {
   final AppCase c;
   final VoidCallback onTap;
@@ -97,64 +148,140 @@ class _CaseCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 2))],
+          borderRadius: BorderRadius.circular(kRadiusLarge),
+          boxShadow: [
+            BoxShadow(
+              color: kInk.withOpacity(0.04),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(
-              children: [
-                Container(
-                  height: 100,
-                  decoration: BoxDecoration(
-                    gradient: schoolGradient(c.targetSchool),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                  ),
-                ),
-                Positioned(
-                  top: 8, right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(color: resultBadgeColor(c.result).withOpacity(0.9), borderRadius: BorderRadius.circular(99)),
-                    child: Text(resultLabel(c.result), style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
-                  ),
-                ),
-                if (c.targetSchool != null)
-                  Positioned(
-                    bottom: 8, left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
-                      child: Text(c.targetSchool!, style: const TextStyle(color: Colors.white, fontSize: 10)),
+            // 顶部图片区域
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(kRadiusLarge)),
+              child: Stack(
+                children: [
+                  Container(
+                    height: 110,
+                    decoration: BoxDecoration(
+                      gradient: schoolGradient(c.targetSchool),
                     ),
                   ),
-              ],
+                  // 结果标签
+                  Positioned(
+                    top: 14,
+                    right: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: resultBadgeColor(c.result).withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        resultLabel(c.result),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // 学校标签
+                  if (c.targetSchool != null)
+                    Positioned(
+                      bottom: 14,
+                      left: 14,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          c.targetSchool!,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
+            // 内容区域
             Padding(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(c.excerpt ?? c.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87), maxLines: 2, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 6),
+                  Text(
+                    c.excerpt ?? c.title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: kInk,
+                      height: 1.4,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 12),
+                  // 底部信息栏
                   Row(
                     children: [
-                      CircleAvatar(radius: 9, backgroundColor: kPrimary,
-                        child: Text(c.isAnonymous ? '匿' : (c.authorNickname?.substring(0, 1) ?? '?'), style: const TextStyle(color: Colors.white, fontSize: 8))),
-                      const SizedBox(width: 4),
-                      Text(c.isAnonymous ? '匿名' : (c.authorNickname ?? '用户'), style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                      CircleAvatar(
+                        radius: 12,
+                        backgroundColor: kCobalt,
+                        child: Text(
+                          c.isAnonymous ? '匿' : (c.authorNickname?.substring(0, 1) ?? '?'),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        c.isAnonymous ? '匿名' : (c.authorNickname ?? '用户'),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: kInk.withOpacity(0.6),
+                        ),
+                      ),
                       if (c.gpa != null) ...[
-                        Text(' · ', style: TextStyle(color: Colors.grey.shade400, fontSize: 10)),
-                        Text(c.gpa!, style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                        Text(
+                          ' · ',
+                          style: TextStyle(color: kInk.withOpacity(0.3)),
+                        ),
+                        Text(
+                          c.gpa!,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: kInk.withOpacity(0.5),
+                          ),
+                        ),
                       ],
                       const Spacer(),
-                      Icon(Icons.favorite_border, size: 12, color: Colors.grey.shade400),
-                      const SizedBox(width: 2),
-                      Text('${c.likeCount}', style: TextStyle(fontSize: 9, color: Colors.grey.shade500)),
+                      Icon(Icons.favorite_border, size: 14, color: kInk.withOpacity(0.3)),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${c.likeCount}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: kInk.withOpacity(0.4),
+                        ),
+                      ),
                     ],
                   ),
                 ],

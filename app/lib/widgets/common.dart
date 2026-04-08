@@ -1,9 +1,111 @@
 import 'package:flutter/material.dart';
 
-const kPrimary = Color(0xFFFF6A00);
-const kPrimaryLight = Color(0xFFFF9A3C);
+// ═══════════════════════════════════════════════════════════════
+// 青花瓷典藏版配色方案 (ArtLink 艺衡风格)
+// ═══════════════════════════════════════════════════════════════
 
-// ── Gradient utility ──────────────────────────────────────────
+/// 瓷器白 - 主背景色
+const kPorcelain = Color(0xFFF8F9FA);
+
+/// 钴蓝 - 主品牌色
+const kCobalt = Color(0xFF003399);
+
+/// 柔和钴蓝 - 辅助色
+const kCobaltMuted = Color(0xFF4A6FA5);
+
+/// 墨黑 - 主要文字
+const kInk = Color(0xFF1A1A1A);
+
+/// 银灰 - 次要背景/边框
+const kSilver = Color(0xFFE9ECEF);
+
+/// 深墨 - 导航背景
+const kInkDark = Color(0xFF2D2D2D);
+
+// 保留旧常量名以便兼容，但指向新颜色
+const kPrimary = kCobalt;
+const kPrimaryLight = kCobaltMuted;
+
+// ═══════════════════════════════════════════════════════════════
+// 样式常量
+// ═══════════════════════════════════════════════════════════════
+
+/// 大圆角 - 卡片
+const double kRadiusLarge = 24.0;
+
+/// 中圆角 - 按钮
+const double kRadiusMedium = 16.0;
+
+/// 小圆角 - 标签
+const double kRadiusSmall = 12.0;
+
+/// 主阴影
+final kShadowMain = BoxShadow(
+  color: kInk.withOpacity(0.06),
+  blurRadius: 20,
+  offset: const Offset(0, 4),
+);
+
+/// 卡片阴影
+final kShadowCard = BoxShadow(
+  color: kInk.withOpacity(0.04),
+  blurRadius: 12,
+  offset: const Offset(0, 2),
+);
+
+/// 悬浮阴影
+final kShadowElevated = BoxShadow(
+  color: kCobalt.withOpacity(0.15),
+  blurRadius: 24,
+  offset: const Offset(0, 8),
+);
+
+// ═══════════════════════════════════════════════════════════════
+// 字体样式
+// ═══════════════════════════════════════════════════════════════
+
+/// 衬线体标题
+const kSerifTitle = TextStyle(
+  fontSize: 20,
+  fontWeight: FontWeight.w700,
+  color: kInk,
+  height: 1.3,
+  letterSpacing: 0.5,
+);
+
+/// 衬线体大标题
+const kSerifHeadline = TextStyle(
+  fontSize: 28,
+  fontWeight: FontWeight.w700,
+  color: kInk,
+  height: 1.2,
+  letterSpacing: 0.5,
+);
+
+/// 标签文字
+const kLabelStyle = TextStyle(
+  fontSize: 10,
+  fontWeight: FontWeight.w600,
+  letterSpacing: 0.5,
+);
+
+/// 正文文字
+const kBodyStyle = TextStyle(
+  fontSize: 13,
+  color: kInk,
+  height: 1.5,
+);
+
+/// 次要文字
+final kCaptionStyle = TextStyle(
+  fontSize: 11,
+  color: kInk.withOpacity(0.5),
+);
+
+// ═══════════════════════════════════════════════════════════════
+// Gradient utility
+// ═══════════════════════════════════════════════════════════════
+
 LinearGradient schoolGradient(String? school) {
   final Map<String, List<Color>> map = {
     '牛津大学': [const Color(0xFF1E3A8A), const Color(0xFF3B82F6)],
@@ -16,7 +118,7 @@ LinearGradient schoolGradient(String? school) {
     '坎伯韦尔艺术学院': [const Color(0xFF7C3AED), const Color(0xFFA855F7)],
     '皇家艺术学院': [const Color(0xFFDC2626), const Color(0xFFF87171)],
   };
-  final colors = map[school] ?? [const Color(0xFF64748B), const Color(0xFF94A3B8)];
+  final colors = map[school] ?? [kCobalt, kCobaltMuted];
   return LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight);
 }
 
@@ -24,15 +126,15 @@ LinearGradient resultGradient(String result) {
   if (result == 'admitted') {
     return const LinearGradient(colors: [Color(0xFF16A34A), Color(0xFF4ADE80)], begin: Alignment.topLeft, end: Alignment.bottomRight);
   } else if (result == 'waitlisted') {
-    return const LinearGradient(colors: [Color(0xFFCA8A04), Color(0xFFFBBF24)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+    return const LinearGradient(colors: [Color(0xFFCA8A04), const Color(0xFFFBBF24)], begin: Alignment.topLeft, end: Alignment.bottomRight);
   }
   return const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFFF87171)], begin: Alignment.topLeft, end: Alignment.bottomRight);
 }
 
 String resultLabel(String result) {
-  if (result == 'admitted') return '🎉 录取';
-  if (result == 'waitlisted') return '⏳ 等候';
-  return '❌ 拒绝';
+  if (result == 'admitted') return '录取';
+  if (result == 'waitlisted') return '等候';
+  return '拒绝';
 }
 
 Color resultBadgeColor(String result) {
@@ -52,7 +154,9 @@ String timeAgo(String dateStr) {
   return '${dt.month}月${dt.day}日';
 }
 
-// ── Reusable Widgets ─────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// Reusable Widgets
+// ═══════════════════════════════════════════════════════════════
 
 class TagChip extends StatelessWidget {
   final String label;
@@ -65,18 +169,20 @@ class TagChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: active ? kPrimary : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(99),
+          color: active ? kCobalt : kSilver.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(kRadiusSmall),
+          border: active ? null : Border.all(color: kSilver, width: 1),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 11,
-            color: active ? Colors.white : Colors.grey.shade600,
-            fontWeight: FontWeight.w500,
+            color: active ? Colors.white : kInk.withOpacity(0.6),
+            fontWeight: active ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
       ),
@@ -94,15 +200,36 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black87)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: kSerifTitle.copyWith(fontSize: 18)),
+              const SizedBox(height: 2),
+              Container(width: 24, height: 2, color: kCobalt.withOpacity(0.3)),
+            ],
+          ),
           if (action != null)
             GestureDetector(
               onTap: onAction,
-              child: Text(action!, style: const TextStyle(fontSize: 12, color: kPrimary, fontWeight: FontWeight.w500)),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: kCobalt.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(kRadiusSmall),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(action!, style: const TextStyle(fontSize: 11, color: kCobalt, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 2),
+                    Icon(Icons.arrow_forward_ios, size: 10, color: kCobalt.withOpacity(0.7)),
+                  ],
+                ),
+              ),
             ),
         ],
       ),
@@ -115,7 +242,12 @@ class LoadingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: CircularProgressIndicator(color: kPrimary));
+    return const Center(
+      child: CircularProgressIndicator(
+        color: kCobalt,
+        strokeWidth: 2.5,
+      ),
+    );
   }
 }
 
@@ -131,9 +263,24 @@ class EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 40)),
-          const SizedBox(height: 12),
-          Text(message, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: kSilver.withOpacity(0.5),
+              shape: BoxShape.circle,
+            ),
+            child: Text(emoji, style: const TextStyle(fontSize: 40)),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: TextStyle(
+              fontSize: 14,
+              color: kInk.withOpacity(0.5),
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
@@ -167,18 +314,153 @@ class InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         decoration: BoxDecoration(
-          color: Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(12),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(kRadiusMedium),
+          boxShadow: [kShadowCard],
         ),
         child: Column(
           children: [
-            Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black87), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-            const SizedBox(height: 2),
-            Text(label, style: TextStyle(fontSize: 9, color: Colors.grey.shade500)),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: kCobalt),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(fontSize: 10, color: kInk.withOpacity(0.4), letterSpacing: 0.5),
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 青花瓷风格卡片组件
+// ═══════════════════════════════════════════════════════════════
+
+class PorcelainCard extends StatelessWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  final EdgeInsetsGeometry padding;
+  final double? width;
+  final double? height;
+
+  const PorcelainCard({
+    super.key,
+    required this.child,
+    this.onTap,
+    this.padding = const EdgeInsets.all(16),
+    this.width,
+    this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: width,
+        height: height,
+        padding: padding,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(kRadiusLarge),
+          boxShadow: [kShadowCard],
+          border: Border.all(color: kSilver.withOpacity(0.5), width: 1),
+        ),
+        child: child,
+      ),
+    );
+  }
+}
+
+/// 钴蓝按钮
+class CobaltButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+  final bool isOutlined;
+  final IconData? icon;
+
+  const CobaltButton({
+    super.key,
+    required this.label,
+    this.onTap,
+    this.isOutlined = false,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        decoration: BoxDecoration(
+          color: isOutlined ? Colors.transparent : kCobalt,
+          borderRadius: BorderRadius.circular(kRadiusMedium),
+          border: isOutlined ? Border.all(color: kCobalt, width: 1.5) : null,
+          boxShadow: isOutlined ? null : [kShadowElevated],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 16, color: isOutlined ? kCobalt : Colors.white),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isOutlined ? kCobalt : Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 浮动操作按钮（青花瓷风格）
+class FloatingCobaltButton extends StatelessWidget {
+  final VoidCallback? onTap;
+  final IconData icon;
+
+  const FloatingCobaltButton({
+    super.key,
+    this.onTap,
+    this.icon = Icons.add,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: kCobalt,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: kCobalt.withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: Colors.white, size: 28),
       ),
     );
   }
