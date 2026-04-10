@@ -48,6 +48,7 @@ class _CasesScreenState extends State<CasesScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final bottomPad = mainTabBottomInset(context);
     return Scaffold(
       backgroundColor: kPorcelain,
       appBar: AppBar(
@@ -120,7 +121,7 @@ class _CasesScreenState extends State<CasesScreen> with SingleTickerProviderStat
           : _filtered.isEmpty
             ? const EmptyState(emoji: '📝', message: '暂无案例，来第一个分享吧！')
             : ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: EdgeInsets.fromLTRB(0, 12, 0, bottomPad),
                 itemCount: _filtered.length,
                 itemBuilder: (ctx, i) => _CaseCard(
                   c: _filtered[i],

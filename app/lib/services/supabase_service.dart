@@ -14,12 +14,30 @@ class SupabaseService {
   static Future<AuthResponse> signUp(String email, String password, String nickname) async {
     final res = await _client.auth.signUp(email: email, password: password);
     if (res.user != null) {
-      await _client.from('user_profiles').insert({
+      await _client.from('user_profiles').upsert({
         'id': res.user!.id,
         'nickname': nickname,
-      });
+        'has_completed_onboarding': false,
+      }, onConflict: 'id');
     }
     return res;
+  }
+
+  /// 完成冷启动：感兴趣的艺术领域（与 `interested_categories` / has_completed_onboarding 对齐）
+  static Future<void> completeInterestOnboarding(List<String> topicIds) async {
+    if (!isLoggedIn) return;
+    await _client.from('user_profiles').upsert({
+      'id': currentUser!.id,
+      'interested_categories': topicIds,
+      'has_completed_onboarding': true,
+    }, onConflict: 'id');
+  }
+
+  static Future<void> updateAvatarUrl(String publicUrl) async {
+    if (!isLoggedIn) return;
+    await _client.from('user_profiles').update({
+      'avatar_url': publicUrl,
+    }).eq('id', currentUser!.id);
   }
 
   static Future<void> signOut() => _client.auth.signOut();

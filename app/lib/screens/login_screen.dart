@@ -247,7 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
               
               // 标题
               const Text(
-                '欢迎登录 艺见心',
+                '欢迎登录 ArtLink 艺衡',
                 style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,

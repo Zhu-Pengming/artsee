@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import '../widgets/common.dart';
-import 'home/home_screen.dart';
-import 'explore/explore_screen.dart';
 import 'cases/cases_screen.dart';
+import 'cases/new_case_screen.dart';
+import 'explore/explore_screen.dart';
 import 'forum/forum_screen.dart';
+import 'forum/new_post_screen.dart';
+import 'home/home_screen.dart';
+import 'home/new_community_post_screen.dart';
 import 'profile/profile_screen.dart';
 
 /// ═══════════════════════════════════════════════════════════════
-/// 青花瓷典藏版 - 底部导航架构
-/// 功能入口：首页、发现(探索)、合作(案例)、学习(论坛)、我的
+/// ArtLink 艺衡 · 青花瓷典藏版 — 总入口（对齐艺术家 Web 原型）
+/// 底部：悬浮式深色胶囊导航；右下：情境化「+」按钮
+/// 子页：首页、发现、合作、学习、我的
 /// ═══════════════════════════════════════════════════════════════
 
 class MainScaffold extends StatefulWidget {
@@ -20,16 +24,10 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
+  /// 自 FAB 返回后重新挂载列表页，触发 initState 拉取数据（与顶栏「发布」一致）
+  int _casesRemount = 0;
+  int _forumRemount = 0;
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    ExploreScreen(),
-    CasesScreen(),
-    ForumScreen(),
-    ProfileScreen(),
-  ];
-
-  // 导航项配置
   final List<_NavItem> _navItems = const [
     _NavItem(
       icon: Icons.home_outlined,
@@ -58,80 +56,175 @@ class _MainScaffoldState extends State<MainScaffold> {
     ),
   ];
 
+  Future<void> _onFabPressed() async {
+    switch (_currentIndex) {
+      case 2:
+        await Navigator.of(context).push<void>(
+          MaterialPageRoute<void>(builder: (_) => const NewCaseScreen()),
+        );
+        if (mounted) setState(() => _casesRemount++);
+        return;
+      case 3:
+        await Navigator.of(context).push<void>(
+          MaterialPageRoute<void>(builder: (_) => const NewPostScreen()),
+        );
+        if (mounted) setState(() => _forumRemount++);
+        return;
+      case 1:
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('在上方搜索框输入即可筛选院校')),
+        );
+        return;
+      case 4:
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('个人资料与作品可在本页继续编辑')),
+        );
+        return;
+      case 0:
+        await Navigator.of(context).push<void>(
+          MaterialPageRoute<void>(builder: (_) => const NewCommunityPostScreen()),
+        );
+        return;
+      default:
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('浏览首页推荐，或切换到「合作 / 学习」快速发布')),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kPorcelain,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      // ═══════════════════════════════════════════════════════
-      // 青花瓷风格底部导航栏
-      // ═══════════════════════════════════════════════════════
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: kInk.withOpacity(0.04),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(_navItems.length, (index) {
-                final item = _navItems[index];
-                final isSelected = _currentIndex == index;
-                return _buildNavItem(item, isSelected, index);
-              }),
+      extendBody: true,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: IndexedStack(
+              index: _currentIndex,
+              children: [
+                const HomeScreen(),
+                const ExploreScreen(),
+                CasesScreen(key: ValueKey('cases_$_casesRemount')),
+                ForumScreen(key: ValueKey('forum_$_forumRemount')),
+                const ProfileScreen(),
+              ],
             ),
           ),
-        ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Material(
+              color: Colors.transparent,
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 16, bottom: 8),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: _ArtLinkFab(onPressed: _onFabPressed),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                      child: Center(child: _buildFloatingNav()),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildNavItem(_NavItem item, bool isSelected, int index) {
-    return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? kCobalt.withOpacity(0.08) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
+  Widget _buildFloatingNav() {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 520),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: kInk.withOpacity(0.92),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: kPorcelain.withOpacity(0.12)),
+        boxShadow: [
+          BoxShadow(
+            color: kInk.withOpacity(0.35),
+            blurRadius: 28,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedScale(
-              scale: isSelected ? 1.1 : 1.0,
-              duration: const Duration(milliseconds: 200),
-              child: Icon(
-                isSelected ? item.activeIcon : item.icon,
-                size: 22,
-                color: isSelected ? kCobalt : kInk.withOpacity(0.35),
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(_navItems.length, (index) {
+            final item = _navItems[index];
+            final isSelected = _currentIndex == index;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: GestureDetector(
+                onTap: () => setState(() => _currentIndex = index),
+                behavior: HitTestBehavior.opaque,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 320),
+                  curve: Curves.easeOutCubic,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSelected ? 14 : 10,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected ? kPorcelain : Colors.transparent,
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: kInk.withOpacity(0.12),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isSelected ? item.activeIcon : item.icon,
+                        size: 20,
+                        color: isSelected
+                            ? kCobalt
+                            : kPorcelain.withOpacity(0.42),
+                      ),
+                      if (isSelected) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          item.label,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                            color: kInk,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 3),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 200),
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? kCobalt : kInk.withOpacity(0.35),
-                letterSpacing: 0.3,
-              ),
-              child: Text(item.label),
-            ),
-          ],
+            );
+          }),
         ),
       ),
     );
@@ -148,4 +241,38 @@ class _NavItem {
     required this.activeIcon,
     required this.label,
   });
+}
+
+/// 右下角「+」：不用 InkWell，避免 Web 上方形水波纹与浅蓝渐变伪影
+class _ArtLinkFab extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const _ArtLinkFab({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onPressed,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: kCobalt,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: kInk.withOpacity(0.22),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.add, color: Colors.white, size: 28),
+        ),
+      ),
+    );
+  }
 }

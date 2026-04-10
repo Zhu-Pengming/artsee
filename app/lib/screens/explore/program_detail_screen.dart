@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/models.dart';
+import '../../services/backend_api_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/common.dart';
 
@@ -22,8 +23,13 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
   }
 
   Future<void> _load() async {
-    final p = await SupabaseService.fetchProgram(widget.programId);
-    if (mounted) setState(() { _program = p; _loading = false; });
+    try {
+      final p = await BackendApiService.fetchProgram(widget.programId);
+      if (mounted) setState(() { _program = p; _loading = false; });
+    } catch (_) {
+      final p = await SupabaseService.fetchProgram(widget.programId);
+      if (mounted) setState(() { _program = p; _loading = false; });
+    }
   }
 
   @override

@@ -13,7 +13,10 @@
     "lint:web": "cd web && npm run lint",
     "dev:app": "cd app && flutter run",
     "build:app": "cd app && flutter build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:backend": "node tests/backend/supabase-health.mjs",
+    "test:web": "npm run test --workspace=web",
+    "ensure:dev-user": "node scripts/ensure-dev-test-user.mjs"
   },
   "repository": {
     "type": "git",
@@ -29,6 +32,7 @@
   "author": "Artsee Team",
   "license": "MIT",
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
     "axios": "^1.13.6",
     "pg": "^8.20.0"
   }

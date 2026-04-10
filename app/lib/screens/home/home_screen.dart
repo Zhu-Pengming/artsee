@@ -1,9 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../models/models.dart';
+import '../../services/backend_api_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/common.dart';
+import '../auth/login_screen.dart';
 import '../cases/case_detail_screen.dart';
-import '../forum/post_detail_screen.dart';
+import 'community_post_detail_screen.dart';
 
 /// ═══════════════════════════════════════════════════════════════
 /// 青花瓷典藏版 - 首页
@@ -18,26 +24,47 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<AppCase> _cases = [];
-  List<AppPost> _posts = [];
+  List<AppCommunityPost> _communityPosts = [];
   bool _loading = true;
+  StreamSubscription<AuthState>? _authSub;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
-    final results = await Future.wait([
-      SupabaseService.fetchFeedCases(),
-      SupabaseService.fetchFeedPosts(),
-    ]);
-    if (mounted) {
-      setState(() {
-        _cases = results[0] as List<AppCase>;
-        _posts = results[1] as List<AppPost>;
-        _loading = false;
-      });
+    try {
+      final results = await Future.wait([
+        BackendApiService.fetchCases(limit: 10),
+        BackendApiService.fetchCommunityPosts(limit: 10),
+      ]);
+      if (mounted) {
+        setState(() {
+          _cases = results[0] as List<AppCase>;
+          _communityPosts = results[1] as List<AppCommunityPost>;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      final cases = await SupabaseService.fetchFeedCases();
+      if (mounted) {
+        setState(() {
+          _cases = cases;
+          _communityPosts = [];
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -47,9 +74,10 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: kPorcelain,
       body: RefreshIndicator(
         color: kCobalt,
-        backgroundColor: Colors.white,
+        backgroundColor: kPorcelain,
         onRefresh: _load,
         child: CustomScrollView(
+          physics: const ClampingScrollPhysics(),
           slivers: [
             // ═══════════════════════════════════════════════════
             // 顶部导航栏（青花瓷风格）
@@ -83,12 +111,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(width: 10),
                   const Text(
-                    '艺见心',
+                    'ArtLink 艺衡',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 17,
                       fontWeight: FontWeight.w700,
                       color: kInk,
-                      letterSpacing: 0.5,
+                      letterSpacing: 0.2,
                     ),
                   ),
                 ],
@@ -120,6 +148,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
+
+            if (!SupabaseService.isLoggedIn)
+              SliverToBoxAdapter(child: _LoginHintBar(
+                onLoginTap: () => Navigator.of(context).push<void>(
+                  MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+                ).then((_) { if (mounted) setState(() {}); }),
+              )),
 
             if (_loading)
               const SliverFillRemaining(child: LoadingIndicator())
@@ -257,14 +292,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           );
                         },
                       );
-                    } else if (i.isOdd && postIdx < _posts.length) {
-                      return _PostFeedCard(
-                        p: _posts[postIdx],
+                    } else if (i.isOdd && postIdx < _communityPosts.length) {
+                      return _CommunityFeedCard(
+                        p: _communityPosts[postIdx],
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => PostDetailScreen(postId: _posts[postIdx].id),
+                            MaterialPageRoute<void>(
+                              builder: (_) => CommunityPostDetailScreen(post: _communityPosts[postIdx]),
                             ),
                           );
                         },
@@ -272,12 +307,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
                     return null;
                   },
-                  childCount: (_cases.length + _posts.length),
+                  childCount: (_cases.length + _communityPosts.length),
                 ),
               ),
 
-              // 底部留白
-              const SliverToBoxAdapter(child: SizedBox(height: 20)),
+              // 底部留白（悬浮导航栏）
+              SliverToBoxAdapter(child: SizedBox(height: mainTabBottomInset(context))),
             ],
           ],
         ),
@@ -287,7 +322,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 /// ═══════════════════════════════════════════════════════════════
-/// 快捷入口网格（青花瓷风格）
+/// 快捷入口（横向滚动，避免窄屏 Row 溢出）
 /// ═══════════════════════════════════════════════════════════════
 class _QuickAccessGrid extends StatelessWidget {
   final List<_QuickItem> items = const [
@@ -306,36 +341,100 @@ class _QuickAccessGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: items.map((item) => _buildItem(item)).toList(),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: items.map((item) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: _buildItem(item),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
 
   Widget _buildItem(_QuickItem item) {
-    return Column(
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: kSilver.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(14),
+    return SizedBox(
+      width: 68,
+      child: Column(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: kSilver.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(item.icon, size: 22, color: kInk.withOpacity(0.6)),
           ),
-          child: Icon(item.icon, size: 22, color: kInk.withOpacity(0.6)),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          item.name,
-          style: TextStyle(
-            fontSize: 9,
-            color: kInk.withOpacity(0.7),
-            fontWeight: FontWeight.w500,
+          const SizedBox(height: 6),
+          Text(
+            item.name,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 9,
+              color: kInk.withOpacity(0.7),
+              fontWeight: FontWeight.w500,
+              height: 1.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 未登录时在首页顶部提示
+class _LoginHintBar extends StatelessWidget {
+  final VoidCallback onLoginTap;
+
+  const _LoginHintBar({required this.onLoginTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Material(
+        color: kCobalt.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(kRadiusMedium),
+        child: InkWell(
+          onTap: onLoginTap,
+          borderRadius: BorderRadius.circular(kRadiusMedium),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.login_rounded, color: kCobalt, size: 22),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '登录后可同步收藏、发布案例与帖子',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: kInk.withOpacity(0.85),
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+                const Text(
+                  '去登录',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: kCobalt,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -600,23 +699,17 @@ class _CaseFeedCard extends StatelessWidget {
 }
 
 /// ═══════════════════════════════════════════════════════════════
-/// 帖子卡片（青花瓷风格）
+/// 社区图文卡片（`community_posts`，经 Next API）
 /// ═══════════════════════════════════════════════════════════════
-class _PostFeedCard extends StatelessWidget {
-  final AppPost p;
+class _CommunityFeedCard extends StatelessWidget {
+  final AppCommunityPost p;
   final VoidCallback onTap;
 
-  const _PostFeedCard({required this.p, required this.onTap});
+  const _CommunityFeedCard({required this.p, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final typeColors = {
-      'question': kCobalt,
-      'discussion': kCobaltMuted,
-      'news': const Color(0xFF4A6FA5),
-    };
-    final typeLabels = {'question': '问答', 'discussion': '讨论', 'news': '资讯'};
-    final color = typeColors[p.type] ?? kCobalt;
+    final color = kCobaltMuted;
 
     return GestureDetector(
       onTap: onTap,
@@ -636,80 +729,72 @@ class _PostFeedCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 顶部类型条
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(kRadiusLarge)),
-              child: Container(
-                height: 70,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [color, color.withOpacity(0.8)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(6),
+              child: p.imageUrls.isNotEmpty
+                  ? Image.network(
+                      p.imageUrls.first,
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 120,
+                        color: color.withOpacity(0.2),
+                        alignment: Alignment.center,
+                        child: Icon(Icons.image_not_supported_outlined, color: kInk.withOpacity(0.35)),
                       ),
-                      child: Text(
-                        typeLabels[p.type] ?? '讨论',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
+                    )
+                  : Container(
+                      height: 100,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [color, color.withOpacity(0.75)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      p.title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        height: 1.3,
+                      padding: const EdgeInsets.all(16),
+                      alignment: Alignment.bottomLeft,
+                      child: Text(
+                        p.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ],
-                ),
-              ),
             ),
-            // 内容区域
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (p.content != null) ...[
+                  if (p.imageUrls.isNotEmpty) ...[
                     Text(
-                      p.content!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: kInk.withOpacity(0.6),
-                        height: 1.5,
-                      ),
+                      p.title,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, height: 1.3),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                   ],
-                  // 底部信息栏
+                  if (p.body != null && p.body!.isNotEmpty)
+                    Text(
+                      p.body!,
+                      style: TextStyle(fontSize: 12, color: kInk.withOpacity(0.65), height: 1.5),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       CircleAvatar(
                         radius: 12,
                         backgroundColor: kSilver,
                         child: Text(
-                          p.authorNickname?.substring(0, 1) ?? '?',
+                          (p.authorNickname != null && p.authorNickname!.isNotEmpty)
+                              ? p.authorNickname!.substring(0, 1)
+                              : '?',
                           style: TextStyle(
                             fontSize: 10,
                             color: kInk.withOpacity(0.7),
@@ -720,31 +805,16 @@ class _PostFeedCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         p.authorNickname ?? '用户',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: kInk.withOpacity(0.6),
-                        ),
+                        style: TextStyle(fontSize: 12, color: kInk.withOpacity(0.6)),
                       ),
                       const Spacer(),
                       Icon(Icons.favorite_border, size: 14, color: kInk.withOpacity(0.3)),
                       const SizedBox(width: 4),
-                      Text(
-                        '${p.likeCount}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: kInk.withOpacity(0.4),
-                        ),
-                      ),
+                      Text('${p.likeCount}', style: TextStyle(fontSize: 11, color: kInk.withOpacity(0.4))),
                       const SizedBox(width: 12),
                       Icon(Icons.chat_bubble_outline, size: 14, color: kInk.withOpacity(0.3)),
                       const SizedBox(width: 4),
-                      Text(
-                        '${p.answerCount}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: kInk.withOpacity(0.4),
-                        ),
-                      ),
+                      Text('${p.commentCount}', style: TextStyle(fontSize: 11, color: kInk.withOpacity(0.4))),
                     ],
                   ),
                 ],

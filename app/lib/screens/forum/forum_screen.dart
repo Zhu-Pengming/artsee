@@ -48,6 +48,7 @@ class _ForumScreenState extends State<ForumScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final bottomPad = mainTabBottomInset(context);
     return Scaffold(
       backgroundColor: kPorcelain,
       appBar: AppBar(
@@ -120,7 +121,7 @@ class _ForumScreenState extends State<ForumScreen> with SingleTickerProviderStat
           : _posts.isEmpty
             ? const EmptyState(emoji: '💬', message: '还没有内容，来发第一帖！')
             : ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: EdgeInsets.fromLTRB(0, 8, 0, bottomPad),
                 itemCount: _posts.length,
                 itemBuilder: (ctx, i) => _PostCard(
                   post: _posts[i],

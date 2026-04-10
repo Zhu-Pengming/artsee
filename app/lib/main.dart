@@ -1,7 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/main_scaffold.dart';
+import 'screens/onboarding/art_interest_onboarding_screen.dart';
+import 'services/supabase_service.dart';
+import 'widgets/app_scroll_behavior.dart';
 import 'widgets/common.dart';
 
 const supabaseUrl = 'https://nufrgmlhlfmhxsqbybfd.supabase.co';
@@ -33,8 +38,9 @@ class ArtseeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '艺见心',
+      title: 'ArtLink 艺衡',
       debugShowCheckedModeBanner: false,
+      scrollBehavior: const ArtseeScrollBehavior(),
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
@@ -108,7 +114,7 @@ class ArtseeApp extends StatelessWidget {
         // ═══════════════════════════════════════════════════════
         // 卡片主题
         // ═══════════════════════════════════════════════════════
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           color: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -182,7 +188,7 @@ class ArtseeApp extends StatelessWidget {
         // ═══════════════════════════════════════════════════════
         // 标签栏主题
         // ═══════════════════════════════════════════════════════
-        tabBarTheme: const TabBarTheme(
+        tabBarTheme: const TabBarThemeData(
           labelColor: kCobalt,
           unselectedLabelColor: kSilver,
           indicatorColor: kCobalt,
@@ -235,14 +241,66 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
+  Map<String, dynamic>? _profile;
+  bool _loadingProfile = true;
+  StreamSubscription<AuthState>? _authSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((_) => _reload());
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _reload() async {
+    if (!SupabaseService.isLoggedIn) {
+      if (mounted) {
+        setState(() {
+          _profile = null;
+          _loadingProfile = false;
+        });
+      }
+      return;
+    }
+    if (mounted) setState(() => _loadingProfile = true);
+    final p = await SupabaseService.fetchProfile();
+    if (!mounted) return;
+    setState(() {
+      _profile = p;
+      _loadingProfile = false;
+    });
+    final needOnboarding = p == null || p['has_completed_onboarding'] != true;
+    if (needOnboarding) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<AuthState>(
-      stream: Supabase.instance.client.auth.onAuthStateChange,
-      builder: (context, snapshot) {
-        // Always show main scaffold; auth-required pages redirect to login
-        return const MainScaffold();
-      },
-    );
+    if (!SupabaseService.isLoggedIn) {
+      return const MainScaffold();
+    }
+    if (_loadingProfile) {
+      return const Scaffold(
+        backgroundColor: kPorcelain,
+        body: Center(
+          child: CircularProgressIndicator(color: kCobalt, strokeWidth: 2.5),
+        ),
+      );
+    }
+    final done = _profile != null && _profile!['has_completed_onboarding'] == true;
+    if (!done) {
+      return ArtInterestOnboardingScreen(onCompleted: _reload);
+    }
+    return const MainScaffold();
   }
 }

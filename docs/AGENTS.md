@@ -199,6 +199,29 @@ user_favorites (
 )
 ```
 
+## 开发者模式与测试账号（Flutter 登录页）
+
+用于在**调试构建**或 **`--dart-define=DEV_LOGIN=true`** 下，从登录/注册页一键登录，无需手输邮箱密码。
+
+### 测试账号（与 `app/lib/config/dev_test_account.dart` 一致）
+
+| 字段 | 值 |
+|------|-----|
+| 邮箱 | `dev.test@artsee.app` |
+| 密码 | `ArtseeDev2026!` |
+| 昵称 | `Artsee开发者` |
+
+**在 Supabase 中创建/同步该用户**（需 Service Role，仅本地或 CI 使用）：
+
+```bash
+# 项目根目录，已配置 .env 中的 SUPABASE_URL 与 SUPABASE_SERVICE_ROLE_KEY
+npm run ensure:dev-user
+```
+
+脚本会：若 Auth 中不存在该邮箱则 `createUser`（已确认邮箱）；并 `upsert` `user_profiles`（含 `has_completed_onboarding: true` 与示例 `interested_categories`）。
+
+**APP 侧开关**：Debug 包默认显示「开发者快速登录」；Release 需编译时加上 `DEV_LOGIN=true` 才会显示（勿向最终用户分发此类包）。
+
 ## 注意事项
 
 1. **永远不要**在 APP 端暴露 Supabase 的 service_role_key

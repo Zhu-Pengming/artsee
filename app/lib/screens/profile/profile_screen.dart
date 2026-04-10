@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
 import '../../models/models.dart';
+import '../../services/storage_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/common.dart';
 import '../auth/login_screen.dart';
@@ -21,6 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<AppCase> _myCases = [];
   bool _loading = true;
   int _tabIndex = 0;
+  bool _uploadingAvatar = false;
 
   @override
   void initState() {
@@ -46,6 +50,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Widget _avatarFallback(String nickname) {
+    final ch = nickname.isNotEmpty ? nickname.substring(0, 1) : '艺';
+    return Center(
+      child: Text(
+        ch,
+        style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: kCobalt),
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    final picker = ImagePicker();
+    final x = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1024, maxHeight: 1024, imageQuality: 85);
+    if (x == null) return;
+    setState(() => _uploadingAvatar = true);
+    try {
+      final url = await StorageService.uploadAvatarFile(x);
+      await SupabaseService.updateAvatarUrl(url);
+      if (mounted) await _load();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('头像上传失败，请重试')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!SupabaseService.isLoggedIn) {
@@ -56,7 +90,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: kPorcelain,
       body: RefreshIndicator(
         color: kCobalt,
-        backgroundColor: Colors.white,
+        backgroundColor: kPorcelain,
         onRefresh: _load,
         child: CustomScrollView(
           slivers: [
@@ -88,8 +122,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             else
               SliverToBoxAdapter(child: _buildTabContent()),
 
-            // 底部留白
-            const SliverToBoxAdapter(child: SizedBox(height: 20)),
+            // 底部留白（悬浮导航栏）
+            SliverToBoxAdapter(child: SizedBox(height: mainTabBottomInset(context))),
           ],
         ),
       ),
@@ -99,6 +133,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildHeader() {
     final nickname = _profile?['nickname'] as String? ?? '艺见用户';
     final bio = _profile?['bio'] as String? ?? '目标：英国艺术院校';
+    final avatarUrl = _profile?['avatar_url'] as String?;
 
     return Stack(
       clipBehavior: Clip.none,
@@ -128,33 +163,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
-        // 头像
+        // 头像（Supabase Storage 公网 URL）
         Positioned(
           bottom: -40,
           left: 24,
-          child: Container(
-            width: 84,
-            height: 84,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-              border: Border.all(color: Colors.white, width: 4),
-              boxShadow: [
-                BoxShadow(
-                  color: kInk.withOpacity(0.1),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: _uploadingAvatar ? null : _pickAndUploadAvatar,
+              child: Container(
+                width: 84,
+                height: 84,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                  border: Border.all(color: Colors.white, width: 4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: kInk.withOpacity(0.1),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: const Center(
-              child: Text(
-                '艺',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: kCobalt,
-                ),
+                child: _uploadingAvatar
+                    ? const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: kCobalt),
+                      )
+                    : ClipOval(
+                        child: avatarUrl != null && avatarUrl.isNotEmpty
+                            ? Image.network(
+                                avatarUrl,
+                                width: 84,
+                                height: 84,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => _avatarFallback(nickname),
+                              )
+                            : _avatarFallback(nickname),
+                      ),
               ),
             ),
           ),

@@ -1,5 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../config/dev_test_account.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/common.dart';
 
@@ -48,6 +51,27 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _devQuickLogin() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final res = await SupabaseService.signIn(DevTestAccount.email, DevTestAccount.password);
+      if (res.user == null) throw Exception('登录失败');
+      if (mounted) Navigator.pop(context);
+    } on AuthException catch (e) {
+      setState(() => _error = e.message);
+    } catch (e) {
+      setState(() {
+        _error =
+            '测试账号无法登录。请在项目根执行：npm run ensure:dev-user（需配置 SUPABASE_SERVICE_ROLE_KEY）。\n${e.toString()}';
+      });
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -69,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: const Center(child: Text('🎨', style: TextStyle(fontSize: 36))),
               ),
               const SizedBox(height: 16),
-              const Text('艺见心', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.black87)),
+              const Text('ArtLink 艺衡', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.black87)),
               const Text('英国艺术留学社区', style: TextStyle(fontSize: 13, color: Colors.grey)),
               const SizedBox(height: 40),
 
@@ -157,6 +181,62 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: () => Navigator.pop(context),
                 child: const Text('先逛逛，不登录', style: TextStyle(color: Colors.grey, fontSize: 12)),
               ),
+
+              if (devLoginShortcutsEnabled) ...[
+                const SizedBox(height: 28),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF8E1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.amber.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.developer_mode, size: 20, color: Colors.amber.shade900),
+                          const SizedBox(width: 8),
+                          Text(
+                            '开发者模式',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                              color: Colors.amber.shade900,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        kDebugMode
+                            ? 'Debug 构建：可一键登录测试账号（账号见 docs/AGENTS.md）。'
+                            : '已启用 DEV_LOGIN：仅用于内部测试包。',
+                        style: TextStyle(fontSize: 11, color: Colors.brown.shade700, height: 1.35),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _loading ? null : _devQuickLogin,
+                          icon: Icon(Icons.login, size: 18, color: Colors.amber.shade900),
+                          label: Text(
+                            '一键登录：${DevTestAccount.email}',
+                            style: TextStyle(fontSize: 12, color: Colors.amber.shade900),
+                            textAlign: TextAlign.center,
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.amber.shade400),
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),

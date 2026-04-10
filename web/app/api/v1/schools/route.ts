@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { requireAdmin } from "@/lib/api/require-admin";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -52,8 +53,10 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/v1/schools - 创建学校（管理员）
+// POST /api/v1/schools - 创建学校（管理员 Bearer + role=admin）
 export async function POST(req: NextRequest) {
+  const auth = await requireAdmin(req);
+  if ("response" in auth) return auth.response;
   try {
     const body = await req.json();
     const supabase = createClient(supabaseUrl, supabaseKey);

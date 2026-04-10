@@ -66,6 +66,51 @@ class AppCase {
   }
 }
 
+/// 首页「社区」图文流（`community_posts` 表，经 Next `/api/v1/community/posts`）
+class AppCommunityPost {
+  final String id;
+  final String title;
+  final String? body;
+  final List<String> imageUrls;
+  final int likeCount;
+  final int commentCount;
+  final int viewCount;
+  final String createdAt;
+  final String? authorNickname;
+
+  const AppCommunityPost({
+    required this.id,
+    required this.title,
+    this.body,
+    required this.imageUrls,
+    required this.likeCount,
+    required this.commentCount,
+    required this.viewCount,
+    required this.createdAt,
+    this.authorNickname,
+  });
+
+  factory AppCommunityPost.fromJson(Map<String, dynamic> json) {
+    final up = json['user_profiles'];
+    String? nick;
+    if (up is Map<String, dynamic>) {
+      nick = up['nickname'] as String?;
+    }
+    final urls = json['image_urls'];
+    return AppCommunityPost(
+      id: json['id'] as String,
+      title: json['title'] as String? ?? '',
+      body: json['body'] as String?,
+      imageUrls: urls is List ? urls.map((e) => e.toString()).toList() : [],
+      likeCount: json['like_count'] as int? ?? 0,
+      commentCount: json['comment_count'] as int? ?? 0,
+      viewCount: json['view_count'] as int? ?? 0,
+      createdAt: json['created_at'] as String,
+      authorNickname: nick,
+    );
+  }
+}
+
 class AppPost {
   final String id;
   final String type; // question | discussion | news

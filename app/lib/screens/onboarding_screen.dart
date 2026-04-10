@@ -295,7 +295,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '欢迎加入艺见心',
+            '欢迎加入 ArtLink 艺衡',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,

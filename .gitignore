@@ -30,8 +30,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# IDE
+# IDE / local tooling
 .idea/
+.cursor/
+.kimi/
+.venv/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
@@ -64,3 +67,8 @@ app/ios/Flutter/Flutter.podspec
 
 # Supabase
 supabase/.temp/
+
+*.zip
+
+# 艺术家参考稿解压目录（ZIP 保留在仓库外或本地）
+_artist_ref/
