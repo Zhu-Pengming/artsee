@@ -1,37 +1,113 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/api/require-admin";
+import { createServiceClient } from "@/lib/api/supabase-service";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const DEFAULT_LIMIT = 20;
+const MAX_LIMIT = 100;
+
+function parseIntParam(raw: string | null, defaultValue: number, min: number, max: number) {
+  if (raw === null) return { value: defaultValue };
+  const parsed = Number.parseInt(raw, 10);
+  if (Number.isNaN(parsed) || parsed < min || parsed > max) {
+    return { error: `参数必须是 ${min}-${max} 之间的整数` };
+  }
+  return { value: parsed };
+}
 
 // GET /api/v1/schools - 获取学校列表
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const country = searchParams.get("country");
-    const limit = parseInt(searchParams.get("limit") || "20");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const city = searchParams.get("city");
+    const schoolType = searchParams.get("school_type");
+    const keyword = searchParams.get("keyword")?.trim();
+    const status = searchParams.get("status");
+    const includeInactive = searchParams.get("include_inactive") === "true";
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const limitCheck = parseIntParam(searchParams.get("limit"), DEFAULT_LIMIT, 1, MAX_LIMIT);
+    if (limitCheck.error) {
+      return NextResponse.json(
+        { success: false, error: `limit ${limitCheck.error}` },
+        { status: 400 }
+      );
+    }
+    const offsetCheck = parseIntParam(searchParams.get("offset"), 0, 0, 1000000);
+    if (offsetCheck.error) {
+      return NextResponse.json(
+        { success: false, error: `offset ${offsetCheck.error}` },
+        { status: 400 }
+      );
+    }
+    const minRankCheck = parseIntParam(searchParams.get("min_rank"), 0, 0, 99999);
+    if (minRankCheck.error) {
+      return NextResponse.json(
+        { success: false, error: `min_rank ${minRankCheck.error}` },
+        { status: 400 }
+      );
+    }
+    const maxRankCheck = parseIntParam(searchParams.get("max_rank"), 99999, 0, 99999);
+    if (maxRankCheck.error) {
+      return NextResponse.json(
+        { success: false, error: `max_rank ${maxRankCheck.error}` },
+        { status: 400 }
+      );
+    }
 
+    if (minRankCheck.value! > maxRankCheck.value!) {
+      return NextResponse.json(
+        { success: false, error: "min_rank 不能大于 max_rank" },
+        { status: 400 }
+      );
+    }
+
+    if (includeInactive || status) {
+      const auth = await requireAdmin(req);
+      if ("response" in auth) return auth.response;
+    }
+
+    const limit = limitCheck.value!;
+    const offset = offsetCheck.value!;
+    const minRank = minRankCheck.value!;
+    const maxRank = maxRankCheck.value!;
+
+    const supabase = createServiceClient();
     let query = supabase
       .from("schools")
-      .select("*")
-      .eq("status", "active")
+      .select("*", { count: "exact" })
       .order("qs_art_rank", { ascending: true })
-      .limit(limit)
       .range(offset, offset + limit - 1);
+
+    if (status) {
+      query = query.eq("status", status);
+    } else if (!includeInactive) {
+      query = query.eq("status", "active");
+    }
 
     if (country) {
       query = query.eq("country", country);
+    }
+    if (city) {
+      query = query.eq("city", city);
+    }
+    if (schoolType) {
+      query = query.eq("school_type", schoolType);
+    }
+    if (keyword) {
+      query = query.or(`name_zh.ilike.%${keyword}%,name_en.ilike.%${keyword}%`);
+    }
+    if (minRank > 0) {
+      query = query.gte("qs_art_rank", minRank);
+    }
+    if (maxRank < 99999) {
+      query = query.lte("qs_art_rank", maxRank);
     }
 
     const { data, error, count } = await query;
 
     if (error) {
       return NextResponse.json(
-        { error: error.message },
+        { success: false, error: error.message },
         { status: 500 }
       );
     }
@@ -45,9 +121,10 @@ export async function GET(req: NextRequest) {
         offset,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: error.message },
+      { success: false, error: msg },
       { status: 500 }
     );
   }
@@ -59,7 +136,7 @@ export async function POST(req: NextRequest) {
   if ("response" in auth) return auth.response;
   try {
     const body = await req.json();
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createServiceClient();
 
     const { data, error } = await supabase
       .from("schools")
@@ -69,7 +146,7 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       return NextResponse.json(
-        { error: error.message },
+        { success: false, error: error.message },
         { status: 500 }
       );
     }
@@ -78,9 +155,10 @@ export async function POST(req: NextRequest) {
       success: true,
       data,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: error.message },
+      { success: false, error: msg },
       { status: 500 }
     );
   }
