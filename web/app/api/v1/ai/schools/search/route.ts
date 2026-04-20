@@ -4,14 +4,14 @@ import { createServiceClient } from "@/lib/api/supabase-service";
 
 /**
  * POST /api/v1/ai/schools/search
- * body: { query: string, limitPrograms?: number }
- * 从数据库拉取院校/项目摘要，结合大模型生成结构化推荐（表格字段在 JSON 内）
+ * body: { query: string, limitSchools?: number }
+ * 从数据库拉取院校完整信息，结合大模型生成艺术留学咨询回答
  */
 export async function POST(req: NextRequest) {
   try {
-    const { query, limitPrograms = 40 } = (await req.json()) as {
+    const { query, limitSchools = 20 } = (await req.json()) as {
       query?: string;
-      limitPrograms?: number;
+      limitSchools?: number;
     };
     const q = (query ?? "").trim();
     if (!q) {
@@ -19,29 +19,35 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = createServiceClient();
-    const { data: programs, error: pe } = await supabase
-      .from("programs")
-      .select(
-        `
-        id, program_name, degree_type, program_overview,
-        schools:school_id (name_zh, country, qs_art_rank)
-      `
-      )
+    const { data: schools, error: se } = await supabase
+      .from("schools")
+      .select("*")
       .eq("status", "active")
-      .limit(Math.min(limitPrograms, 80));
+      .order("qs_art_design_rank", { ascending: true })
+      .limit(Math.min(limitSchools, 80));
 
-    if (pe) {
-      return NextResponse.json({ success: false, error: pe.message }, { status: 500 });
+    if (se) {
+      return NextResponse.json({ success: false, error: se.message }, { status: 500 });
     }
 
-    const compact = (programs ?? []).map((p: Record<string, unknown>) => ({
-      id: p.id,
-      program: p.program_name,
-      degree: p.degree_type,
-      school: (p.schools as { name_zh?: string } | null)?.name_zh,
-      country: (p.schools as { country?: string } | null)?.country,
-      qs: (p.schools as { qs_art_rank?: number } | null)?.qs_art_rank,
-      overview: (p.program_overview as string)?.slice(0, 200) ?? "",
+    const compact = (schools ?? []).map((s: Record<string, unknown>) => ({
+      id: s.id,
+      name_zh: s.name_zh,
+      name_en: s.name_en,
+      country: s.country,
+      city: s.city,
+      qs_art_design_rank: s.qs_art_design_rank,
+      qs_overall_rank: s.qs_overall_rank,
+      school_tier: s.school_tier,
+      school_type: s.school_type,
+      founded_year: s.founded_year,
+      description: (s.description as string)?.slice(0, 300) ?? "",
+      feature_tags: s.feature_tags,
+      strength_disciplines: s.strength_disciplines,
+      entry_score_requirements: s.entry_score_requirements,
+      application_deadline: s.application_deadline,
+      annual_intake: s.annual_intake,
+      notable_alumni: (s.notable_alumni as string)?.slice(0, 200) ?? "",
     }));
 
     const apiKey = process.env.OPENAI_API_KEY || process.env.MOONSHOT_API_KEY;
@@ -63,15 +69,22 @@ export async function POST(req: NextRequest) {
 
     const client = new OpenAI({ apiKey, baseURL });
 
-    const system = `你是 ArtLink 艺衡的选校顾问。根据用户问题和下列院校项目数据，输出 JSON（不要 markdown），格式严格为：
-{"summary":"一句中文总结","rows":[{"school":"学校中文名","program":"专业名","match":"高/中/低","reason":"不超过80字理由"}],"tips":["可选建议1","建议2"]}
-只从提供的数据中选最多 8 条，match 表示与用户问题的匹配程度。`;
+    const system = `你是 ArtLink 艺衡的 AI 艺术留学顾问。根据用户咨询问题和下列院校数据，给出专业、友好的中文回答。
 
-    const userMsg = `用户问题：${q}\n\n数据：${JSON.stringify(compact).slice(0, 12000)}`;
+要求：
+1. 只基于提供的院校数据作答，不要编造不存在的信息。
+2. 如果涉及具体院校推荐，优先从数据中挑选最匹配的 3-6 所，并简要说明推荐理由（结合 QS 排名、优势学科、地理位置、申请要求等）。
+3. 回答结构清晰，可分段落，可包含小标题。
+4. 如果用户问题无法从数据中直接回答，给出合理的通用建议，并诚实说明哪些信息需要进一步确认。
+
+输出严格为 JSON（不要 markdown），格式：
+{"summary":"对用户问题的直接回答（可分段）","recommendations":[{"school":"学校中文名","reason":"推荐理由（80字内）","tags":["标签1","标签2"]}],"tips":["建议1","建议2"]}`;
+
+    const userMsg = `用户问题：${q}\n\n院校数据（共 ${compact.length} 条）：${JSON.stringify(compact).slice(0, 12000)}`;
 
     const completion = await client.chat.completions.create({
       model,
-      temperature: 0.3,
+      temperature: 0.4,
       messages: [
         { role: "system", content: system },
         { role: "user", content: userMsg },

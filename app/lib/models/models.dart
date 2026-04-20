@@ -189,10 +189,8 @@ class AppProgram {
 
   factory AppProgram.fromJson(Map<String, dynamic> json) {
     final school = json['schools'] as Map<String, dynamic>?;
-    final admissions = json['program_admissions'] as List<dynamic>?;
-    final fees = json['program_fees'] as List<dynamic>?;
-    final admission = admissions?.isNotEmpty == true ? admissions!.first as Map<String, dynamic> : null;
-    final fee = fees?.isNotEmpty == true ? fees!.first as Map<String, dynamic> : null;
+    final admission = _firstOrSingle(json['program_admissions']);
+    final fee = _firstOrSingle(json['program_fees']);
 
     return AppProgram(
       id: json['id'] as int,
@@ -237,4 +235,12 @@ class AppReply {
       authorNickname: profile != null ? profile['nickname'] as String? : null,
     );
   }
+}
+
+/// 兼容 Supabase 一对一关系返回的 Object 或一对多返回的 List
+Map<String, dynamic>? _firstOrSingle(dynamic value) {
+  if (value == null) return null;
+  if (value is Map<String, dynamic>) return value;
+  if (value is List && value.isNotEmpty) return value.first as Map<String, dynamic>?;
+  return null;
 }

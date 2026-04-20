@@ -1,0 +1,81 @@
+{
+  "nav": {
+    "discover": "发现",
+    "collaborate": "合作",
+    "learn": "学习",
+    "cases": "案例",
+    "searchPlaceholder": "搜索画廊…",
+    "signIn": "登录"
+  },
+  "hero": {
+    "eyebrow": "数字策展人",
+    "title": "ArtLink：\n数字策展人",
+    "description": "连接先锋创作与奢侈品收藏的桥梁。为现代鉴赏家与专业艺术家打造的专属平台。",
+    "exploreCollection": "探索作品集",
+    "ourThesis": "我们的理念",
+    "quote": "\"艺术不是你看到了什么，而是你让别人看到了什么。\"",
+    "quoteAuthor": "埃德加·德加"
+  },
+  "discover": {
+    "title": "全球 visionary 集结",
+    "description": "ArtLink 精心构建了一个横跨大陆的专业网络。从柏林的新锐到东京的大师，我们的平台让您前所未有地触达全球认证的艺术家与策展人。",
+    "viewDirectory": "查看艺术家名录",
+    "artists": {
+      "elias": {
+        "name": "Elias Thorne",
+        "category": "雕塑极简主义",
+        "description": "通过大型装置艺术，探索工业废料与有机形态之间的交汇点。"
+      },
+      "sienna": {
+        "name": "Sienna Vo",
+        "category": "建筑镜头",
+        "description": "一次穿越城市粗野主义建筑韵律模式的摄影之旅。"
+      },
+      "marcus": {
+        "name": "Marcus Aurel",
+        "category": "新古典融合",
+        "description": "以数字优先的视角，重新诠释文艺复兴时期的技法与物质性。"
+      }
+    }
+  },
+  "collaborate": {
+    "eyebrow": "奢侈品合作",
+    "title": "升华空间，定义品牌。",
+    "description": "我们与全球最具声望的酒店集团与奢侈品牌合作，将定制艺术收藏融入其品牌 DNA。ArtLink 提供端到端的策展、物流与叙事服务。",
+    "hospitalityTitle": "酒店整合",
+    "hospitalityDesc": "将酒店套房与公共空间转化为沉浸式画廊体验。",
+    "brandTitle": "品牌协同",
+    "brandDesc": "为奢侈品限量版产品线开发独家艺术家合作。",
+    "cta": "咨询合作"
+  },
+  "learn": {
+    "title": "精通艺术市场",
+    "description": "ArtLink 不仅是一个市场，更是一所学院。我们提供驾驭专业艺术复杂格局所需的智识框架。",
+    "educationTitle": "专业艺术教育",
+    "educationDesc": "深入探索艺术史、当代理论与批判分析的课程，专为有识之士打造。",
+    "exploreCurriculum": "探索课程",
+    "mentorshipTitle": "导师制",
+    "mentorshipDesc": "直接触达资深策展人，获取作品集评审与职业指导。",
+    "marketTitle": "市场精通",
+    "marketDesc": "理解估值、拍卖动态与将艺术作为资产的投资策略。"
+  },
+  "cta": {
+    "title": "将你的创作\n提升到更高层次。",
+    "description": "加入由艺术家、策展人与收藏家组成的精英圈层，重新定义数字与实体艺术空间的边界。",
+    "apply": "申请加入",
+    "inquiry": "发起咨询"
+  },
+  "footer": {
+    "terms": "服务条款",
+    "privacy": "隐私政策",
+    "guidelines": "展览指南",
+    "press": "媒体资料",
+    "contact": "联系我们",
+    "copyright": "© 2024 ArtLink. 保留所有权利。"
+  },
+  "localeSwitcher": {
+    "zh": "中文",
+    "en": "English",
+    "ja": "日本語"
+  }
+}

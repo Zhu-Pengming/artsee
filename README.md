@@ -2,6 +2,11 @@
 
 发现、收藏和分享艺术品的最佳平台。
 
+## skills
+
+- 占用和获取开发端口号：[port-manager](.kimi/skills/port-manager/SKILL.md)
+- 开发习惯：[jinhui-stack-debug](.kimi/skills/jinhui-stack-debug/SKILL.md)
+
 ## 项目架构
 
 Artsee 采用 **移动优先** 的架构设计，APP 作为核心业务端，Web 作为统一后端服务。

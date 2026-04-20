@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
+import { motion } from 'motion/react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') ?? '/'
@@ -40,7 +42,6 @@ export default function LoginPage() {
         })
         if (error) throw error
         if (data.user) {
-          // 写入 user_profiles
           await supabase.from('user_profiles').upsert({
             id: data.user.id,
             nickname: nickname || email.split('@')[0],
@@ -62,117 +63,179 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#1A4B8C] to-[#4A90D9] flex items-center justify-center mb-3 shadow-lg">
-            <span className="text-white text-2xl font-bold">艺</span>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">艺见心</h1>
-          <p className="text-sm text-gray-500 mt-1">艺术留学一站式平台</p>
-        </div>
-
-        {/* 卡片 */}
-        <div className="bg-white rounded-3xl shadow-xl p-6">
-          {/* Tab */}
-          <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
-            {(['login', 'register'] as const).map(m => (
-              <button
-                key={m}
-                onClick={() => { setMode(m); setError(''); setSuccess('') }}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                  mode === m ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-                }`}
-              >
-                {m === 'login' ? '登录' : '注册'}
-              </button>
-            ))}
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'register' && (
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">昵称</label>
-                <input
-                  type="text"
-                  value={nickname}
-                  onChange={e => setNickname(e.target.value)}
-                  placeholder="你的昵称（可后续修改）"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#1A4B8C] transition-colors"
-                />
-              </div>
-            )}
-
-            <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">邮箱</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#1A4B8C] transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-gray-600 mb-1 block">密码</label>
-              <div className="relative">
-                <input
-                  type={showPwd ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder={mode === 'register' ? '至少6位' : '请输入密码'}
-                  required
-                  minLength={6}
-                  className="w-full px-4 py-3 pr-10 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#1A4B8C] transition-colors"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPwd(!showPwd)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                >
-                  {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <div className="bg-red-50 text-red-600 text-xs px-3 py-2 rounded-lg">
-                {error}
-              </div>
-            )}
-            {success && (
-              <div className="bg-green-50 text-green-600 text-xs px-3 py-2 rounded-lg">
-                {success}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-[#1A4B8C] to-[#4A90D9] text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60 transition-opacity"
-            >
-              {loading && <Loader2 size={16} className="animate-spin" />}
-              {mode === 'login' ? '登录' : '创建账号'}
-            </button>
-          </form>
-
-          <p className="text-center text-xs text-gray-400 mt-4">
-            继续即表示同意
-            <span className="text-[#1A4B8C]">用户协议</span>和
-            <span className="text-[#1A4B8C]">隐私政策</span>
-          </p>
-        </div>
-
-        <button
-          onClick={() => router.push('/')}
-          className="w-full text-center text-sm text-gray-500 mt-4 py-2"
+    <div className="min-h-screen bg-surface flex items-center justify-center px-6 md:px-12 lg:px-24 py-12">
+      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        {/* Left: Visual / Branding */}
+        <motion.div
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+          className="hidden lg:block lg:col-span-7"
         >
-          先逛逛，不登录 →
-        </button>
+          <Link href="/" className="inline-flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors mb-10">
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-sm font-medium">返回首页</span>
+          </Link>
+          <h1 className="text-5xl xl:text-6xl font-extrabold font-headline leading-[0.95] tracking-tight text-on-surface mb-8 whitespace-pre-line">
+            {'ArtLink:\n你的艺术留学\n第一站'}
+          </h1>
+          <p className="text-lg md:text-xl text-on-surface-variant max-w-md leading-relaxed mb-10 font-light">
+            连接先锋创作与奢侈品收藏的桥梁。加入我们，开启你的艺术留学之旅。
+          </p>
+          <div className="aspect-[4/3] bg-surface-container-high overflow-hidden rounded-md shadow-2xl max-w-md">
+            <img
+              alt="Art Installation"
+              className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-1000"
+              referrerPolicy="no-referrer"
+              src="https://images.unsplash.com/photo-1545989253-02cc26577f88?w=800&q=80"
+            />
+          </div>
+        </motion.div>
+
+        {/* Right: Form */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
+          className="lg:col-span-5 w-full max-w-md mx-auto lg:mx-0"
+        >
+          {/* Mobile back link */}
+          <div className="lg:hidden mb-6">
+            <Link href="/" className="inline-flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors">
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm font-medium">返回首页</span>
+            </Link>
+          </div>
+
+          {/* Logo */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-14 h-14 rounded-md bg-primary flex items-center justify-center mb-3 shadow-lg shadow-primary/10">
+              <span className="text-on-primary text-2xl font-bold font-headline">艺</span>
+            </div>
+            <h2 className="text-2xl font-bold font-headline text-on-surface">ArtLink</h2>
+            <p className="text-sm text-on-surface-variant mt-1">艺术留学一站式平台</p>
+          </div>
+
+          {/* Card */}
+          <div className="bg-surface-container-lowest rounded-md shadow-ambient p-8 border border-outline-variant/10">
+            {/* Tab */}
+            <div className="flex bg-surface-container-low rounded-md p-1 mb-8">
+              {(['login', 'register'] as const).map(m => (
+                <button
+                  key={m}
+                  onClick={() => { setMode(m); setError(''); setSuccess('') }}
+                  className={`flex-1 py-2.5 rounded-md text-sm font-medium transition-all ${
+                    mode === m ? 'bg-surface-container-lowest text-on-surface shadow-sm' : 'text-on-surface-variant'
+                  }`}
+                >
+                  {m === 'login' ? '登录' : '注册'}
+                </button>
+              ))}
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {mode === 'register' && (
+                <div>
+                  <label className="text-xs font-semibold text-on-surface-variant mb-1.5 block uppercase tracking-wider">昵称</label>
+                  <input
+                    type="text"
+                    value={nickname}
+                    onChange={e => setNickname(e.target.value)}
+                    placeholder="你的昵称（可后续修改）"
+                    className="w-full px-4 py-3.5 rounded-md border border-outline-variant/20 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all bg-surface text-on-surface placeholder:text-on-surface-variant/40"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-semibold text-on-surface-variant mb-1.5 block uppercase tracking-wider">邮箱</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  required
+                  className="w-full px-4 py-3.5 rounded-md border border-outline-variant/20 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all bg-surface text-on-surface placeholder:text-on-surface-variant/40"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-on-surface-variant mb-1.5 block uppercase tracking-wider">密码</label>
+                <div className="relative">
+                  <input
+                    type={showPwd ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder={mode === 'register' ? '至少6位' : '请输入密码'}
+                    required
+                    minLength={6}
+                    className="w-full px-4 py-3.5 pr-10 rounded-md border border-outline-variant/20 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all bg-surface text-on-surface placeholder:text-on-surface-variant/40"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd(!showPwd)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors"
+                  >
+                    {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-red-50 text-red-600 text-xs px-4 py-3 rounded-md">
+                  {error}
+                </div>
+              )}
+              {success && (
+                <div className="bg-green-50 text-green-700 text-xs px-4 py-3 rounded-md">
+                  {success}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 bg-primary text-on-primary rounded-md font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60 transition-all hover:bg-primary-dim"
+              >
+                {loading && <Loader2 size={16} className="animate-spin" />}
+                {mode === 'login' ? '登录' : '创建账号'}
+              </button>
+            </form>
+
+            <p className="text-center text-xs text-on-surface-variant/70 mt-6">
+              继续即表示同意
+              <Link href="/terms" className="text-primary hover:underline underline-offset-2">用户协议</Link>
+              和
+              <Link href="/privacy" className="text-primary hover:underline underline-offset-2">隐私政策</Link>
+            </p>
+          </div>
+
+          <button
+            onClick={() => router.push('/')}
+            className="w-full text-center text-sm text-on-surface-variant mt-6 py-2 hover:text-primary transition-colors"
+          >
+            先逛逛，不登录 →
+          </button>
+        </motion.div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-surface flex items-center justify-center p-4">
+        <div className="w-full max-w-sm">
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-14 h-14 rounded-md bg-primary flex items-center justify-center mb-3 shadow-lg animate-pulse" />
+            <div className="h-6 w-24 bg-surface-container-high rounded animate-pulse" />
+          </div>
+          <div className="bg-surface-container-lowest rounded-md shadow-ambient p-6 border border-outline-variant/10 h-80 animate-pulse" />
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }

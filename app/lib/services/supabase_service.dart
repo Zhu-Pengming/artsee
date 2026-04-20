@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/models.dart';
 
@@ -17,20 +18,24 @@ class SupabaseService {
       await _client.from('user_profiles').upsert({
         'id': res.user!.id,
         'nickname': nickname,
-        'has_completed_onboarding': false,
       }, onConflict: 'id');
     }
     return res;
   }
 
-  /// 完成冷启动：感兴趣的艺术领域（与 `interested_categories` / has_completed_onboarding 对齐）
+  /// 完成冷启动：感兴趣的艺术领域
   static Future<void> completeInterestOnboarding(List<String> topicIds) async {
     if (!isLoggedIn) return;
-    await _client.from('user_profiles').upsert({
-      'id': currentUser!.id,
-      'interested_categories': topicIds,
-      'has_completed_onboarding': true,
-    }, onConflict: 'id');
+    try {
+      await _client.from('user_profiles').upsert({
+        'id': currentUser!.id,
+        'interested_categories': topicIds,
+        'has_completed_onboarding': true,
+      }, onConflict: 'id');
+    } catch (e) {
+      // 若数据库尚未添加对应列，忽略 PGRST204 错误
+      debugPrint('completeInterestOnboarding skipped: $e');
+    }
   }
 
   static Future<void> updateAvatarUrl(String publicUrl) async {
@@ -38,6 +43,21 @@ class SupabaseService {
     await _client.from('user_profiles').update({
       'avatar_url': publicUrl,
     }).eq('id', currentUser!.id);
+  }
+
+  /// 更新个人资料（昵称、简介、所在地等）
+  static Future<void> updateProfileFields({
+    String? nickname,
+    String? bio,
+    String? location,
+  }) async {
+    if (!isLoggedIn) return;
+    final map = <String, dynamic>{};
+    if (nickname != null) map['nickname'] = nickname;
+    if (bio != null) map['bio'] = bio;
+    if (location != null) map['location'] = location;
+    if (map.isEmpty) return;
+    await _client.from('user_profiles').update(map).eq('id', currentUser!.id);
   }
 
   static Future<void> signOut() => _client.auth.signOut();

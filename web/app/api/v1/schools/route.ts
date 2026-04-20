@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
     let query = supabase
       .from("schools")
       .select("*", { count: "exact" })
-      .order("qs_art_rank", { ascending: true })
+      .order("qs_art_design_rank", { ascending: true })
       .range(offset, offset + limit - 1);
 
     if (status) {

@@ -1,10 +1,12 @@
 import OpenAI from 'openai'
 import { NextRequest } from 'next/server'
 
-const client = new OpenAI({
-  apiKey: process.env.MOONSHOT_API_KEY,
-  baseURL: 'https://api.moonshot.cn/v1',
-})
+function getClient() {
+  return new OpenAI({
+    apiKey: process.env.MOONSHOT_API_KEY || 'dummy-key-for-build',
+    baseURL: 'https://api.moonshot.cn/v1',
+  })
+}
 
 const SYSTEM_PROMPT = `你是「瓷言」，艺见心平台的 AI 艺术留学顾问助手。
 
@@ -60,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create streaming response
-    const stream = await client.chat.completions.create({
+    const stream = await getClient().chat.completions.create({
       model: 'kimi-k2.5',
       max_tokens: 2048,
       stream: true,

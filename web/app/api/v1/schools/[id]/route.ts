@@ -7,12 +7,11 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function GET(_req: NextRequest, ctx: Ctx) {
   try {
     const { id } = await ctx.params;
-    const n = parseInt(id, 10);
-    if (Number.isNaN(n)) {
+    if (!id || typeof id !== "string") {
       return NextResponse.json({ success: false, error: "无效 id" }, { status: 400 });
     }
     const supabase = createServiceClient();
-    const { data, error } = await supabase.from("schools").select("*").eq("id", n).maybeSingle();
+    const { data, error } = await supabase.from("schools").select("*").eq("id", id).maybeSingle();
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
@@ -31,13 +30,12 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if ("response" in admin) return admin.response;
   try {
     const { id } = await ctx.params;
-    const n = parseInt(id, 10);
-    if (Number.isNaN(n)) {
+    if (!id || typeof id !== "string") {
       return NextResponse.json({ success: false, error: "无效 id" }, { status: 400 });
     }
     const body = await req.json();
     const supabase = createServiceClient();
-    const { data, error } = await supabase.from("schools").update(body).eq("id", n).select().single();
+    const { data, error } = await supabase.from("schools").update(body).eq("id", id).select().single();
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
@@ -53,12 +51,11 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   if ("response" in admin) return admin.response;
   try {
     const { id } = await ctx.params;
-    const n = parseInt(id, 10);
-    if (Number.isNaN(n)) {
+    if (!id || typeof id !== "string") {
       return NextResponse.json({ success: false, error: "无效 id" }, { status: 400 });
     }
     const supabase = createServiceClient();
-    const { error } = await supabase.from("schools").delete().eq("id", n);
+    const { error } = await supabase.from("schools").delete().eq("id", id);
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }

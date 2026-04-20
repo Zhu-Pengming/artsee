@@ -30,7 +30,7 @@ export function UniversityCard({ program }: { program: Program }) {
 
   return (
     <Link href={`/explore/${program.id}`}>
-      <article className="mx-4 mb-3 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden active:scale-[0.99] transition-transform">
+      <article className="mb-4 bg-al-shell rounded-2xl border border-al-silver/60 shadow-sm overflow-hidden active:scale-[0.99] transition-transform">
         <div className="flex items-center gap-3 p-3">
           <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center flex-shrink-0`}>
             <span className="text-white text-[10px] font-bold text-center leading-tight">{initial}</span>

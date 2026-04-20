@@ -72,13 +72,7 @@ export async function GET(req: NextRequest) {
     const supabase = createServiceClient();
     let query = supabase
       .from("programs")
-      .select(`
-        *,
-        schools:school_id (name_zh, country, logo_url),
-        program_admissions (ielts_overall, regular_deadline),
-        program_fees (international_tuition_fee, currency_code),
-        program_art_categories (category_id)
-      `, { count: "exact" })
+      .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 

@@ -38,29 +38,29 @@ export function ExploreClient({ programs, initialSchool }: { programs: Program[]
   }, [programs, degree, major, ielts, search])
 
   return (
-    <div className="pb-4">
-      <div className="px-4 pt-3 pb-2">
-        <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-2.5">
-          <Search size={15} className="text-gray-400 flex-shrink-0" />
+    <div className="pb-6 space-y-2">
+      <div className="pt-1 pb-2">
+        <div className="flex items-center gap-2 bg-al-silver/50 rounded-2xl px-3 py-2.5 border border-al-silver/60">
+          <Search size={15} className="text-al-ink/35 flex-shrink-0" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="搜索院校、专业..."
-            className="flex-1 bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none"
+            className="flex-1 bg-transparent text-sm text-al-ink placeholder:text-al-ink/35 outline-none"
           />
         </div>
       </div>
 
       <FilterChips onFilter={(d, m, i) => { setDegree(d); setMajor(m); setIelts(i) }} />
 
-      <div className="flex items-center justify-between px-4 py-2">
-        <span className="text-xs text-gray-500">共 {filtered.length} 个项目</span>
+      <div className="flex items-center justify-between py-2">
+        <span className="text-xs text-al-ink/50">共 {filtered.length} 个项目</span>
       </div>
 
       {filtered.map(p => <UniversityCard key={p.id} program={p} />)}
 
       {filtered.length === 0 && (
-        <div className="text-center py-12 text-gray-400 text-sm">
+        <div className="text-center py-12 text-al-ink/45 text-sm">
           <p className="text-2xl mb-2">🔍</p>
           <p>没有找到匹配的专业</p>
           <p className="text-xs mt-1">试试清除筛选条件</p>

@@ -1,13 +1,19 @@
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/common.dart';
+import 'auth/login_screen.dart';
 import 'cases/cases_screen.dart';
-import 'cases/new_case_screen.dart';
+import 'create/create_post_screen.dart';
 import 'explore/explore_screen.dart';
 import 'forum/forum_screen.dart';
-import 'forum/new_post_screen.dart';
 import 'home/home_screen.dart';
-import 'home/new_community_post_screen.dart';
 import 'profile/profile_screen.dart';
+import '../services/supabase_service.dart';
+
+final _forumKey = GlobalKey<ForumScreenState>();
 
 /// ═══════════════════════════════════════════════════════════════
 /// ArtLink 艺衡 · 青花瓷典藏版 — 总入口（对齐艺术家 Web 原型）
@@ -24,9 +30,6 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
-  /// 自 FAB 返回后重新挂载列表页，触发 initState 拉取数据（与顶栏「发布」一致）
-  int _casesRemount = 0;
-  int _forumRemount = 0;
 
   final List<_NavItem> _navItems = const [
     _NavItem(
@@ -40,14 +43,14 @@ class _MainScaffoldState extends State<MainScaffold> {
       label: '发现',
     ),
     _NavItem(
-      icon: Icons.handshake_outlined,
-      activeIcon: Icons.handshake_rounded,
-      label: '合作',
-    ),
-    _NavItem(
       icon: Icons.school_outlined,
       activeIcon: Icons.school_rounded,
       label: '学习',
+    ),
+    _NavItem(
+      icon: Icons.handshake_outlined,
+      activeIcon: Icons.handshake_rounded,
+      label: '合作',
     ),
     _NavItem(
       icon: Icons.person_outline,
@@ -56,63 +59,163 @@ class _MainScaffoldState extends State<MainScaffold> {
     ),
   ];
 
-  Future<void> _onFabPressed() async {
-    switch (_currentIndex) {
-      case 2:
-        await Navigator.of(context).push<void>(
-          MaterialPageRoute<void>(builder: (_) => const NewCaseScreen()),
-        );
-        if (mounted) setState(() => _casesRemount++);
-        return;
-      case 3:
-        await Navigator.of(context).push<void>(
-          MaterialPageRoute<void>(builder: (_) => const NewPostScreen()),
-        );
-        if (mounted) setState(() => _forumRemount++);
-        return;
-      case 1:
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('在上方搜索框输入即可筛选院校')),
-        );
-        return;
-      case 4:
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('个人资料与作品可在本页继续编辑')),
-        );
-        return;
-      case 0:
-        await Navigator.of(context).push<void>(
-          MaterialPageRoute<void>(builder: (_) => const NewCommunityPostScreen()),
-        );
-        return;
-      default:
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('浏览首页推荐，或切换到「合作 / 学习」快速发布')),
-        );
+  void _openAiConsult() {
+    setState(() => _currentIndex = 2);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _forumKey.currentState?.switchToToolsAndOpenAiConsult();
+    });
+  }
+
+  void _showCreateSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(kRadiusLarge)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8EEF5).withOpacity(0.92),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(kRadiusLarge)),
+              border: Border.all(color: Colors.white.withOpacity(0.6), width: 1),
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: kInk.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildSheetOption(
+                          icon: Icons.add_photo_alternate_outlined,
+                          label: '发布图文',
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            Future.delayed(const Duration(milliseconds: 150), () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const CreatePostScreen()),
+                              );
+                            });
+                          },
+                        ),
+                      ),
+                      const Expanded(child: SizedBox()),
+                      const Expanded(child: SizedBox()),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSheetOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return TextButton(
+      onPressed: onTap,
+      style: TextButton.styleFrom(
+        foregroundColor: kInk,
+        padding: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMedium)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.85),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: kCobalt.withOpacity(0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Icon(icon, color: kCobalt, size: 28),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: kInk,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openLoginOrProfile() async {
+    if (!SupabaseService.isLoggedIn) {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+      );
+      return;
     }
+    setState(() => _currentIndex = 4);
   }
 
   @override
   Widget build(BuildContext context) {
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+    const headerHeight = 56.0;
+
     return Scaffold(
       backgroundColor: kPorcelain,
       extendBody: true,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Positioned.fill(
+          Positioned(
+            top: statusBarHeight + headerHeight,
+            left: 0,
+            right: 0,
+            bottom: 0,
             child: IndexedStack(
               index: _currentIndex,
               children: [
-                const HomeScreen(),
+                HomeScreen(onAiConsultTap: _openAiConsult),
                 const ExploreScreen(),
-                CasesScreen(key: ValueKey('cases_$_casesRemount')),
-                ForumScreen(key: ValueKey('forum_$_forumRemount')),
+                ForumScreen(key: _forumKey),
+                const CasesScreen(),
                 const ProfileScreen(),
               ],
+            ),
+          ),
+          Positioned(
+            top: statusBarHeight,
+            left: 0,
+            right: 0,
+            child: _Header(
+              height: headerHeight,
+              onLoginTap: () => _openLoginOrProfile(),
             ),
           ),
           Positioned(
@@ -127,13 +230,14 @@ class _MainScaffoldState extends State<MainScaffold> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 16, bottom: 8),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: _ArtLinkFab(onPressed: _onFabPressed),
+                    if (_currentIndex == 1)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 16, bottom: 8),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: _ArtLinkFab(onPressed: _showCreateSheet),
+                        ),
                       ),
-                    ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
                       child: Center(child: _buildFloatingNav()),
@@ -171,61 +275,209 @@ class _MainScaffoldState extends State<MainScaffold> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(_navItems.length, (index) {
             final item = _navItems[index];
-            final isSelected = _currentIndex == index;
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 3),
-              child: GestureDetector(
-                onTap: () => setState(() => _currentIndex = index),
-                behavior: HitTestBehavior.opaque,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 320),
-                  curve: Curves.easeOutCubic,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isSelected ? 14 : 10,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected ? kPorcelain : Colors.transparent,
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: kInk.withOpacity(0.12),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isSelected ? item.activeIcon : item.icon,
-                        size: 20,
-                        color: isSelected
-                            ? kCobalt
-                            : kPorcelain.withOpacity(0.42),
-                      ),
-                      if (isSelected) ...[
-                        const SizedBox(width: 6),
-                        Text(
-                          item.label,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.8,
-                            color: kInk,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
+            return _NavButton(
+              item: item,
+              isSelected: _currentIndex == index,
+              onTap: () {
+                if (index == 4 && !SupabaseService.isLoggedIn) {
+                  _openLoginOrProfile();
+                  return;
+                }
+                setState(() => _currentIndex = index);
+              },
             );
           }),
         ),
+      ),
+    );
+  }
+}
+
+class _Header extends StatefulWidget {
+  final double height;
+  final VoidCallback? onLoginTap;
+
+  const _Header({required this.height, this.onLoginTap});
+
+  @override
+  State<_Header> createState() => _HeaderState();
+}
+
+class _HeaderState extends State<_Header> {
+  User? _user;
+  String? _avatarUrl;
+  StreamSubscription<AuthState>? _authSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _user = SupabaseService.currentUser;
+    _loadAvatar();
+    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((_) {
+      if (mounted) {
+        setState(() => _user = SupabaseService.currentUser);
+        _loadAvatar();
+      }
+    });
+  }
+
+  Future<void> _loadAvatar() async {
+    if (!SupabaseService.isLoggedIn) {
+      if (mounted) setState(() => _avatarUrl = null);
+      return;
+    }
+    final profile = await SupabaseService.fetchProfile();
+    if (mounted) setState(() => _avatarUrl = profile?['avatar_url'] as String?);
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: widget.height,
+      decoration: BoxDecoration(
+        color: kPorcelain.withOpacity(0.92),
+        border: Border(
+          bottom: BorderSide(color: kSilver.withOpacity(0.35)),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          const Text(
+            'ArtLink',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: kInk,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Search
+          Expanded(
+            child: Container(
+              height: 34,
+              decoration: BoxDecoration(
+                color: kSilver.withOpacity(0.35),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(width: 12),
+                  Icon(Icons.search, size: 16, color: kInk.withOpacity(0.35)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '搜索艺术家、作品、机构、课程...',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: kInk.withOpacity(0.35),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Location
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.location_on, size: 14, color: kInk.withOpacity(0.45)),
+              const SizedBox(width: 2),
+              Text(
+                '上海',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: kInk.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          // Notification
+          Stack(
+            children: [
+              Icon(Icons.notifications_none, size: 22, color: kInk.withOpacity(0.55)),
+              Positioned(
+                top: 2,
+                right: 2,
+                child: Container(
+                  width: 7,
+                  height: 7,
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                    border: Border.fromBorderSide(BorderSide(color: kPorcelain, width: 1.5)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          // User / Login
+          _user == null
+              ? GestureDetector(
+                  onTap: widget.onLoginTap,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: kCobalt,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Text(
+                      '登录',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                )
+              : GestureDetector(
+                  onTap: widget.onLoginTap,
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: kSilver.withOpacity(0.4),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: kPorcelain, width: 2),
+                    ),
+                    child: ClipOval(
+                      child: _avatarUrl != null
+                          ? Image.network(
+                              _avatarUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _avatarFallback(),
+                            )
+                          : _avatarFallback(),
+                    ),
+                  ),
+                ),
+        ],
+      ),
+    );
+  }
+
+  Widget _avatarFallback() {
+    final email = _user?.email ?? '';
+    final ch = email.isNotEmpty ? email.substring(0, 1).toUpperCase() : 'U';
+    return Center(
+      child: Text(
+        ch,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: kCobalt),
       ),
     );
   }
@@ -271,6 +523,89 @@ class _ArtLinkFab extends StatelessWidget {
             ],
           ),
           child: const Icon(Icons.add, color: Colors.white, size: 28),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavButton extends StatefulWidget {
+  final _NavItem item;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _NavButton({
+    required this.item,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  State<_NavButton> createState() => _NavButtonState();
+}
+
+class _NavButtonState extends State<_NavButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedScale(
+          scale: _pressed ? 0.88 : 1.0,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOutCubic,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+            padding: EdgeInsets.symmetric(
+              horizontal: widget.isSelected ? 14 : 10,
+              vertical: 8,
+            ),
+            decoration: BoxDecoration(
+              color: widget.isSelected ? kPorcelain : Colors.transparent,
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: widget.isSelected
+                  ? [
+                      BoxShadow(
+                        color: kInk.withOpacity(0.12),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  widget.isSelected ? widget.item.activeIcon : widget.item.icon,
+                  size: 20,
+                  color: widget.isSelected
+                      ? kCobalt
+                      : kPorcelain.withOpacity(0.42),
+                ),
+                if (widget.isSelected) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    widget.item.label,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                      color: kInk,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );

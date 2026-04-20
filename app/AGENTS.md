@@ -1,16 +1,9 @@
 # Artsee Flutter（`app/`）
 
-更完整的仓库级说明见 [`../docs/AGENTS.md`](../docs/AGENTS.md)。
+- **仓库总览与调试入口**：见根目录 [`../AGENTS.md`](../AGENTS.md)。
+- **调试僵局时必读**：[`../.cursor/skills/jinhui-stack-debug/SKILL.md`](../.cursor/skills/jinhui-stack-debug/SKILL.md)
 
-## 开发者测试账号
+## 本目录要点
 
-与 `lib/config/dev_test_account.dart` 保持一致：
-
-| 字段 | 值 |
-|------|-----|
-| 邮箱 | `dev.test@artsee.app` |
-| 密码 | `ArtseeDev2026!` |
-
-在 Supabase 中创建该用户：项目根目录执行 `npm run ensure:dev-user`（需配置 `SUPABASE_URL`、`SUPABASE_SERVICE_ROLE_KEY`）。
-
-登录页在 **Debug** 或 **`--dart-define=DEV_LOGIN=true`** 下会显示「开发者快速登录」。
+- API 基址：`lib/config/api_config.dart`；封装：`lib/services/backend_api_service.dart`。
+- 开发者测试账号与 `lib/config/dev_test_account.dart` 一致；同步：`npm run ensure:dev-user`（在仓库根目录执行）。

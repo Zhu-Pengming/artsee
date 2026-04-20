@@ -132,10 +132,10 @@ export function CiyanChat() {
 
   return (
     <>
-      {/* Floating Button */}
+      {/* Floating Button — fixed：全宽布局下不再依赖手机壳 relative */}
       <button
         onClick={() => setOpen(true)}
-        className={`absolute bottom-20 right-4 w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white font-bold text-lg transition-all z-30 ${
+        className={`fixed bottom-28 left-4 sm:left-8 w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white font-bold text-lg transition-all z-[45] ${
           open ? 'scale-0 opacity-0' : 'scale-100 opacity-100'
         }`}
         style={{
@@ -149,7 +149,7 @@ export function CiyanChat() {
 
       {/* Chat Panel */}
       <div
-        className={`absolute inset-x-0 bottom-0 z-40 flex flex-col rounded-t-2xl bg-white shadow-2xl transition-transform duration-300 ease-out ${
+        className={`fixed inset-x-0 bottom-0 z-[55] max-w-lg mx-auto w-full flex flex-col rounded-t-2xl bg-white shadow-2xl transition-transform duration-300 ease-out ${
           open ? 'translate-y-0' : 'translate-y-full'
         }`}
         style={{ height: '72vh' }}
@@ -249,9 +249,9 @@ export function CiyanChat() {
       {/* Backdrop */}
       {open && (
         <div
-          className="absolute inset-0 bg-black/20 z-30"
+          className="fixed inset-0 bg-black/20 z-[50]"
           onClick={() => setOpen(false)}
-          style={{ bottom: '72vh' }}
+          aria-hidden
         />
       )}
     </>

@@ -13,39 +13,103 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
+const _greyscale = ColorFilter.matrix([
+  0.2126, 0.7152, 0.0722, 0, 0,
+  0.2126, 0.7152, 0.0722, 0, 0,
+  0.2126, 0.7152, 0.0722, 0, 0,
+  0,      0,      0,      1, 0,
+]);
+
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _nicknameCtrl = TextEditingController();
 
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
+  final _nicknameFocus = FocusNode();
+
   bool _isLogin = true;
   bool _loading = false;
+  bool _isColorful = false;
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+
+    _emailCtrl.addListener(_updateColorfulState);
+    _passwordCtrl.addListener(_updateColorfulState);
+    _nicknameCtrl.addListener(_updateColorfulState);
+
+    _emailFocus.addListener(_updateColorfulState);
+    _passwordFocus.addListener(_updateColorfulState);
+    _nicknameFocus.addListener(_updateColorfulState);
+  }
+
+  void _updateColorfulState() {
+    final hasFocus = _emailFocus.hasFocus ||
+        _passwordFocus.hasFocus ||
+        _nicknameFocus.hasFocus;
+    final hasText = _emailCtrl.text.isNotEmpty ||
+        _passwordCtrl.text.isNotEmpty ||
+        _nicknameCtrl.text.isNotEmpty;
+    final colorful = hasFocus || hasText;
+    if (colorful != _isColorful) {
+      setState(() => _isColorful = colorful);
+    }
+  }
+
+  @override
   void dispose() {
-    _emailCtrl.dispose(); _passwordCtrl.dispose(); _nicknameCtrl.dispose();
+    _emailCtrl.removeListener(_updateColorfulState);
+    _passwordCtrl.removeListener(_updateColorfulState);
+    _nicknameCtrl.removeListener(_updateColorfulState);
+
+    _emailFocus.removeListener(_updateColorfulState);
+    _passwordFocus.removeListener(_updateColorfulState);
+    _nicknameFocus.removeListener(_updateColorfulState);
+
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    _nicknameCtrl.dispose();
+
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    _nicknameFocus.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       if (_isLogin) {
-        final res = await SupabaseService.signIn(_emailCtrl.text.trim(), _passwordCtrl.text);
+        final res = await SupabaseService.signIn(
+          _emailCtrl.text.trim(),
+          _passwordCtrl.text,
+        );
         if (res.user == null) throw Exception('登录失败，请检查邮箱和密码');
       } else {
         if (_nicknameCtrl.text.trim().isEmpty) throw Exception('请填写昵称');
-        final res = await SupabaseService.signUp(_emailCtrl.text.trim(), _passwordCtrl.text, _nicknameCtrl.text.trim());
+        final res = await SupabaseService.signUp(
+          _emailCtrl.text.trim(),
+          _passwordCtrl.text,
+          _nicknameCtrl.text.trim(),
+        );
         if (res.user == null) throw Exception('注册失败');
       }
       if (mounted) Navigator.pop(context);
     } on AuthException catch (e) {
       setState(() => _error = e.message);
     } catch (e) {
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(
+        () => _error = e.toString().replaceFirst('Exception: ', ''),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -57,7 +121,10 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      final res = await SupabaseService.signIn(DevTestAccount.email, DevTestAccount.password);
+      final res = await SupabaseService.signIn(
+        DevTestAccount.email,
+        DevTestAccount.password,
+      );
       if (res.user == null) throw Exception('登录失败');
       if (mounted) Navigator.pop(context);
     } on AuthException catch (e) {
@@ -74,218 +141,440 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final imageHeight = size.height * 0.42;
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+      backgroundColor: kPorcelain,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Column(
             children: [
-              const SizedBox(height: 40),
-              // Logo
-              Container(
-                width: 72, height: 72,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [kPrimary, kPrimaryLight], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Center(child: Text('🎨', style: TextStyle(fontSize: 36))),
-              ),
-              const SizedBox(height: 16),
-              const Text('ArtLink 艺衡', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.black87)),
-              const Text('英国艺术留学社区', style: TextStyle(fontSize: 13, color: Colors.grey)),
-              const SizedBox(height: 40),
-
-              // Tab toggle
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
-                child: Row(children: [
-                  Expanded(child: GestureDetector(
-                    onTap: () => setState(() => _isLogin = true),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: _isLogin ? Colors.white : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: _isLogin ? [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 4)] : null,
-                      ),
-                      child: Text('登录', textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _isLogin ? Colors.black87 : Colors.grey)),
-                    ),
-                  )),
-                  Expanded(child: GestureDetector(
-                    onTap: () => setState(() => _isLogin = false),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: !_isLogin ? Colors.white : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: !_isLogin ? [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 4)] : null,
-                      ),
-                      child: Text('注册', textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: !_isLogin ? Colors.black87 : Colors.grey)),
-                    ),
-                  )),
-                ]),
-              ),
-
-              const SizedBox(height: 24),
-
-              Form(
-                key: _formKey,
-                child: Column(
+              SizedBox(
+                height: imageHeight,
+                width: double.infinity,
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    if (!_isLogin)
-                      _InputField(controller: _nicknameCtrl, label: '昵称', hint: '请输入你的昵称', validator: (v) => v!.isEmpty ? '请填写昵称' : null),
-                    if (!_isLogin) const SizedBox(height: 12),
-                    _InputField(controller: _emailCtrl, label: '邮箱', hint: '请输入邮箱地址', keyboardType: TextInputType.emailAddress,
-                      validator: (v) => v!.isEmpty ? '请填写邮箱' : (!v.contains('@') ? '邮箱格式不正确' : null)),
-                    const SizedBox(height: 12),
-                    _InputField(controller: _passwordCtrl, label: '密码', hint: '请输入密码（至少6位）', obscureText: true,
-                      validator: (v) => v!.length < 6 ? '密码至少6位' : null),
+                    Image.asset(
+                      'assets/images/login_hero.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          Container(color: kSilver.withOpacity(0.35)),
+                    ),
+                    AnimatedOpacity(
+                      opacity: _isColorful ? 0.0 : 1.0,
+                      duration: const Duration(milliseconds: 600),
+                      curve: Curves.easeOut,
+                      child: ColorFiltered(
+                        colorFilter: _greyscale,
+                        child: Image.asset(
+                          'assets/images/login_hero.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              Container(color: kSilver.withOpacity(0.35)),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            kInk.withOpacity(0.45),
+                            kInk.withOpacity(0.1),
+                            Colors.transparent,
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: const [0.0, 0.4, 1.0],
+                        ),
+                      ),
+                    ),
+                    SafeArea(
+                      bottom: false,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 48),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                GestureDetector(
+                                  onTap: () => Navigator.pop(context),
+                                  child: Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: kPorcelain.withOpacity(0.12),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.close,
+                                      size: 20,
+                                      color: kPorcelain.withOpacity(0.9),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            Text(
+                              'ArtLink',
+                              style: TextStyle(
+                                fontSize: 40,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: -0.5,
+                                height: 1.1,
+                                shadows: [
+                                  Shadow(
+                                    color: kInk.withOpacity(0.25),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '连接先锋创作与奢侈品收藏的桥梁',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                                height: 1.4,
+                                shadows: [
+                                  Shadow(
+                                    color: kInk.withOpacity(0.35),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(10)),
-                  child: Text(_error!, style: const TextStyle(fontSize: 12, color: Colors.red)),
-                ),
-              ],
-
-              const SizedBox(height: 20),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _loading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kPrimary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  child: _loading
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : Text(_isLogin ? '登录' : '注册', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              const Expanded(child: ColoredBox(color: kPorcelain)),
+            ],
+          ),
+          Positioned(
+            top: imageHeight - 28,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: kPorcelain,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(32),
                 ),
               ),
-
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('先逛逛，不登录', style: TextStyle(color: Colors.grey, fontSize: 12)),
-              ),
-
-              if (devLoginShortcutsEnabled) ...[
-                const SizedBox(height: 28),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF8E1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.amber.shade200),
-                  ),
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(28, 32, 28, 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.developer_mode, size: 20, color: Colors.amber.shade900),
-                          const SizedBox(width: 8),
-                          Text(
-                            '开发者模式',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13,
-                              color: Colors.amber.shade900,
+                          if (!_isLogin)
+                            GestureDetector(
+                              onTap: () => setState(() => _isLogin = true),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                child: Icon(
+                                  Icons.arrow_back_ios,
+                                  size: 18,
+                                  color: kInk.withOpacity(0.45),
+                                ),
+                              ),
+                            ),
+                          if (!_isLogin) const SizedBox(width: 8),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            transitionBuilder: (child, animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                    begin: const Offset(0, 0.08),
+                                    end: Offset.zero,
+                                  ).animate(animation),
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: Text(
+                              _isLogin ? '登录' : '注册',
+                              key: ValueKey<bool>(_isLogin),
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w700,
+                                color: kInk,
+                                height: 1.2,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        kDebugMode
-                            ? 'Debug 构建：可一键登录测试账号（账号见 docs/AGENTS.md）。'
-                            : '已启用 DEV_LOGIN：仅用于内部测试包。',
-                        style: TextStyle(fontSize: 11, color: Colors.brown.shade700, height: 1.35),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: _loading ? null : _devQuickLogin,
-                          icon: Icon(Icons.login, size: 18, color: Colors.amber.shade900),
-                          label: Text(
-                            '一键登录：${DevTestAccount.email}',
-                            style: TextStyle(fontSize: 12, color: Colors.amber.shade900),
-                            textAlign: TextAlign.center,
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: Colors.amber.shade400),
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                          ),
+                      const SizedBox(height: 28),
+                      Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (!_isLogin) ...[
+                              _buildInput(
+                                controller: _nicknameCtrl,
+                                focusNode: _nicknameFocus,
+                                hint: '昵称',
+                                icon: Icons.person_outline,
+                                validator: (v) =>
+                                    v!.isEmpty ? '请填写昵称' : null,
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                            _buildInput(
+                              controller: _emailCtrl,
+                              focusNode: _emailFocus,
+                              hint: '邮箱',
+                              icon: Icons.email_outlined,
+                              keyboardType: TextInputType.emailAddress,
+                              validator: (v) => v!.isEmpty
+                                  ? '请填写邮箱'
+                                  : (!v.contains('@')
+                                      ? '邮箱格式不正确'
+                                      : null),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildInput(
+                              controller: _passwordCtrl,
+                              focusNode: _passwordFocus,
+                              hint: '密码',
+                              icon: Icons.lock_outline,
+                              obscureText: true,
+                              validator: (v) =>
+                                  v!.length < 6 ? '密码至少6位' : null,
+                            ),
+                            if (_error != null) ...[
+                              const SizedBox(height: 16),
+                              Text(
+                                _error!,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFFC62828),
+                                  height: 1.5,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                            const SizedBox(height: 28),
+                            SizedBox(
+                              height: 54,
+                              child: ElevatedButton(
+                                onPressed: _loading ? null : _submit,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: kCobalt,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: _loading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Text(
+                                        _isLogin ? '登录' : '注册',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Divider(
+                                    color: kSilver,
+                                    thickness: 1,
+                                    height: 1,
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12),
+                                  child: Text(
+                                    '或使用以下方式登录',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: kInk.withOpacity(0.35),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Divider(
+                                    color: kSilver,
+                                    thickness: 1,
+                                    height: 1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 18),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _SocialButton(
+                                  icon: Icons.chat_bubble_outline,
+                                  onTap: () {
+                                    // TODO: 微信登录
+                                  },
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            GestureDetector(
+                              onTap: () =>
+                                  setState(() => _isLogin = !_isLogin),
+                              child: Text(
+                                _isLogin
+                                    ? '还没有账号？去注册'
+                                    : '已有账号？去登录',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: kInk.withOpacity(0.5),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            const SizedBox(height: 40),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ],
+              ),
+            ),
           ),
+          if (devLoginShortcutsEnabled)
+            Positioned(
+              bottom: 10,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: GestureDetector(
+                  onTap: _loading ? null : _devQuickLogin,
+                  child: Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: kSilver.withOpacity(0.35),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.login,
+                      size: 22,
+                      color: kInk.withOpacity(0.6),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInput({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String hint,
+    required IconData icon,
+    bool obscureText = false,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      focusNode: focusNode,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      validator: validator,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(
+          fontSize: 14,
+          color: kInk.withOpacity(0.35),
+        ),
+        filled: true,
+        fillColor: kSilver.withOpacity(0.35),
+        prefixIcon: Icon(icon, size: 20, color: kInk.withOpacity(0.35)),
+        contentPadding: const EdgeInsets.symmetric(vertical: 18),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
         ),
       ),
+      style: const TextStyle(fontSize: 15, color: kInk),
     );
   }
 }
 
-class _InputField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final String hint;
-  final bool obscureText;
-  final TextInputType keyboardType;
-  final String? Function(String?)? validator;
+class _SocialButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
 
-  const _InputField({
-    required this.controller,
-    required this.label,
-    required this.hint,
-    this.obscureText = false,
-    this.keyboardType = TextInputType.text,
-    this.validator,
-  });
+  const _SocialButton({required this.icon, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87)),
-        const SizedBox(height: 6),
-        TextFormField(
-          controller: controller,
-          obscureText: obscureText,
-          keyboardType: keyboardType,
-          validator: validator,
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
-            filled: true,
-            fillColor: Colors.grey.shade50,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
-            focusedBorder: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)), borderSide: BorderSide(color: kPrimary)),
-          ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: kSilver.withOpacity(0.35),
+          shape: BoxShape.circle,
         ),
-      ],
+        child: Icon(icon, size: 22, color: kInk.withOpacity(0.6)),
+      ),
     );
   }
 }

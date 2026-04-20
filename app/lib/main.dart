@@ -2,7 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'config/app_config.dart';
+import 'screens/auth/login_screen.dart';
 import 'screens/main_scaffold.dart';
 import 'screens/onboarding/art_interest_onboarding_screen.dart';
 import 'services/supabase_service.dart';
@@ -64,7 +67,7 @@ class ArtseeApp extends StatelessWidget {
         // ═══════════════════════════════════════════════════════
         // 字体配置
         // ═══════════════════════════════════════════════════════
-        fontFamily: 'PingFang SC',
+        fontFamily: 'Noto Sans SC',
         textTheme: const TextTheme(
           headlineLarge: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: kInk, height: 1.2),
           headlineMedium: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: kInk, height: 1.3),
@@ -243,13 +246,20 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   Map<String, dynamic>? _profile;
   bool _loadingProfile = true;
+  bool _localOnboardingDone = false;
   StreamSubscription<AuthState>? _authSub;
 
   @override
   void initState() {
     super.initState();
-    _reload();
+    _init();
     _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((_) => _reload());
+  }
+
+  Future<void> _init() async {
+    final prefs = await SharedPreferences.getInstance();
+    _localOnboardingDone = prefs.getBool('artsee_onboarding_done') ?? false;
+    await _reload();
   }
 
   @override
@@ -275,13 +285,20 @@ class _AuthWrapperState extends State<AuthWrapper> {
       _profile = p;
       _loadingProfile = false;
     });
-    final needOnboarding = p == null || p['has_completed_onboarding'] != true;
+    final dbDone = p != null && p['has_completed_onboarding'] == true;
+    final needOnboarding = !dbDone && !_localOnboardingDone;
     if (needOnboarding) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst);
       });
     }
+  }
+
+  Future<void> _onOnboardingCompleted() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('artsee_onboarding_done', true);
+    if (mounted) setState(() => _localOnboardingDone = true);
   }
 
   @override
@@ -297,9 +314,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
         ),
       );
     }
-    final done = _profile != null && _profile!['has_completed_onboarding'] == true;
+    final dbDone = _profile != null && _profile!['has_completed_onboarding'] == true;
+    final devSkip = AppConfig.devLoginEnabled &&
+        SupabaseService.currentUser?.email == 'dev.test@artsee.app';
+    final done = dbDone || _localOnboardingDone || devSkip;
     if (!done) {
-      return ArtInterestOnboardingScreen(onCompleted: _reload);
+      return ArtInterestOnboardingScreen(onCompleted: _onOnboardingCompleted);
     }
     return const MainScaffold();
   }

@@ -16,7 +16,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "test:backend": "node tests/backend/supabase-health.mjs",
     "test:web": "npm run test --workspace=web",
-    "ensure:dev-user": "node scripts/ensure-dev-test-user.mjs"
+    "ensure:dev-user": "node scripts/ensure-dev-test-user.mjs",
+    "deploy:web": "bash scripts/deploy-web.sh"
   },
   "repository": {
     "type": "git",

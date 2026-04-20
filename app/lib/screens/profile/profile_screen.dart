@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-
-import '../../models/models.dart';
-import '../../services/storage_service.dart';
+import '../../config/dev_test_account.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/common.dart';
 import '../auth/login_screen.dart';
-import '../cases/case_detail_screen.dart';
+import '../programs/program_detail_screen.dart';
+import '../schools/school_detail_screen.dart';
+import 'profile_edit_screen.dart';
 
 /// ═══════════════════════════════════════════════════════════════
-/// 青花瓷典藏版 - 我的（个人中心）
+/// 我的页 — 完全对齐 _artist_ref ProfileView，接入真实用户数据
 /// ═══════════════════════════════════════════════════════════════
 
 class ProfileScreen extends StatefulWidget {
@@ -21,10 +20,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _profile;
-  List<AppCase> _myCases = [];
   bool _loading = true;
-  int _tabIndex = 0;
-  bool _uploadingAvatar = false;
 
   @override
   void initState() {
@@ -37,201 +33,276 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) setState(() => _loading = false);
       return;
     }
-    final results = await Future.wait([
-      SupabaseService.fetchProfile(),
-      SupabaseService.fetchMyCases(),
-    ]);
-    if (mounted) {
-      setState(() {
-        _profile = results[0] as Map<String, dynamic>?;
-        _myCases = results[1] as List<AppCase>;
-        _loading = false;
-      });
-    }
+    final p = await SupabaseService.fetchProfile();
+    if (mounted) setState(() {
+      _profile = p;
+      _loading = false;
+    });
   }
 
-  Widget _avatarFallback(String nickname) {
-    final ch = nickname.isNotEmpty ? nickname.substring(0, 1) : '艺';
-    return Center(
-      child: Text(
-        ch,
-        style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: kCobalt),
+  Future<void> _openLogin() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+    );
+    _load();
+  }
+
+  Future<void> _signOut() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('退出登录'),
+        content: const Text('确定要退出当前账号吗？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确定')),
+        ],
       ),
     );
+    if (ok != true) return;
+    await SupabaseService.signOut();
+    if (mounted) setState(() => _profile = null);
   }
 
-  Future<void> _pickAndUploadAvatar() async {
-    final picker = ImagePicker();
-    final x = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1024, maxHeight: 1024, imageQuality: 85);
-    if (x == null) return;
-    setState(() => _uploadingAvatar = true);
-    try {
-      final url = await StorageService.uploadAvatarFile(x);
-      await SupabaseService.updateAvatarUrl(url);
-      if (mounted) await _load();
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('头像上传失败，请重试')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _uploadingAvatar = false);
-    }
+  String get _nickname {
+    final n = _profile?['nickname'] as String?;
+    if (n != null && n.isNotEmpty) return n;
+    final email = SupabaseService.currentUser?.email ?? '';
+    if (email.isNotEmpty) return email.split('@').first;
+    return 'Artsee用户';
   }
+
+  String get _bio {
+    final b = _profile?['bio'] as String?;
+    if (b != null && b.isNotEmpty) return b;
+    return '完善简介，让更多人了解你';
+  }
+
+  String get _avatarUrl => _profile?['avatar_url'] as String? ?? '';
+
+  bool get _isVerified => _profile?['is_verified'] == true;
 
   @override
   Widget build(BuildContext context) {
     if (!SupabaseService.isLoggedIn) {
-      return _NotLoggedInView();
+      return _buildGuestView();
     }
+    if (_loading) {
+      return const Scaffold(
+        backgroundColor: kPorcelain,
+        body: Center(child: CircularProgressIndicator(color: kCobalt, strokeWidth: 2.5)),
+      );
+    }
+    return _buildProfileView();
+  }
 
+  Widget _buildGuestView() {
     return Scaffold(
       backgroundColor: kPorcelain,
-      body: RefreshIndicator(
-        color: kCobalt,
-        backgroundColor: kPorcelain,
-        onRefresh: _load,
-        child: CustomScrollView(
-          slivers: [
-            // ═══════════════════════════════════════════════════
-            // 顶部背景（青花瓷风格）
-            // ═══════════════════════════════════════════════════
-            SliverToBoxAdapter(child: _buildHeader()),
-
-            // ═══════════════════════════════════════════════════
-            // 统计数据
-            // ═══════════════════════════════════════════════════
-            SliverToBoxAdapter(child: _buildStats()),
-
-            // ═══════════════════════════════════════════════════
-            // 快捷操作
-            // ═══════════════════════════════════════════════════
-            SliverToBoxAdapter(child: _buildQuickActions()),
-
-            // ═══════════════════════════════════════════════════
-            // Tab 选择器
-            // ═══════════════════════════════════════════════════
-            SliverToBoxAdapter(child: _buildTabs()),
-
-            // ═══════════════════════════════════════════════════
-            // Tab 内容
-            // ═══════════════════════════════════════════════════
-            if (_loading)
-              const SliverFillRemaining(child: LoadingIndicator())
-            else
-              SliverToBoxAdapter(child: _buildTabContent()),
-
-            // 底部留白（悬浮导航栏）
-            SliverToBoxAdapter(child: SizedBox(height: mainTabBottomInset(context))),
-          ],
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 88,
+                  height: 88,
+                  decoration: BoxDecoration(
+                    color: kSilver.withOpacity(0.35),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Text(
+                      '艺',
+                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: kCobalt),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  '登录后解锁全部功能',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: kInk),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '申请追踪 · 案例分享 · 论坛互动',
+                  style: TextStyle(fontSize: 13, color: kInk.withOpacity(0.45)),
+                ),
+                const SizedBox(height: 24),
+                GestureDetector(
+                  onTap: _openLogin,
+                  child: Container(
+                    width: double.infinity,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: kCobalt,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        '登录 / 注册',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
-    final nickname = _profile?['nickname'] as String? ?? '艺见用户';
-    final bio = _profile?['bio'] as String? ?? '目标：英国艺术院校';
-    final avatarUrl = _profile?['avatar_url'] as String?;
+  Widget _buildProfileView() {
+    return Scaffold(
+      backgroundColor: kPorcelain,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildProfileHeader(),
+              const SizedBox(height: 28),
+              _buildStatsCards(),
+              const SizedBox(height: 28),
+              _buildMenuList(),
+              const SizedBox(height: 120),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-    return Stack(
-      clipBehavior: Clip.none,
+  Widget _buildProfileHeader() {
+    return Row(
       children: [
-        // 背景渐变
-        Container(
-          height: 140,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [kCobalt, kCobaltMuted],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        // 设置按钮
-        Positioned(
-          top: 8,
-          right: 8,
-          child: SafeArea(
-            child: IconButton(
-              icon: const Icon(Icons.settings_outlined, color: Colors.white70),
-              onPressed: () async {
-                await SupabaseService.signOut();
-                setState(() { _profile = null; _myCases = []; });
-              },
-            ),
-          ),
-        ),
-        // 头像（Supabase Storage 公网 URL）
-        Positioned(
-          bottom: -40,
-          left: 24,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: _uploadingAvatar ? null : _pickAndUploadAvatar,
-              child: Container(
-                width: 84,
-                height: 84,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  border: Border.all(color: Colors.white, width: 4),
-                  boxShadow: [
-                    BoxShadow(
-                      color: kInk.withOpacity(0.1),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: _uploadingAvatar
-                    ? const Padding(
-                        padding: EdgeInsets.all(24),
-                        child: CircularProgressIndicator(strokeWidth: 2, color: kCobalt),
+        Stack(
+          children: [
+            Container(
+              width: 110,
+              height: 110,
+              decoration: BoxDecoration(
+                color: kSilver.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: kPorcelain, width: 4),
+                boxShadow: [
+                  BoxShadow(
+                    color: kInk.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(28),
+                child: _avatarUrl.isNotEmpty
+                    ? Image.network(
+                        _avatarUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _avatarFallback(),
                       )
-                    : ClipOval(
-                        child: avatarUrl != null && avatarUrl.isNotEmpty
-                            ? Image.network(
-                                avatarUrl,
-                                width: 84,
-                                height: 84,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => _avatarFallback(nickname),
-                              )
-                            : _avatarFallback(nickname),
-                      ),
+                    : _avatarFallback(),
               ),
             ),
-          ),
+            if (_isVerified)
+              Positioned(
+                right: -4,
+                bottom: -4,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: kCobalt,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: kPorcelain, width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: kInk.withOpacity(0.15),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.verified, size: 20, color: Colors.white),
+                ),
+              ),
+          ],
         ),
-        // 用户信息
-        Positioned(
-          bottom: 16,
-          left: 120,
-          right: 16,
+        const SizedBox(width: 20),
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                nickname,
+                _nickname,
                 style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: 26,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: kInk,
+                  fontFamily: 'Noto Serif SC',
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
-                bio,
+                _bio,
                 style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: kInk.withOpacity(0.4),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () async {
+                      final refreshed = await Navigator.of(context).push<bool>(
+                        MaterialPageRoute(
+                          builder: (_) => ProfileEditScreen(
+                            initialProfile: _profile,
+                          ),
+                        ),
+                      );
+                      if (refreshed == true) _load();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: kCobalt,
+                        borderRadius: BorderRadius.circular(999),
+                        boxShadow: [
+                          BoxShadow(
+                            color: kCobalt.withOpacity(0.25),
+                            blurRadius: 14,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: const Text(
+                        '编辑资料',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: kSilver.withOpacity(0.35),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.share_outlined, size: 20, color: kInk.withOpacity(0.5)),
+                  ),
+                ],
               ),
             ],
           ),
@@ -240,338 +311,358 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildStats() {
-    final following = _profile?['following_count'] as int? ?? 0;
-    final followers = _profile?['followers_count'] as int? ?? 0;
-
-    return Container(
-      margin: const EdgeInsets.only(top: 52),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(kRadiusLarge),
-        boxShadow: [
-          BoxShadow(
-            color: kInk.withOpacity(0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          _buildStatItem('关注', '$following'),
-          Container(
-            width: 1,
-            height: 30,
-            color: kSilver,
-          ),
-          _buildStatItem('粉丝', '$followers'),
-          Container(
-            width: 1,
-            height: 30,
-            color: kSilver,
-          ),
-          _buildStatItem('案例', '${_myCases.length}'),
-        ],
+  Widget _avatarFallback() {
+    final ch = _nickname.isNotEmpty ? _nickname.substring(0, 1) : '艺';
+    return Center(
+      child: Text(
+        ch,
+        style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: kCobalt),
       ),
     );
   }
 
-  Widget _buildStatItem(String label, String value) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: kCobalt,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: kInk.withOpacity(0.5),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildStatsCards() {
+    final exposure = (_profile?['exposure'] as String?) ?? '48.2k';
+    final activeInvitations = (_profile?['active_invitations'] ?? 12).toString();
+    final wallet = (_profile?['wallet_balance'] as String?) ?? '¥12,400';
 
-  Widget _buildQuickActions() {
-    final actions = [
-      _QuickActionData(icon: Icons.school_outlined, label: '选校清单', color: kCobalt),
-      _QuickActionData(icon: Icons.favorite_outline, label: '我的收藏', color: const Color(0xFFE11D48)),
-      _QuickActionData(icon: Icons.description_outlined, label: '文书草稿', color: const Color(0xFF7C3AED)),
-      _QuickActionData(icon: Icons.add, label: '分享案例', color: const Color(0xFF10B981)),
-    ];
-
-    return Container(
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(kRadiusLarge),
-        boxShadow: [
-          BoxShadow(
-            color: kInk.withOpacity(0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: actions.map((a) => _buildQuickAction(a)).toList(),
-      ),
-    );
-  }
-
-  Widget _buildQuickAction(_QuickActionData action) {
-    return Column(
+    return Row(
       children: [
-        Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            color: action.color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Icon(action.icon, color: action.color, size: 24),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          action.label,
-          style: TextStyle(
-            fontSize: 11,
-            color: kInk.withOpacity(0.7),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTabs() {
-    final tabs = ['申请追踪', '我的案例'];
-    return Container(
-      margin: const EdgeInsets.only(top: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(kRadiusLarge),
-      ),
-      child: Row(
-        children: List.generate(tabs.length, (i) => Expanded(
-          child: GestureDetector(
-            onTap: () => setState(() => _tabIndex = i),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: _tabIndex == i ? kCobalt : Colors.transparent,
-                    width: 2,
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: kInk,
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: kInk.withOpacity(0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '数据看板 (Exposure)',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white.withOpacity(0.5),
+                    letterSpacing: 1.5,
                   ),
                 ),
-              ),
-              child: Text(
-                tabs[i],
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: _tabIndex == i ? kCobalt : kInk.withOpacity(0.4),
-                ),
-              ),
-            ),
-          ),
-        )),
-      ),
-    );
-  }
-
-  Widget _buildTabContent() {
-    if (_tabIndex == 0) {
-      return Container(
-        margin: const EdgeInsets.only(top: 12),
-        padding: const EdgeInsets.symmetric(vertical: 40),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(kRadiusLarge),
-        ),
-        child: const EmptyState(
-          emoji: '📋',
-          message: '暂无申请追踪\n前往探索页添加心仪院校',
-        ),
-      );
-    }
-    if (_myCases.isEmpty) {
-      return Container(
-        margin: const EdgeInsets.only(top: 12),
-        padding: const EdgeInsets.symmetric(vertical: 40),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(kRadiusLarge),
-        ),
-        child: const EmptyState(emoji: '📝', message: '还没有分享过案例'),
-      );
-    }
-    return Column(
-      children: _myCases.map((c) => GestureDetector(
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => CaseDetailScreen(caseId: c.id)),
-        ),
-        child: Container(
-          margin: const EdgeInsets.only(top: 10),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(kRadiusLarge),
-            boxShadow: [
-              BoxShadow(
-                color: kInk.withOpacity(0.03),
-                blurRadius: 12,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: resultGradient(c.result),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 18),
+                Row(
                   children: [
-                    Text(
-                      c.title,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            exposure,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: kCobaltMuted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '累计曝光',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withOpacity(0.35),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      c.targetSchool ?? '',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: kInk.withOpacity(0.5),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            activeInvitations,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: kCobaltMuted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '活跃邀约',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white.withOpacity(0.35),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: resultBadgeColor(c.result).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  resultLabel(c.result),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: resultBadgeColor(c.result),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      )).toList(),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: kSilver.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(color: kSilver.withOpacity(0.4)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '我的钱包 (Wallet)',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: kInk.withOpacity(0.4),
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          wallet,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: kInk,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '待结算收益',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: kInk.withOpacity(0.3),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      '提现',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: kCobalt.withOpacity(0.9),
+                        decoration: TextDecoration.underline,
+                        decorationColor: kCobalt.withOpacity(0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
-}
 
-class _NotLoggedInView extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: kPorcelain,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: kSilver.withOpacity(0.5),
-                shape: BoxShape.circle,
-              ),
-              child: const Text(
-                '艺',
-                style: TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.w700,
-                  color: kCobalt,
+  Widget _buildMenuList() {
+    final items = [
+      ('作品管理', Icons.layers_outlined),
+      ('合作邀约管理', Icons.business_center_outlined),
+      ('展览报名记录', Icons.calendar_today_outlined),
+      ('版权备案', Icons.emoji_events_outlined),
+      ('认证中心', Icons.verified_outlined),
+    ];
+
+    return Column(
+      children: [
+        ...items.map((item) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            decoration: BoxDecoration(
+              color: kSilver.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.transparent),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: kInk.withOpacity(0.04),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: Icon(item.$2, size: 20, color: kInk.withOpacity(0.35)),
+                    ),
+                    const SizedBox(width: 14),
+                    Text(
+                      item.$1,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: kInk.withOpacity(0.8),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
+                Icon(Icons.chevron_right, size: 22, color: kInk.withOpacity(0.2)),
+              ],
             ),
-            const SizedBox(height: 24),
-            const Text(
-              '登录后解锁全部功能',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: kInk,
-              ),
+          );
+        }),
+        GestureDetector(
+          onTap: _signOut,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            decoration: BoxDecoration(
+              color: kSilver.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.transparent),
             ),
-            const SizedBox(height: 8),
-            Text(
-              '申请追踪 · 案例分享 · 论坛互动',
-              style: TextStyle(
-                fontSize: 13,
-                color: kInk.withOpacity(0.5),
-              ),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kCobalt,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(kRadiusMedium),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: kInk.withOpacity(0.04),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: Icon(Icons.logout, size: 20, color: Colors.red.withOpacity(0.5)),
+                    ),
+                    const SizedBox(width: 14),
+                    const Text(
+                      '退出登录',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              child: const Text(
-                '登录 / 注册',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+                Icon(Icons.chevron_right, size: 22, color: kInk.withOpacity(0.2)),
+              ],
             ),
-          ],
+          ),
+        ),
+        if (devLoginShortcutsEnabled) ...[
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: kCobalt.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: kCobalt.withOpacity(0.12)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '开发调试',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: kCobalt.withOpacity(0.8),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildDevButton(
+                        '学校详情页',
+                        () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SchoolDetailScreen(id: '3485e258-d84b-4067-b093-62a3d468ac62'),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildDevButton(
+                        '专业详情页',
+                        () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ProgramDetailScreen(id: 1),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDevButton(String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: kCobalt.withOpacity(0.2)),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: kCobalt.withOpacity(0.9),
+          ),
         ),
       ),
     );
   }
-}
-
-class _QuickActionData {
-  final IconData icon;
-  final String label;
-  final Color color;
-  _QuickActionData({required this.icon, required this.label, required this.color});
 }

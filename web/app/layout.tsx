@@ -1,46 +1,40 @@
 import type { Metadata } from "next";
-import { Poppins, Noto_Sans_SC } from "next/font/google";
+import { Noto_Sans_SC } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
-import { BottomNav } from "@/components/layout/bottom-nav";
-import { TopBar } from "@/components/layout/top-bar";
-import { CiyanChat } from "@/components/agent/ciyan-chat";
+import { I18nProvider } from "@/components/i18n-provider";
+import { AppShell } from "@/components/app-shell";
 
-const poppins = Poppins({
-  variable: "--font-poppins",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
-
-const notoSansSC = Noto_Sans_SC({
-  variable: "--font-noto-sc",
-  subsets: ["latin"],
+const notoSansSc = Noto_Sans_SC({
   weight: ["400", "500", "700"],
+  subsets: ["cyrillic", "latin", "latin-ext", "vietnamese"],
   display: "swap",
+  variable: "--font-noto-sans-sc",
 });
 
 export const metadata: Metadata = {
-  title: "艺见心 — 艺术留学一站式平台",
-  description: "发现、收藏和分享艺术留学资讯，找到你的理想院校",
+  title: "ArtLink — The Digital Curator",
+  description: "Bridging the gap between avant-garde creation and luxury acquisition. A dedicated platform for the modern connoisseur and the professional artist.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const locale = cookieStore.get('NEXT_LOCALE')?.value || 'zh';
+  const messages = (await import(`../messages/${locale}.json`)).default;
+
   return (
-    <html lang="zh-CN" className={`${poppins.variable} ${notoSansSC.variable} h-full antialiased`}>
-      <body className="min-h-full bg-neutral-100 flex items-center justify-center">
-        {/* 桌面端：手机壳容器 */}
-        <div className="relative w-full max-w-[390px] h-screen max-h-[844px] bg-white overflow-hidden flex flex-col shadow-2xl">
-          <TopBar />
-          <main className="flex-1 overflow-y-auto scrollbar-hide">
-            {children}
-          </main>
-          <CiyanChat />
-          <BottomNav />
-        </div>
+    <html
+      lang={locale}
+      className={`h-full antialiased ${notoSansSc.variable}`}
+    >
+      <body className="min-h-full bg-surface text-on-surface selection:bg-secondary/20 selection:text-secondary">
+        <I18nProvider locale={locale} messages={messages}>
+          <AppShell>{children}</AppShell>
+        </I18nProvider>
       </body>
     </html>
   );

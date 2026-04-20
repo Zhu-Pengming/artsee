@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3333",
+    "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --port 9090",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -18,7 +18,9 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.525.0",
+    "motion": "^12.38.0",
     "next": "15.1.8",
+    "next-intl": "^4.9.1",
     "openai": "^6.33.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",

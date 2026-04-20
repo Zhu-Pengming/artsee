@@ -14,14 +14,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     const supabase = createServiceClient();
     const { data, error } = await supabase
       .from("programs")
-      .select(
-        `
-        *,
-        schools:school_id (name_zh, country, logo_url, qs_art_rank),
-        program_admissions (*),
-        program_fees (*)
-      `
-      )
+      .select("*")
       .eq("id", n)
       .maybeSingle();
     if (error) {

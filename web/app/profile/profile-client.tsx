@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { TrackerCard } from '@/components/profile/tracker-card'
-import { LogOut, BookOpen, Heart, FileText, Plus, X, Loader2, Pencil } from 'lucide-react'
+import { LogOut, BookOpen, Heart, FileText, Plus, X, Loader2, Pencil, Share2, Verified } from 'lucide-react'
 import Link from 'next/link'
 import type { UserProfile, ApplicationTracker } from '@/lib/supabase/types'
 import { resultLabel, resultColor, timeAgo } from '@/lib/utils'
@@ -50,99 +50,113 @@ export function ProfileClient({ profile, trackers, myCases, favorites }: Props) 
 
   return (
     <>
-      <div className="pb-4">
-      {/* 个人信息头部 */}
-      <div className="relative">
-        <div className="h-28 bg-gradient-to-br from-[#1A4B8C] via-[#2A6BC2] to-[#4A90D9]" />
-        <button
-          onClick={async () => {
-            if (confirm('确定要退出登录吗？')) {
-              await signOut()
-              window.location.href = '/'
-            }
-          }}
-          className="absolute top-3 right-3 w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center"
-          title="退出登录"
-        >
-          <LogOut size={15} className="text-white" />
-        </button>
-        <div className="absolute left-4 bottom-0 translate-y-1/2">
-          <div className="w-16 h-16 rounded-full bg-white border-2 border-white shadow-md flex items-center justify-center text-2xl">
+      <div className="pb-6 max-w-4xl mx-auto space-y-8">
+      {/* 个人信息 — 典藏版横版 */}
+      <div className="flex flex-col sm:flex-row sm:items-start gap-8 sm:gap-12">
+        <div className="relative flex justify-center sm:justify-start">
+          <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-[2rem] overflow-hidden bg-al-silver/50 border-4 border-al-shell shadow-2xl flex items-center justify-center text-5xl">
             🎨
           </div>
-        </div>
-      </div>
-
-      {/* 用户名 & 简介 */}
-      <div className="pt-10 px-4 pb-3">
-        <div className="flex items-end justify-between">
-          <div>
-            <h2 className="text-base font-bold text-gray-900">{nickname}</h2>
-            <p className="text-[11px] text-gray-500 mt-0.5">
-              {profile?.location ? `${profile.location} | ` : ''}{bio}
-            </p>
+          <div className="absolute -bottom-2 -right-2 sm:bottom-auto sm:top-0 sm:-right-2 bg-al-cobalt text-al-shell p-3 rounded-3xl shadow-xl">
+            <Verified size={24} />
           </div>
-          <button
-            onClick={() => { setShowEditProfile(true); setEditError('') }}
-            className="text-xs border border-[#1A4B8C] text-[#1A4B8C] px-3 py-1 rounded-full font-medium flex items-center gap-1"
-          >
-            <Pencil size={11} />
-            编辑资料
-          </button>
+        </div>
+        <div className="flex-1 text-center sm:text-left">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div>
+              <h2 className="text-3xl sm:text-4xl font-serif font-bold text-al-ink mb-2">{nickname}</h2>
+              <p className="text-al-ink/50 font-medium text-sm sm:text-base">
+                {profile?.location ? `${profile.location} · ` : ''}{bio}
+              </p>
+            </div>
+            <div className="flex gap-3 justify-center sm:justify-end">
+              <button
+                type="button"
+                onClick={() => { setShowEditProfile(true); setEditError('') }}
+                className="bg-al-cobalt text-al-shell px-6 sm:px-8 py-2.5 rounded-full text-sm font-bold hover:opacity-90 shadow-lg shadow-al-cobalt/20 flex items-center gap-1.5"
+              >
+                <Pencil size={14} />
+                编辑资料
+              </button>
+              <button
+                type="button"
+                className="bg-al-silver/60 text-al-ink/60 p-3 rounded-full hover:bg-al-silver transition-colors"
+                aria-label="分享"
+              >
+                <Share2 size={20} />
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (confirm('确定要退出登录吗？')) {
+                    await signOut()
+                    window.location.href = '/'
+                  }
+                }}
+                className="bg-al-silver/60 text-al-ink/60 p-3 rounded-full hover:bg-al-silver transition-colors"
+                title="退出登录"
+              >
+                <LogOut size={18} />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 统计条 */}
-      <div className="flex divide-x divide-gray-100 bg-white border-t border-gray-100">
+      {/* 统计 */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {[
           { label: '关注', value: profile?.following_count ?? 0 },
           { label: '粉丝', value: profile?.followers_count ?? 0 },
           { label: '案例', value: myCases.length },
           { label: '收藏', value: favorites.length },
         ].map(s => (
-          <button key={s.label} className="flex-1 flex flex-col items-center py-3">
-            <span className="text-sm font-bold text-gray-900">{s.value}</span>
-            <span className="text-[10px] text-gray-400 mt-0.5">{s.label}</span>
-          </button>
+          <div
+            key={s.label}
+            className="rounded-2xl border border-al-silver/60 bg-al-shell py-4 text-center shadow-sm"
+          >
+            <span className="text-xl font-serif font-bold text-al-ink">{s.value}</span>
+            <p className="text-[10px] uppercase tracking-widest text-al-ink/40 mt-1">{s.label}</p>
+          </div>
         ))}
       </div>
 
       {/* 快捷工具 */}
-      <div className="grid grid-cols-4 gap-2 px-4 py-3 border-b border-gray-100">
+      <div className="grid grid-cols-4 gap-2 sm:gap-3 py-2 border-b border-al-silver/50">
         {[
-          { icon: BookOpen, label: '选校清单', color: 'bg-blue-50 text-blue-500', href: '/explore', onClick: undefined },
-          { icon: Heart, label: '我的收藏', color: 'bg-rose-50 text-rose-500', href: undefined, onClick: () => setActiveTab('我的收藏') },
-          { icon: FileText, label: '文书草稿', color: 'bg-purple-50 text-purple-500', href: undefined, onClick: () => setShowDraft(true) },
-          { icon: Plus, label: '分享案例', color: 'bg-blue-50 text-[#1A4B8C]', href: '/cases/new', onClick: undefined },
+          { icon: BookOpen, label: '选校清单', color: 'bg-al-cobalt/8 text-al-cobalt', href: '/explore', onClick: undefined },
+          { icon: Heart, label: '我的收藏', color: 'bg-al-silver/50 text-al-cobalt-muted', href: undefined, onClick: () => setActiveTab('我的收藏') },
+          { icon: FileText, label: '文书草稿', color: 'bg-al-silver/50 text-al-ink/70', href: undefined, onClick: () => setShowDraft(true) },
+          { icon: Plus, label: '分享案例', color: 'bg-al-cobalt/10 text-al-cobalt', href: '/cases/new', onClick: undefined },
         ].map(({ icon: Icon, label, color, href, onClick }) =>
           href ? (
             <Link key={label} href={href} className="flex flex-col items-center gap-1">
               <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center`}>
                 <Icon size={18} />
               </div>
-              <span className="text-[9px] text-gray-500 text-center leading-tight">{label}</span>
+              <span className="text-[9px] text-al-ink/50 text-center leading-tight">{label}</span>
             </Link>
           ) : (
             <button key={label} onClick={onClick} className="flex flex-col items-center gap-1">
               <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center`}>
                 <Icon size={18} />
               </div>
-              <span className="text-[9px] text-gray-500 text-center leading-tight">{label}</span>
+              <span className="text-[9px] text-al-ink/50 text-center leading-tight">{label}</span>
             </button>
           )
         )}
       </div>
 
       {/* Tab 切换 */}
-      <div className="flex border-b border-gray-100">
+      <div className="flex border-b border-al-silver/50">
         {profileTabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`flex-1 py-2.5 text-xs font-medium border-b-2 transition-colors ${
               activeTab === tab
-                ? 'border-[#1A4B8C] text-[#1A4B8C]'
-                : 'border-transparent text-gray-400'
+                ? 'border-al-cobalt text-al-cobalt'
+                : 'border-transparent text-al-ink/40'
             }`}
           >
             {tab}
@@ -151,12 +165,12 @@ export function ProfileClient({ profile, trackers, myCases, favorites }: Props) 
       </div>
 
       {/* 内容区 */}
-      <div className="px-4 pt-3">
+      <div className="pt-4">
         {activeTab === '申请追踪' && (
           <>
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs text-gray-500">共 {trackers.length} 所学校</p>
-              <button onClick={() => { setShowAddTracker(true); setTrackerError('') }} className="flex items-center gap-1 text-xs text-[#1A4B8C] font-medium">
+              <button onClick={() => { setShowAddTracker(true); setTrackerError('') }} className="flex items-center gap-1 text-xs text-al-cobalt font-medium">
                 <Plus size={12} />
                 添加学校
               </button>
@@ -200,7 +214,7 @@ export function ProfileClient({ profile, trackers, myCases, favorites }: Props) 
               <div className="flex flex-col items-center justify-center py-12 text-gray-400">
                 <span className="text-3xl mb-2">📝</span>
                 <p className="text-sm mb-3">还没有分享过案例</p>
-                <Link href="/cases/new" className="bg-[#1A4B8C] text-white text-xs px-4 py-2 rounded-full font-medium">
+                <Link href="/cases/new" className="bg-al-cobalt text-white text-xs px-4 py-2 rounded-full font-medium">
                   分享我的申请经历
                 </Link>
               </div>
@@ -228,7 +242,7 @@ export function ProfileClient({ profile, trackers, myCases, favorites }: Props) 
               <div className="flex flex-col items-center justify-center py-12 text-gray-400">
                 <span className="text-3xl mb-2">🔖</span>
                 <p className="text-sm mb-3">还没有收藏内容</p>
-                <Link href="/explore" className="bg-[#1A4B8C] text-white text-xs px-4 py-2 rounded-full font-medium">
+                <Link href="/explore" className="bg-al-cobalt text-white text-xs px-4 py-2 rounded-full font-medium">
                   去探索院校
                 </Link>
               </div>
@@ -241,7 +255,7 @@ export function ProfileClient({ profile, trackers, myCases, favorites }: Props) 
       {/* 添加追踪 Modal */}
       {showAddTracker && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center">
-          <div className="bg-white rounded-t-3xl w-full max-w-[390px] p-6">
+          <div className="bg-white rounded-t-3xl w-full max-w-lg w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900">添加申请学校</h3>
               <button onClick={() => setShowAddTracker(false)}><X size={18} className="text-gray-400" /></button>
@@ -255,20 +269,20 @@ export function ProfileClient({ profile, trackers, myCases, favorites }: Props) 
               setShowAddTracker(false)
             }}>
               <div className="space-y-3">
-                <input name="school_name" required placeholder="院校名称" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1A4B8C]" />
-                <input name="program_name" required placeholder="专业方向" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1A4B8C]" />
-                <select name="tier" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1A4B8C]">
+                <input name="school_name" required placeholder="院校名称" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt" />
+                <input name="program_name" required placeholder="专业方向" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt" />
+                <select name="tier" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt">
                   <option value="reach">冲刺</option>
                   <option value="match">匹配</option>
                   <option value="safety">保底</option>
                 </select>
-                <select name="status" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1A4B8C]">
+                <select name="status" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt">
                   <option value="planning">规划中</option>
                   <option value="preparing">准备材料</option>
                   <option value="submitted">已提交</option>
                 </select>
                 {trackerError && <p className="text-xs text-red-500">{trackerError}</p>}
-                <button type="submit" disabled={addingTracker} className="w-full py-3 bg-[#1A4B8C] text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60">
+                <button type="submit" disabled={addingTracker} className="w-full py-3 bg-al-cobalt text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60">
                   {addingTracker ? <Loader2 size={14} className="animate-spin" /> : null}
                   添加
                 </button>
@@ -280,7 +294,7 @@ export function ProfileClient({ profile, trackers, myCases, favorites }: Props) 
 
       {/* 编辑资料 Modal */}      {showEditProfile && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center">
-          <div className="bg-white rounded-t-3xl w-full max-w-[390px] p-6">
+          <div className="bg-white rounded-t-3xl w-full max-w-lg w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900">编辑资料</h3>
               <button onClick={() => setShowEditProfile(false)}><X size={18} className="text-gray-400" /></button>
@@ -301,7 +315,7 @@ export function ProfileClient({ profile, trackers, myCases, favorites }: Props) 
                     defaultValue={profile?.nickname ?? ''}
                     placeholder="你的昵称"
                     maxLength={20}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1A4B8C]"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt"
                   />
                 </div>
                 <div>
@@ -312,7 +326,7 @@ export function ProfileClient({ profile, trackers, myCases, favorites }: Props) 
                     placeholder="介绍一下自己..."
                     maxLength={80}
                     rows={2}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1A4B8C] resize-none"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt resize-none"
                   />
                 </div>
                 <div>
@@ -322,11 +336,11 @@ export function ProfileClient({ profile, trackers, myCases, favorites }: Props) 
                     defaultValue={profile?.location ?? ''}
                     placeholder="城市 / 国家"
                     maxLength={30}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#1A4B8C]"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt"
                   />
                 </div>
                 {editError && <p className="text-xs text-red-500">{editError}</p>}
-                <button type="submit" disabled={editingProfile} className="w-full py-3 bg-[#1A4B8C] text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60">
+                <button type="submit" disabled={editingProfile} className="w-full py-3 bg-al-cobalt text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60">
                   {editingProfile ? <Loader2 size={14} className="animate-spin" /> : null}
                   保存
                 </button>

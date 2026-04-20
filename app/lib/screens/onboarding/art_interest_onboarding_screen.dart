@@ -20,6 +20,7 @@ class _ArtInterestOnboardingScreenState extends State<ArtInterestOnboardingScree
   final Set<String> _uploading = {};
   bool _saving = false;
   String? _error;
+  String? _avatarUrl;
 
   static const List<_Topic> _topics = [
     _Topic('painting', '绘画', Icons.brush_outlined),
@@ -62,6 +63,7 @@ class _ArtInterestOnboardingScreenState extends State<ArtInterestOnboardingScree
       final url = await StorageService.uploadAvatarFile(x);
       await SupabaseService.updateAvatarUrl(url);
       if (mounted) {
+        setState(() => _avatarUrl = url);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('头像已更新')),
         );
@@ -153,14 +155,17 @@ class _ArtInterestOnboardingScreenState extends State<ArtInterestOnboardingScree
                                     padding: EdgeInsets.all(20),
                                     child: CircularProgressIndicator(strokeWidth: 2, color: kCobalt),
                                   )
-                                : const Icon(Icons.add_a_photo_outlined, color: kCobalt, size: 28),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Text(
-                            '使用 Supabase Storage 存储，仅用于个人头像展示。',
-                            style: TextStyle(fontSize: 12, color: kInk.withOpacity(0.45), height: 1.35),
+                                : _avatarUrl != null
+                                    ? ClipOval(
+                                        child: Image.network(
+                                          _avatarUrl!,
+                                          width: 72,
+                                          height: 72,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => const Icon(Icons.add_a_photo_outlined, color: kCobalt, size: 28),
+                                        ),
+                                      )
+                                    : const Icon(Icons.add_a_photo_outlined, color: kCobalt, size: 28),
                           ),
                         ),
                       ],

@@ -22,12 +22,12 @@ export function FilterChips({ onFilter }: FilterChipsProps) {
   }
 
   return (
-    <div className="space-y-2 px-4 py-3 border-b border-gray-100">
+    <div className="space-y-2 py-3 border-b border-al-silver/50">
       <div className="flex gap-2 overflow-x-auto scrollbar-hide">
         {filters.degree.map((d) => (
           <button key={d} onClick={() => { setActiveDegree(d); update(d, activeMajor, activeIelts); }}
             className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              activeDegree === d ? "bg-[#1A4B8C] text-white" : "bg-gray-100 text-gray-600"
+              activeDegree === d ? "bg-al-cobalt text-al-shell" : "bg-al-silver/50 text-al-ink/60"
             }`}>{d}</button>
         ))}
       </div>
@@ -36,8 +36,8 @@ export function FilterChips({ onFilter }: FilterChipsProps) {
           <button key={m} onClick={() => { setActiveMajor(m); update(activeDegree, m, activeIelts); }}
             className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
               activeMajor === m
-                ? "bg-[#1A4B8C]/10 text-[#1A4B8C] border border-[#1A4B8C]/30"
-                : "bg-gray-50 text-gray-500 border border-gray-200"
+                ? "bg-al-cobalt/10 text-al-cobalt border border-al-cobalt/30"
+                : "bg-al-silver/30 text-al-ink/55 border border-al-silver/60"
             }`}>{m}</button>
         ))}
       </div>
@@ -45,7 +45,7 @@ export function FilterChips({ onFilter }: FilterChipsProps) {
         {filters.ielts.map((i) => (
           <button key={i} onClick={() => { setActiveIelts(i); update(activeDegree, activeMajor, i); }}
             className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              activeIelts === i ? "bg-blue-100 text-blue-700" : "bg-gray-50 text-gray-500 border border-gray-200"
+              activeIelts === i ? "bg-al-cobalt/15 text-al-cobalt border border-al-cobalt/25" : "bg-al-silver/30 text-al-ink/55 border border-al-silver/60"
             }`}>{i === "全部" ? "IELTS 全部" : `IELTS ${i}`}</button>
         ))}
       </div>

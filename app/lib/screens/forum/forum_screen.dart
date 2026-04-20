@@ -1,32 +1,35 @@
 import 'package:flutter/material.dart';
-import '../../models/models.dart';
-import '../../services/supabase_service.dart';
+import '../tools/ai_consult_screen.dart';
 import '../../widgets/common.dart';
-import 'post_detail_screen.dart';
-import 'new_post_screen.dart';
 
 /// ═══════════════════════════════════════════════════════════════
-/// 青花瓷典藏版 - 学习（论坛）
+/// 学习页 — 完全对齐 _artist_ref LearnView
 /// ═══════════════════════════════════════════════════════════════
 
 class ForumScreen extends StatefulWidget {
   const ForumScreen({super.key});
 
   @override
-  State<ForumScreen> createState() => _ForumScreenState();
+  State<ForumScreen> createState() => ForumScreenState();
 }
 
-class _ForumScreenState extends State<ForumScreen> with SingleTickerProviderStateMixin {
+class ForumScreenState extends State<ForumScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  List<AppPost> _posts = [];
-  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _tabController.addListener(() { if (!_tabController.indexIsChanging) _loadForTab(); });
-    _load('question');
+  }
+
+  void switchToToolsAndOpenAiConsult() {
+    if (_tabController.index != 0) {
+      _tabController.animateTo(0);
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AiConsultScreen()),
+    );
   }
 
   @override
@@ -35,308 +38,388 @@ class _ForumScreenState extends State<ForumScreen> with SingleTickerProviderStat
     super.dispose();
   }
 
-  Future<void> _loadForTab() async {
-    final types = ['question', 'discussion', 'news'];
-    await _load(types[_tabController.index]);
-  }
-
-  Future<void> _load(String type) async {
-    setState(() => _loading = true);
-    final data = await SupabaseService.fetchPosts(type: type);
-    if (mounted) setState(() { _posts = data; _loading = false; });
-  }
-
   @override
   Widget build(BuildContext context) {
-    final bottomPad = mainTabBottomInset(context);
     return Scaffold(
       backgroundColor: kPorcelain,
-      appBar: AppBar(
-        title: const Text(
-          '学习中心',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: kInk,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          // 发帖按钮
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: GestureDetector(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const NewPostScreen()),
-              ).then((_) => _loadForTab()),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: kCobalt,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.edit, color: Colors.white, size: 14),
-                    SizedBox(width: 4),
-                    Text(
-                      '发帖',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              indicatorColor: kCobalt,
+              indicatorWeight: 2,
+              labelColor: kCobalt,
+              unselectedLabelColor: kInk.withOpacity(0.35),
+              labelStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.2,
+              ),
+              indicatorSize: TabBarIndicatorSize.label,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              dividerColor: kSilver.withOpacity(0.5),
+              tabs: const [
+                Tab(text: '工具集'),
+                Tab(text: '课程中心'),
+                Tab(text: '院校与资讯'),
+              ],
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: const [
+                  _ToolsTab(),
+                  _CoursesTab(),
+                  _SchoolsTab(),
+                ],
               ),
             ),
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: kCobalt,
-          unselectedLabelColor: kInk.withOpacity(0.4),
-          indicatorColor: kCobalt,
-          indicatorWeight: 2.5,
-          indicatorSize: TabBarIndicatorSize.label,
-          labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-          tabs: const [
-            Tab(text: '问答'),
-            Tab(text: '讨论'),
-            Tab(text: '资讯'),
           ],
         ),
-      ),
-      body: RefreshIndicator(
-        color: kCobalt,
-        backgroundColor: Colors.white,
-        onRefresh: _loadForTab,
-        child: _loading
-          ? const LoadingIndicator()
-          : _posts.isEmpty
-            ? const EmptyState(emoji: '💬', message: '还没有内容，来发第一帖！')
-            : ListView.builder(
-                padding: EdgeInsets.fromLTRB(0, 8, 0, bottomPad),
-                itemCount: _posts.length,
-                itemBuilder: (ctx, i) => _PostCard(
-                  post: _posts[i],
-                  onTap: () => Navigator.push(ctx, MaterialPageRoute(
-                    builder: (_) => PostDetailScreen(postId: _posts[i].id),
-                  )),
-                ),
-              ),
       ),
     );
   }
 }
 
-/// ═══════════════════════════════════════════════════════════════
-/// 帖子卡片（青花瓷风格）
-/// ═══════════════════════════════════════════════════════════════
-class _PostCard extends StatelessWidget {
-  final AppPost post;
-  final VoidCallback onTap;
-
-  const _PostCard({required this.post, required this.onTap});
+class _CoursesTab extends StatelessWidget {
+  const _CoursesTab();
 
   @override
   Widget build(BuildContext context) {
-    final typeStyle = {
-      'question': (label: '问答', color: kCobalt),
-      'discussion': (label: '讨论', color: kCobaltMuted),
-      'news': (label: '资讯', color: const Color(0xFF4A6FA5)),
-    };
-    final ts = typeStyle[post.type] ?? typeStyle['discussion']!;
+    final items = [
+      ('作品集辅导：RCA/UAL 申请全攻略', '留学辅导', 'Premium', 'https://picsum.photos/seed/course0/800/450'),
+      ('当代油画技法：从构图到色彩表达', '技法课', '¥1,200', 'https://picsum.photos/seed/course1/800/450'),
+      ('艺术家职业商业课：定价、版权与合同', '职业发展', '¥800', 'https://picsum.photos/seed/course2/800/450'),
+    ];
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(kRadiusLarge),
-          boxShadow: [
-            BoxShadow(
-              color: kInk.withOpacity(0.03),
-              blurRadius: 12,
-              offset: const Offset(0, 2),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: items.map((item) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: kSilver.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(kRadiusLarge),
+              border: Border.all(color: kSilver.withOpacity(0.4)),
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 用户信息
-            Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: kCobalt,
-                  child: Text(
-                    post.authorNickname?.substring(0, 1) ?? '?',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(kRadiusLarge),
+                      topRight: Radius.circular(kRadiusLarge),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  post.authorNickname ?? '用户',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: kInk,
-                  ),
-                ),
-                if (post.isMentorPost) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: kCobalt.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                    child: Stack(
+                      fit: StackFit.expand,
                       children: [
-                        Icon(Icons.verified, size: 11, color: kCobalt),
-                        const SizedBox(width: 2),
-                        const Text(
-                          '导师',
-                          style: TextStyle(
-                            fontSize: 9,
-                            color: kCobalt,
-                            fontWeight: FontWeight.w600,
+                        Image.network(
+                          item.$4,
+                          fit: BoxFit.cover,
+                        ),
+                        Container(
+                          color: kInk.withOpacity(0.15),
+                        ),
+                        const Center(
+                          child: Icon(
+                            Icons.play_circle_outline,
+                            size: 52,
+                            color: Colors.white,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-                const Spacer(),
-                Text(
-                  timeAgo(post.createdAt),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: kInk.withOpacity(0.4),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: kCobalt.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          item.$2,
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: kCobalt.withOpacity(0.7),
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        item.$1,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: kInk,
+                          height: 1.3,
+                          fontFamily: 'Noto Serif SC',
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            item.$3,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: kCobalt,
+                            ),
+                          ),
+                          Icon(Icons.arrow_forward, size: 18, color: kInk.withOpacity(0.2)),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            // 标题和类型
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _ToolsTab extends StatelessWidget {
+  const _ToolsTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final tools = [
+      (
+        'AI咨询',
+        Icons.auto_awesome_outlined,
+        () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AiConsultScreen()),
+        ),
+      ),
+      (
+        '院校查询',
+        Icons.school_outlined,
+        () => ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('院校查询功能开发中')),
+        ),
+      ),
+      (
+        '专业查询',
+        Icons.menu_book_outlined,
+        () => ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('专业查询功能开发中')),
+        ),
+      ),
+    ];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: GridView.count(
+        crossAxisCount: 3,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
+        childAspectRatio: 0.92,
+        children: tools.map((tool) {
+          return GestureDetector(
+            onTap: tool.$3,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  width: 64,
+                  height: 64,
                   decoration: BoxDecoration(
-                    color: ts.color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: kInk.withOpacity(0.06),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    ts.label,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: ts.color,
-                    ),
-                  ),
+                  child: Icon(tool.$2, size: 26, color: kCobalt),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    post.title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: kInk,
-                      height: 1.4,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                const SizedBox(height: 12),
+                Text(
+                  tool.$1,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: kInk.withOpacity(0.8),
                   ),
                 ),
               ],
             ),
-            if (post.content != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                post.content!,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: kInk.withOpacity(0.6),
-                  height: 1.5,
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _SchoolsTab extends StatelessWidget {
+  const _SchoolsTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final schools = [
+      ('Royal College of Art', 'London, UK', '#1 Art & Design', 'https://picsum.photos/seed/rca/800/400'),
+      ('University of the Arts London', 'London, UK', '#2 Art & Design', 'https://picsum.photos/seed/ual/800/400'),
+    ];
+
+    final news = [
+      '2025年秋季入学申请截止日期汇总',
+      '作品集准备：如何展现你的批判性思维',
+      '艺术生就业前景报告：数字媒体与跨学科趋势',
+    ];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ...schools.map((s) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              child: AspectRatio(
+                aspectRatio: 2 / 1,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(kRadiusLarge),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        s.$4,
+                        fit: BoxFit.cover,
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              kInk.withOpacity(0.0),
+                              kInk.withOpacity(0.6),
+                              kInk.withOpacity(0.85),
+                            ],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            stops: const [0.0, 0.5, 1.0],
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(18),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text(
+                              s.$3,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: kCobaltMuted,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              s.$1,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                fontFamily: 'Noto Serif SC',
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              s.$2,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withOpacity(0.6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
-            ],
-            if (post.tags.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                children: post.tags.take(3).map((t) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: kSilver.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    '#$t',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: kInk.withOpacity(0.6),
-                    ),
-                  ),
-                )).toList(),
-              ),
-            ],
-            const SizedBox(height: 12),
-            // 互动数据
-            Row(
+            );
+          }),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: kSilver.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(kRadiusLarge),
+              border: Border.all(color: kSilver.withOpacity(0.4)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.thumb_up_outlined, size: 14, color: kInk.withOpacity(0.3)),
-                const SizedBox(width: 4),
                 Text(
-                  '${post.likeCount}',
+                  '全球艺术资讯',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
                     color: kInk.withOpacity(0.4),
+                    letterSpacing: 1.5,
                   ),
                 ),
-                const SizedBox(width: 16),
-                Icon(Icons.chat_bubble_outline, size: 14, color: kInk.withOpacity(0.3)),
-                const SizedBox(width: 4),
-                Text(
-                  '${post.answerCount} 回答',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: kInk.withOpacity(0.4),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Icon(Icons.visibility_outlined, size: 14, color: kInk.withOpacity(0.3)),
-                const SizedBox(width: 4),
-                Text(
-                  '${post.viewCount}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: kInk.withOpacity(0.4),
-                  ),
-                ),
+                const SizedBox(height: 18),
+                ...news.map((n) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            n,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: kInk.withOpacity(0.75),
+                              fontFamily: 'Noto Serif SC',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(Icons.north_east, size: 18, color: kInk.withOpacity(0.2)),
+                      ],
+                    ),
+                  );
+                }),
               ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 100),
+        ],
       ),
     );
   }
