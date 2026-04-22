@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { TrackerCard } from '@/components/profile/tracker-card'
 import Link from 'next/link'
 import type { UserProfile, ApplicationTracker } from '@/lib/supabase/types'
 import { resultLabel, resultColor, timeAgo } from '@/lib/utils'
 import { signOut, createTrackerEntry, updateProfile } from '@/lib/actions'
 import { DraftModal } from '@/components/profile/draft-modal'
+import { createClient } from '@/lib/supabase/client'
 
 const profileTabs = ['申请追踪', '我的案例', '我的收藏'] as const
 
@@ -36,7 +37,7 @@ type Props = {
   userId: string
 }
 
-export function ProfileClient({ profile, trackers, myCases, favorites, isSelf }: Props) {
+export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, userId }: Props) {
   const [activeTab, setActiveTab] = useState<typeof profileTabs[number]>('申请追踪')
   const [showAddTracker, setShowAddTracker] = useState(false)
   const [addingTracker, setAddingTracker] = useState(false)
@@ -45,25 +46,90 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf }:
   const [editingProfile, setEditingProfile] = useState(false)
   const [editError, setEditError] = useState('')
   const [showDraft, setShowDraft] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const nickname = profile?.nickname ?? '艺见用户'
   const bio = profile?.bio ?? '目标：英国艺术院校 · 努力备考中'
   const avatarUrl = profile?.avatar_url
   const avatarInitial = nickname[0]
 
+  const handleAvatarClick = () => {
+    if (!isSelf) return
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('请选择图片文件')
+      return
+    }
+    setUploadingAvatar(true)
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) throw new Error('未登录')
+
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('folder', 'avatars')
+
+      const res = await fetch('/api/v1/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error)
+
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ avatar_url: data.url, updated_at: new Date().toISOString() })
+        .eq('id', userId)
+
+      if (error) throw new Error(error.message)
+      window.location.reload()
+    } catch (err: any) {
+      alert(err.message || '上传失败')
+    } finally {
+      setUploadingAvatar(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   return (
     <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
       <div className="pb-6 max-w-4xl mx-auto space-y-8">
         {/* 个人信息 — 典藏版横版 */}
         <div className="flex flex-col sm:flex-row sm:items-start gap-8 sm:gap-12">
           <div className="relative flex justify-center sm:justify-start">
-            <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-[2rem] overflow-hidden bg-al-silver/50 border-4 border-al-shell shadow-2xl flex items-center justify-center text-5xl">
+            <button
+              type="button"
+              onClick={handleAvatarClick}
+              disabled={uploadingAvatar}
+              className={`w-36 h-36 sm:w-44 sm:h-44 rounded-[2rem] overflow-hidden bg-al-silver/50 border-4 border-al-shell shadow-2xl flex items-center justify-center text-5xl ${isSelf ? 'cursor-pointer hover:opacity-90' : 'cursor-default'} disabled:opacity-60 transition-opacity`}
+            >
               {avatarUrl ? (
                 <img src={avatarUrl} alt={nickname} className="w-full h-full object-cover" />
               ) : (
                 <span className="text-al-cobalt font-serif font-bold text-6xl">{avatarInitial}</span>
               )}
-            </div>
+            </button>
+            {isSelf && (
+              <div className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 w-8 h-8 bg-al-cobalt text-al-shell rounded-full shadow-lg flex items-center justify-center text-lg font-bold pointer-events-none">
+                +
+              </div>
+            )}
             {profile?.is_verified && (
               <div className="absolute -bottom-2 -right-2 sm:bottom-auto sm:top-0 sm:-right-2 bg-al-cobalt text-al-shell px-3 py-1.5 rounded-2xl shadow-xl text-xs font-bold">
                 已认证
