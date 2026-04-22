@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/backend_api_service.dart';
 import '../../widgets/common.dart';
 import 'school_detail_screen.dart';
+import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 /// 院校列表 — 分页查询
 class SchoolListScreen extends StatefulWidget {
@@ -67,7 +68,7 @@ class _SchoolListScreenState extends State<SchoolListScreen> {
   @override
   Widget build(BuildContext context) {
     if (_items.isEmpty && _loading) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(color: kCobalt, strokeWidth: 2.5),
       );
     }
@@ -77,12 +78,12 @@ class _SchoolListScreenState extends State<SchoolListScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('加载失败: $_error', style: const TextStyle(color: kInk)),
+            Text('加载失败: $_error', style: TextStyle(color: context.artC.ink)),
             const SizedBox(height: 12),
             ElevatedButton(
               onPressed: _refresh,
               style: ElevatedButton.styleFrom(backgroundColor: kCobalt),
-              child: const Text('重试'),
+              child: Text('重试'),
             ),
           ],
         ),
@@ -90,7 +91,7 @@ class _SchoolListScreenState extends State<SchoolListScreen> {
     }
 
     if (_items.isEmpty) {
-      return const Center(child: Text('暂无院校数据', style: TextStyle(color: kInk)));
+      return Center(child: Text('暂无院校数据', style: TextStyle(color: context.artC.ink)));
     }
 
     return RefreshIndicator(
@@ -103,7 +104,7 @@ class _SchoolListScreenState extends State<SchoolListScreen> {
         itemBuilder: (context, index) {
           if (index >= _items.length) {
             _loadMore();
-            return const Padding(
+            return Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Center(
                 child: SizedBox(
@@ -164,7 +165,7 @@ class _SchoolCard extends StatelessWidget {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: kSilver.withOpacity(0.35),
+                color: context.artC.silver.withOpacity(0.35),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: ClipRRect(
@@ -174,7 +175,7 @@ class _SchoolCard extends StatelessWidget {
                     : Center(
                         child: Text(
                           nameZh.substring(0, 1),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
                             color: kCobalt,
@@ -191,10 +192,10 @@ class _SchoolCard extends StatelessWidget {
                 children: [
                   Text(
                     nameZh,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: kInk,
+                      color: context.artC.ink,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -205,7 +206,7 @@ class _SchoolCard extends StatelessWidget {
                       nameEn,
                       style: TextStyle(
                         fontSize: 11,
-                        color: kInk.withOpacity(0.4),
+                        color: context.artC.ink.withOpacity(0.4),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -229,7 +230,7 @@ class _SchoolCard extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, size: 20, color: kInk.withOpacity(0.25)),
+            Icon(Icons.chevron_right, size: 20, color: context.artC.ink.withOpacity(0.25)),
           ],
         ),
       ),
@@ -248,7 +249,7 @@ class _MetaChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: highlighted ? kCobalt.withOpacity(0.08) : kSilver.withOpacity(0.4),
+        color: highlighted ? kCobalt.withOpacity(0.08) : context.artC.silver.withOpacity(0.4),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -256,7 +257,7 @@ class _MetaChip extends StatelessWidget {
         style: TextStyle(
           fontSize: 10,
           fontWeight: highlighted ? FontWeight.w700 : FontWeight.w500,
-          color: highlighted ? kCobalt.withOpacity(0.9) : kInk.withOpacity(0.55),
+          color: highlighted ? kCobalt.withOpacity(0.9) : context.artC.ink.withOpacity(0.55),
         ),
       ),
     );

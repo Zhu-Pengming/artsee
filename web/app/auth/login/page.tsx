@@ -7,6 +7,16 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
+/** 与仓库 AGENTS.md / `npm run ensure:dev-user` 中开发账号一致；可选覆盖 NEXT_PUBLIC_DEV_TEST_* */
+const DEV_TEST_EMAIL = process.env.NEXT_PUBLIC_DEV_TEST_EMAIL ?? 'dev.test@artsee.app'
+const DEV_TEST_PASSWORD = process.env.NEXT_PUBLIC_DEV_TEST_PASSWORD ?? 'ArtseeDev2026!'
+
+function isWebDevMode() {
+  return (
+    process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_DEV_LOGIN === 'true'
+  )
+}
+
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -62,6 +72,32 @@ function LoginForm() {
     }
   }
 
+  async function handleDevQuickLogin() {
+    setError('')
+    setSuccess('')
+    setLoading(true)
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: DEV_TEST_EMAIL,
+        password: DEV_TEST_PASSWORD,
+      })
+      if (error) throw error
+      router.push(redirect)
+      router.refresh()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '登录失败'
+      if (msg.includes('Invalid login credentials')) {
+        setError('开发账号未就绪：请先在项目根执行 npm run ensure:dev-user 创建/同步该用户')
+      } else {
+        setError(msg)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const showDevLogin = isWebDevMode()
+
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center px-6 md:px-12 lg:px-24 py-12">
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -77,7 +113,7 @@ function LoginForm() {
             <span className="text-sm font-medium">返回首页</span>
           </Link>
           <h1 className="text-5xl xl:text-6xl font-extrabold font-headline leading-[0.95] tracking-tight text-on-surface mb-8 whitespace-pre-line">
-            {'ArtLink:\n你的艺术留学\n第一站'}
+            {'Artiqore:\n你的艺术留学\n第一站'}
           </h1>
           <p className="text-lg md:text-xl text-on-surface-variant max-w-md leading-relaxed mb-10 font-light">
             连接先锋创作与奢侈品收藏的桥梁。加入我们，开启你的艺术留学之旅。
@@ -112,7 +148,7 @@ function LoginForm() {
             <div className="w-14 h-14 rounded-md bg-primary flex items-center justify-center mb-3 shadow-lg shadow-primary/10">
               <span className="text-on-primary text-2xl font-bold font-headline">艺</span>
             </div>
-            <h2 className="text-2xl font-bold font-headline text-on-surface">ArtLink</h2>
+            <h2 className="text-2xl font-bold font-headline text-on-surface">Artiqore</h2>
             <p className="text-sm text-on-surface-variant mt-1">艺术留学一站式平台</p>
           </div>
 
@@ -209,6 +245,23 @@ function LoginForm() {
               <Link href="/privacy" className="text-primary hover:underline underline-offset-2">隐私政策</Link>
             </p>
           </div>
+
+          {showDevLogin && (
+            <div className="mt-5 rounded-md border border-amber-500/45 bg-amber-50/90 dark:border-amber-500/35 dark:bg-amber-950/35 px-4 py-3">
+              <p className="text-[11px] leading-relaxed text-amber-950/90 dark:text-amber-100/90 mb-2.5 text-left">
+                开发者模式：一键登录预置开发账号（需已执行 <code className="font-mono text-[10px]">npm run ensure:dev-user</code>，以同步管理员
+                <code className="font-mono text-[10px]"> user_profiles.role</code> 等数据）。
+              </p>
+              <button
+                type="button"
+                onClick={handleDevQuickLogin}
+                disabled={loading}
+                className="w-full text-sm font-semibold text-amber-950 dark:text-amber-50 bg-amber-200/90 dark:bg-amber-800/55 hover:bg-amber-300 dark:hover:bg-amber-700/55 disabled:opacity-50 px-4 py-2.5 rounded-md transition-colors"
+              >
+                快捷登录（开发 / 管理员账号）
+              </button>
+            </div>
+          )}
 
           <button
             onClick={() => router.push('/')}

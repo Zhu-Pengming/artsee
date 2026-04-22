@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "隐私政策 — ArtLink",
-  description: "ArtLink 隐私政策",
+  title: "隐私政策 — Artiqore",
+  description: "Artiqore 隐私政策",
 };
 
 export default function PrivacyPage() {
@@ -20,7 +20,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-bold text-on-surface mb-3">1. 引言</h2>
             <p className="leading-relaxed">
-              ArtLink（以下简称"我们"）高度重视用户的隐私和个人信息保护。本隐私政策旨在向您说明我们如何收集、使用、存储、共享和保护您的个人信息。请您在使用本平台服务前仔细阅读本政策。一旦您开始使用我们的服务，即表示您已同意本隐私政策的全部内容。
+              Artiqore（以下简称"我们"）高度重视用户的隐私和个人信息保护。本隐私政策旨在向您说明我们如何收集、使用、存储、共享和保护您的个人信息。请您在使用本平台服务前仔细阅读本政策。一旦您开始使用我们的服务，即表示您已同意本隐私政策的全部内容。
             </p>
           </section>
 
@@ -76,7 +76,7 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong>合法权益保护：</strong>
-                为保护 ArtLink、用户或公众的合法权益、财产或安全，我们可能会在必要范围内披露信息。
+                为保护 Artiqore、用户或公众的合法权益、财产或安全，我们可能会在必要范围内披露信息。
               </li>
             </ul>
           </section>
@@ -131,7 +131,7 @@ export default function PrivacyPage() {
               如您对本隐私政策有任何疑问、意见或投诉，请通过以下方式与我们联系：
             </p>
             <p className="leading-relaxed mt-2">
-              电子邮箱：contact@artlink.app
+              电子邮箱：contact@artiqore.com
             </p>
           </section>
         </div>

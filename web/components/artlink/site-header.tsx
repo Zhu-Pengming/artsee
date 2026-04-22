@@ -30,7 +30,7 @@ export function SiteHeader() {
             艺
           </div>
           <span className="text-lg sm:text-xl font-serif font-bold text-al-ink tracking-tight hidden min-[400px]:inline">
-            ArtLink 艺衡
+            Artiqore 艺衡
           </span>
         </Link>
 

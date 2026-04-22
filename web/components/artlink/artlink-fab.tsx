@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 
-export function ArtlinkFab() {
+export function ArtiqoreFab() {
   return (
     <Link
       href="/cases/new"

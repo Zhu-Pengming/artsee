@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../tools/ai_consult_screen.dart';
 import '../../widgets/common.dart';
+import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 /// ═══════════════════════════════════════════════════════════════
 /// 学习页 — 完全对齐 _artist_ref LearnView
@@ -24,11 +25,8 @@ class ForumScreenState extends State<ForumScreen>
   }
 
   void switchToToolsAndOpenAiConsult() {
-    if (_tabController.index != 0) {
-      _tabController.animateTo(0);
-    }
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AiConsultScreen()),
+      MaterialPageRoute<void>(builder: (_) => const AiConsultScreen()),
     );
   }
 
@@ -41,7 +39,7 @@ class ForumScreenState extends State<ForumScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kPorcelain,
+      backgroundColor: context.artC.porcelain,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,20 +50,20 @@ class ForumScreenState extends State<ForumScreen>
               indicatorColor: kCobalt,
               indicatorWeight: 2,
               labelColor: kCobalt,
-              unselectedLabelColor: kInk.withOpacity(0.35),
-              labelStyle: const TextStyle(
+              unselectedLabelColor: context.artC.ink.withOpacity(0.35),
+              labelStyle: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.2,
               ),
-              unselectedLabelStyle: const TextStyle(
+              unselectedLabelStyle: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 1.2,
               ),
               indicatorSize: TabBarIndicatorSize.label,
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              dividerColor: kSilver.withOpacity(0.5),
+              dividerColor: context.artC.silver.withOpacity(0.5),
               tabs: const [
                 Tab(text: '工具集'),
                 Tab(text: '课程中心'),
@@ -107,9 +105,9 @@ class _CoursesTab extends StatelessWidget {
           return Container(
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: kSilver.withOpacity(0.12),
+              color: context.artC.silver.withOpacity(0.12),
               borderRadius: BorderRadius.circular(kRadiusLarge),
-              border: Border.all(color: kSilver.withOpacity(0.4)),
+              border: Border.all(color: context.artC.silver.withOpacity(0.4)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,9 +127,9 @@ class _CoursesTab extends StatelessWidget {
                           fit: BoxFit.cover,
                         ),
                         Container(
-                          color: kInk.withOpacity(0.15),
+                          color: context.artC.ink.withOpacity(0.15),
                         ),
-                        const Center(
+                        Center(
                           child: Icon(
                             Icons.play_circle_outline,
                             size: 52,
@@ -166,10 +164,10 @@ class _CoursesTab extends StatelessWidget {
                       const SizedBox(height: 10),
                       Text(
                         item.$1,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                          color: kInk,
+                          color: context.artC.ink,
                           height: 1.3,
                           fontFamily: 'Noto Serif SC',
                         ),
@@ -180,13 +178,13 @@ class _CoursesTab extends StatelessWidget {
                         children: [
                           Text(
                             item.$3,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                               color: kCobalt,
                             ),
                           ),
-                          Icon(Icons.arrow_forward, size: 18, color: kInk.withOpacity(0.2)),
+                          Icon(Icons.arrow_forward, size: 18, color: context.artC.ink.withOpacity(0.2)),
                         ],
                       ),
                     ],
@@ -253,7 +251,7 @@ class _ToolsTab extends StatelessWidget {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: kInk.withOpacity(0.06),
+                        color: context.artC.ink.withOpacity(0.06),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -267,7 +265,7 @@ class _ToolsTab extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: kInk.withOpacity(0.8),
+                    color: context.artC.ink.withOpacity(0.8),
                   ),
                 ),
               ],
@@ -318,9 +316,9 @@ class _SchoolsTab extends StatelessWidget {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              kInk.withOpacity(0.0),
-                              kInk.withOpacity(0.6),
-                              kInk.withOpacity(0.85),
+                              context.artC.ink.withOpacity(0.0),
+                              context.artC.ink.withOpacity(0.6),
+                              context.artC.ink.withOpacity(0.85),
                             ],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
@@ -336,7 +334,7 @@ class _SchoolsTab extends StatelessWidget {
                           children: [
                             Text(
                               s.$3,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 color: kCobaltMuted,
@@ -346,7 +344,7 @@ class _SchoolsTab extends StatelessWidget {
                             const SizedBox(height: 4),
                             Text(
                               s.$1,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,
@@ -375,9 +373,9 @@ class _SchoolsTab extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
-              color: kSilver.withOpacity(0.12),
+              color: context.artC.silver.withOpacity(0.12),
               borderRadius: BorderRadius.circular(kRadiusLarge),
-              border: Border.all(color: kSilver.withOpacity(0.4)),
+              border: Border.all(color: context.artC.silver.withOpacity(0.4)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -387,7 +385,7 @@ class _SchoolsTab extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: kInk.withOpacity(0.4),
+                    color: context.artC.ink.withOpacity(0.4),
                     letterSpacing: 1.5,
                   ),
                 ),
@@ -404,13 +402,13 @@ class _SchoolsTab extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: kInk.withOpacity(0.75),
+                              color: context.artC.ink.withOpacity(0.75),
                               fontFamily: 'Noto Serif SC',
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Icon(Icons.north_east, size: 18, color: kInk.withOpacity(0.2)),
+                        Icon(Icons.north_east, size: 18, color: context.artC.ink.withOpacity(0.2)),
                       ],
                     ),
                   );

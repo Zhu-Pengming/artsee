@@ -49,15 +49,26 @@ async function main() {
     console.log('Auth 用户已存在:', userId);
   }
 
-  const { error: upErr } = await supabase.from('user_profiles').upsert(
-    { id: userId, nickname: DEV_NICKNAME },
+  let { error: upErr } = await supabase.from('user_profiles').upsert(
+    { id: userId, nickname: DEV_NICKNAME, role: 'admin' },
     { onConflict: 'id' },
   );
   if (upErr) {
-    console.error('user_profiles upsert 失败:', upErr.message);
-    process.exit(1);
+    console.warn('带 role=admin 的 upsert 失败，尝试仅 nickname:', upErr.message);
+    upErr = (
+      await supabase.from('user_profiles').upsert(
+        { id: userId, nickname: DEV_NICKNAME },
+        { onConflict: 'id' },
+      )
+    ).error;
+    if (upErr) {
+      console.error('user_profiles upsert 失败:', upErr.message);
+      process.exit(1);
+    }
+    console.warn('已降级写入（未设置 role）— 请为 user_profiles 增加 role 列后重跑本脚本。');
+  } else {
+    console.log('user_profiles 已写入 id、nickname、role=admin。');
   }
-  console.log('user_profiles 已写入 id + nickname。');
 
   const { error: exErr } = await supabase
     .from('user_profiles')

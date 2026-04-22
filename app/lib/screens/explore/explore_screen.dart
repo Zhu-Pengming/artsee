@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../widgets/common.dart';
-import '../schools/school_list_screen.dart';
+import 'institutions_archive_screen.dart';
 import '../programs/program_list_screen.dart';
+import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 /// ═══════════════════════════════════════════════════════════════
 /// 发现页 — 完全对齐 _artist_ref DiscoverView
@@ -33,7 +34,7 @@ class _ExploreScreenState extends State<ExploreScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kPorcelain,
+      backgroundColor: context.artC.porcelain,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,20 +45,20 @@ class _ExploreScreenState extends State<ExploreScreen>
               indicatorColor: kCobalt,
               indicatorWeight: 2,
               labelColor: kCobalt,
-              unselectedLabelColor: kInk.withOpacity(0.35),
-              labelStyle: const TextStyle(
+              unselectedLabelColor: context.artC.ink.withOpacity(0.35),
+              labelStyle: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.2,
               ),
-              unselectedLabelStyle: const TextStyle(
+              unselectedLabelStyle: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 1.2,
               ),
               indicatorSize: TabBarIndicatorSize.label,
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              dividerColor: kSilver.withOpacity(0.5),
+              dividerColor: context.artC.silver.withOpacity(0.5),
               tabs: const [
                 Tab(text: '院校'),
                 Tab(text: '专业'),
@@ -69,7 +70,7 @@ class _ExploreScreenState extends State<ExploreScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: const [
-                  SchoolListScreen(),
+                  InstitutionsArchiveScreen(),
                   ProgramListScreen(),
                   _ImageGridTab(),
                   _QaTab(),
@@ -110,7 +111,7 @@ class _ImageGridTab extends StatelessWidget {
                       fit: StackFit.expand,
                       children: [
                         Image.network(
-                          'https://picsum.photos/seed/disc${i}/600/800',
+                          'https://picsum.photos/seed/disc$i/600/800',
                           fit: BoxFit.cover,
                         ),
                         Positioned(
@@ -120,7 +121,7 @@ class _ImageGridTab extends StatelessWidget {
                           child: Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: kPorcelain.withOpacity(0.92),
+                              color: context.artC.porcelain.withOpacity(0.92),
                               borderRadius: BorderRadius.circular(kRadiusSmall),
                             ),
                             child: Column(
@@ -129,10 +130,10 @@ class _ImageGridTab extends StatelessWidget {
                               children: [
                                 Text(
                                   '作品标题 #${i + 1}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
-                                    color: kInk,
+                                    color: context.artC.ink,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -143,7 +144,7 @@ class _ImageGridTab extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 9,
                                     fontWeight: FontWeight.w500,
-                                    color: kInk.withOpacity(0.35),
+                                    color: context.artC.ink.withOpacity(0.35),
                                     letterSpacing: 0.5,
                                   ),
                                 ),
@@ -156,12 +157,12 @@ class _ImageGridTab extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   '先锋艺术探索系列',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: kInk,
+                    color: context.artC.ink,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -170,7 +171,7 @@ class _ImageGridTab extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
-                    color: kInk.withOpacity(0.35),
+                    color: context.artC.ink.withOpacity(0.35),
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -225,7 +226,7 @@ class _QaTab extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 14),
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: kSilver.withOpacity(0.15),
+                color: context.artC.silver.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(kRadiusMedium),
                 border: Border.all(color: Colors.transparent),
               ),
@@ -251,10 +252,10 @@ class _QaTab extends StatelessWidget {
                   const SizedBox(height: 10),
                   Text(
                     q.$1,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: kInk,
+                      color: context.artC.ink,
                       height: 1.35,
                       fontFamily: 'Noto Serif SC',
                     ),
@@ -265,7 +266,7 @@ class _QaTab extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: kInk.withOpacity(0.35),
+                      color: context.artC.ink.withOpacity(0.35),
                     ),
                   ),
                 ],
@@ -277,7 +278,7 @@ class _QaTab extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: kInk,
+              color: context.artC.ink,
               borderRadius: BorderRadius.circular(kRadiusLarge),
             ),
             child: Column(
@@ -301,7 +302,7 @@ class _QaTab extends StatelessWidget {
                       children: [
                         Text(
                           c,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: Colors.white,
@@ -331,7 +332,7 @@ class _QaTab extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Center(
+            child: Center(
               child: Text(
                 '我要提问',
                 style: TextStyle(

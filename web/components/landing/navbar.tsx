@@ -36,7 +36,7 @@ export function Navbar() {
             animate={{ opacity: 1, x: 0 }}
             className="text-2xl font-bold font-headline tracking-tighter text-on-surface"
           >
-            <Link href="/">ArtLink</Link>
+            <Link href="/">Artiqore</Link>
           </motion.div>
 
           <div className="hidden md:flex items-center gap-10 font-headline tracking-tight font-medium">

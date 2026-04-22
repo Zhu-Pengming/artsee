@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../widgets/common.dart';
+import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 /// ═══════════════════════════════════════════════════════════════
 /// 合作页 — 完全对齐 _artist_ref CollabView
@@ -31,7 +32,7 @@ class _CasesScreenState extends State<CasesScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kPorcelain,
+      backgroundColor: context.artC.porcelain,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,20 +43,20 @@ class _CasesScreenState extends State<CasesScreen>
               indicatorColor: kCobalt,
               indicatorWeight: 2,
               labelColor: kCobalt,
-              unselectedLabelColor: kInk.withOpacity(0.35),
-              labelStyle: const TextStyle(
+              unselectedLabelColor: context.artC.ink.withOpacity(0.35),
+              labelStyle: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.2,
               ),
-              unselectedLabelStyle: const TextStyle(
+              unselectedLabelStyle: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 1.2,
               ),
               indicatorSize: TabBarIndicatorSize.label,
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              dividerColor: kSilver.withOpacity(0.5),
+              dividerColor: context.artC.silver.withOpacity(0.5),
               tabs: const [
                 Tab(text: '需求广场'),
                 Tab(text: '艺术家库'),
@@ -101,9 +102,9 @@ class _PlazaTab extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 16),
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: kSilver.withOpacity(0.12),
+              color: context.artC.silver.withOpacity(0.12),
               borderRadius: BorderRadius.circular(kRadiusLarge),
-              border: Border.all(color: kSilver.withOpacity(0.4)),
+              border: Border.all(color: context.artC.silver.withOpacity(0.4)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,7 +117,7 @@ class _PlazaTab extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: kInk.withOpacity(0.35),
+                        color: context.artC.ink.withOpacity(0.35),
                         letterSpacing: 1,
                       ),
                     ),
@@ -139,12 +140,12 @@ class _PlazaTab extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 14),
-                const Text(
+                Text(
                   '高端商业空间美学重塑计划',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
-                    color: kInk,
+                    color: context.artC.ink,
                     height: 1.25,
                     fontFamily: 'Noto Serif SC',
                   ),
@@ -161,13 +162,13 @@ class _PlazaTab extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: kInk.withOpacity(0.3),
+                              color: context.artC.ink.withOpacity(0.3),
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             item.$3,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: kCobalt,
@@ -185,7 +186,7 @@ class _PlazaTab extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: kInk.withOpacity(0.3),
+                              color: context.artC.ink.withOpacity(0.3),
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -194,7 +195,7 @@ class _PlazaTab extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
-                              color: kInk.withOpacity(0.7),
+                              color: context.artC.ink.withOpacity(0.7),
                             ),
                           ),
                         ],
@@ -207,10 +208,10 @@ class _PlazaTab extends StatelessWidget {
                   width: double.infinity,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: kInk,
+                    color: context.artC.ink,
                     borderRadius: BorderRadius.circular(999),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text(
                       '立即申请',
                       style: TextStyle(
@@ -256,7 +257,7 @@ class _ArtistsTab extends StatelessWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(kRadiusMedium),
                         child: Image.network(
-                          'https://picsum.photos/seed/art${i}/400/400',
+                          'https://picsum.photos/seed/art$i/400/400',
                           fit: BoxFit.cover,
                           width: double.infinity,
                           height: double.infinity,
@@ -269,28 +270,28 @@ class _ArtistsTab extends StatelessWidget {
                           width: 24,
                           height: 24,
                           decoration: BoxDecoration(
-                            color: kPorcelain,
+                            color: context.artC.porcelain,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: kInk.withOpacity(0.1),
+                                color: context.artC.ink.withOpacity(0.1),
                                 blurRadius: 6,
                               ),
                             ],
                           ),
-                          child: const Icon(Icons.verified, size: 14, color: kCobalt),
+                          child: Icon(Icons.verified, size: 14, color: kCobalt),
                         ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   '艺术家姓名',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: kInk,
+                    color: context.artC.ink,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -299,7 +300,7 @@ class _ArtistsTab extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
-                    color: kInk.withOpacity(0.35),
+                    color: context.artC.ink.withOpacity(0.35),
                     letterSpacing: 0.5,
                   ),
                 ),
@@ -320,7 +321,7 @@ class _ExhibitionsTab extends StatelessWidget {
     final items = [
       (
         '感官之维：当代艺术联展',
-        '上海 · 艺衡美术馆',
+        '上海 · Artiqore 美术馆',
         '2024.11.15 - 2025.01.15',
         'https://picsum.photos/seed/exh1/1200/600'
       ),
@@ -358,10 +359,10 @@ class _ExhibitionsTab extends StatelessWidget {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                             decoration: BoxDecoration(
-                              color: kPorcelain.withOpacity(0.92),
+                              color: context.artC.porcelain.withOpacity(0.92),
                               borderRadius: BorderRadius.circular(999),
                             ),
-                            child: const Text(
+                            child: Text(
                               '正在展出',
                               style: TextStyle(
                                 fontSize: 10,
@@ -379,35 +380,35 @@ class _ExhibitionsTab extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   item.$1,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: kInk,
+                    color: context.artC.ink,
                     fontFamily: 'Noto Serif SC',
                   ),
                 ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    Icon(Icons.location_on_outlined, size: 14, color: kInk.withOpacity(0.35)),
+                    Icon(Icons.location_on_outlined, size: 14, color: context.artC.ink.withOpacity(0.35)),
                     const SizedBox(width: 4),
                     Text(
                       item.$2,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: kInk.withOpacity(0.45),
+                        color: context.artC.ink.withOpacity(0.45),
                       ),
                     ),
                     const SizedBox(width: 14),
-                    Icon(Icons.calendar_today_outlined, size: 12, color: kInk.withOpacity(0.35)),
+                    Icon(Icons.calendar_today_outlined, size: 12, color: context.artC.ink.withOpacity(0.35)),
                     const SizedBox(width: 4),
                     Text(
                       item.$3,
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: kInk.withOpacity(0.45),
+                        color: context.artC.ink.withOpacity(0.45),
                       ),
                     ),
                   ],
@@ -431,7 +432,7 @@ class _ProjectsTab extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(kRadiusLarge + 8),
         child: Container(
-          color: kInk,
+          color: context.artC.ink,
           child: Stack(
             children: [
               Positioned(
@@ -462,7 +463,7 @@ class _ProjectsTab extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    const Text(
+                    Text(
                       '联名项目：\n探索商业与艺术的边界',
                       style: TextStyle(
                         fontSize: 26,
@@ -486,15 +487,15 @@ class _ProjectsTab extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
                       decoration: BoxDecoration(
-                        color: kPorcelain,
+                        color: context.artC.porcelain,
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: const Text(
+                      child: Text(
                         '查看往期案例',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: kInk,
+                          color: context.artC.ink,
                         ),
                       ),
                     ),

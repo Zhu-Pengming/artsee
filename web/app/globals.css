@@ -108,7 +108,7 @@
   }
 }
 
-/* ArtLink landing design tokens */
+/* Artiqore landing design tokens */
 @theme {
   --font-headline: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   
@@ -134,6 +134,43 @@
 
 .glass-nav {
   @apply bg-surface/80 backdrop-blur-xl border-b border-outline-variant/10;
+}
+
+/* 用户手动夜览（html 根上挂 .dark；昼色变量保持不动） */
+html.dark {
+  --color-surface: #0a0a0b;
+  --color-on-surface: #e6e7ea;
+  --color-surface-container-low: #121318;
+  --color-surface-container: #1a1d24;
+  --color-surface-container-high: #22262e;
+  --color-surface-container-highest: #2a2f38;
+  --color-surface-container-lowest: #0a0a0b;
+  --color-on-surface-variant: #9aa0a6;
+  --color-outline-variant: #3a3f45;
+
+  --color-al-shell: #0a0a0b;
+  --color-al-ink: #e8e8eb;
+  --color-al-silver: #2c3038;
+  --color-al-cobalt: #4d6ab8;
+  --color-al-cobalt-muted: #6b8cc4;
+
+  --background: oklch(0.14 0.012 255);
+  --foreground: oklch(0.93 0.008 255);
+  --card: oklch(0.16 0.01 255);
+  --card-foreground: oklch(0.93 0.008 255);
+  --popover: oklch(0.16 0.01 255);
+  --popover-foreground: oklch(0.93 0.008 255);
+  --muted: oklch(0.2 0.012 255);
+  --muted-foreground: oklch(0.66 0.02 255);
+  --accent: oklch(0.22 0.012 255);
+  --accent-foreground: oklch(0.95 0.008 255);
+  --border: oklch(0.3 0.02 255);
+  --input: oklch(0.3 0.02 255);
+}
+
+html.dark .glass-nav {
+  @apply border-white/5;
+  background: color-mix(in oklab, var(--color-surface) 75%, transparent);
 }
 
 .shadow-ambient {

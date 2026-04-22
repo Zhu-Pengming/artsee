@@ -48,7 +48,7 @@ const Header = () => (
     <div className="max-w-7xl mx-auto h-full flex items-center justify-between gap-8">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 bg-cobalt rounded-xl flex items-center justify-center text-porcelain font-serif font-bold text-xl">艺</div>
-        <h1 className="text-xl font-serif font-bold text-ink tracking-tighter hidden sm:block">ArtLink 艺衡</h1>
+        <h1 className="text-xl font-serif font-bold text-ink tracking-tighter hidden sm:block">Artiqore 艺衡</h1>
       </div>
       
       <div className="flex-1 max-w-2xl relative group">

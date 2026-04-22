@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
 
     const client = new OpenAI({ apiKey, baseURL });
 
-    const system = `你是 ArtLink 艺衡的 AI 艺术留学顾问。根据用户咨询问题和下列院校数据，给出专业、友好的中文回答。
+    const system = `你是 Artiqore 艺衡的 AI 艺术留学顾问。根据用户咨询问题和下列院校数据，给出专业、友好的中文回答。
 
 要求：
 1. 只基于提供的院校数据作答，不要编造不存在的信息。

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/backend_api_service.dart';
 import '../../widgets/common.dart';
+import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 class ProgramDetailScreen extends StatefulWidget {
   final int id;
@@ -44,12 +45,12 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kPorcelain,
+      backgroundColor: context.artC.porcelain,
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: kCobalt, strokeWidth: 2.5))
+            ? Center(child: CircularProgressIndicator(color: kCobalt, strokeWidth: 2.5))
             : _error != null
-                ? Center(child: Text('加载失败: $_error', style: const TextStyle(color: kInk)))
+                ? Center(child: Text('加载失败: $_error', style: TextStyle(color: context.artC.ink)))
                 : _buildContent(),
       ),
     );
@@ -99,10 +100,10 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: kSilver.withOpacity(0.35),
+                      color: context.artC.silver.withOpacity(0.35),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.arrow_back_ios, size: 18, color: kInk.withOpacity(0.6)),
+                    child: Icon(Icons.arrow_back_ios, size: 18, color: context.artC.ink.withOpacity(0.6)),
                   ),
                 ),
                 const Spacer(),
@@ -142,7 +143,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                             : Center(
                                 child: Text(
                                   (schoolName ?? '艺').substring(0, 1),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 28,
                                     fontWeight: FontWeight.w700,
                                     color: kCobalt,
@@ -158,10 +159,10 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                         children: [
                           Text(
                             programName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
-                              color: kInk,
+                              color: context.artC.ink,
                               fontFamily: 'Noto Serif SC',
                               height: 1.2,
                             ),
@@ -172,7 +173,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                               degreeFullName,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: kInk.withOpacity(0.45),
+                                color: context.artC.ink.withOpacity(0.45),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -182,7 +183,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                               degreeType,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: kInk.withOpacity(0.45),
+                                color: context.artC.ink.withOpacity(0.45),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -222,7 +223,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             height: 1.6,
-                            color: kInk.withOpacity(0.75),
+                            color: context.artC.ink.withOpacity(0.75),
                           ),
                         ),
                       ],
@@ -242,7 +243,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             height: 1.6,
-                            color: kInk.withOpacity(0.75),
+                            color: context.artC.ink.withOpacity(0.75),
                           ),
                         ),
                       ],
@@ -292,7 +293,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             height: 1.6,
-                            color: kInk.withOpacity(0.75),
+                            color: context.artC.ink.withOpacity(0.75),
                           ),
                         ),
                       ],
@@ -312,7 +313,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             height: 1.6,
-                            color: kInk.withOpacity(0.75),
+                            color: context.artC.ink.withOpacity(0.75),
                           ),
                         ),
                       ],
@@ -360,7 +361,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: kSilver.withOpacity(0.35),
+        color: context.artC.silver.withOpacity(0.35),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
@@ -368,7 +369,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: kInk.withOpacity(0.7),
+          color: context.artC.ink.withOpacity(0.7),
         ),
       ),
     );
@@ -390,10 +391,10 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
   Widget _buildSectionTitle(String text) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w700,
-        color: kInk,
+        color: context.artC.ink,
       ),
     );
   }
@@ -408,7 +409,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
             label,
             style: TextStyle(
               fontSize: 13,
-              color: kInk.withOpacity(0.45),
+              color: context.artC.ink.withOpacity(0.45),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -416,10 +417,10 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: kInk,
+              color: context.artC.ink,
             ),
           ),
         ),

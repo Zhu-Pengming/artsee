@@ -8,6 +8,7 @@ import type { UserProfile, ApplicationTracker } from '@/lib/supabase/types'
 import { resultLabel, resultColor, timeAgo } from '@/lib/utils'
 import { signOut, createTrackerEntry, updateProfile } from '@/lib/actions'
 import { DraftModal } from '@/components/profile/draft-modal'
+import { ArtseeThemeToggle } from '@/components/artsee-theme-toggle'
 
 const profileTabs = ['申请追踪', '我的案例', '我的收藏'] as const
 
@@ -78,6 +79,7 @@ export function ProfileClient({ profile, trackers, myCases, favorites }: Props) 
                 <Pencil size={14} />
                 编辑资料
               </button>
+              <ArtseeThemeToggle />
               <button
                 type="button"
                 className="bg-al-silver/60 text-al-ink/60 p-3 rounded-full hover:bg-al-silver transition-colors"

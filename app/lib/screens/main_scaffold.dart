@@ -11,12 +11,14 @@ import 'explore/explore_screen.dart';
 import 'forum/forum_screen.dart';
 import 'home/home_screen.dart';
 import 'profile/profile_screen.dart';
+import 'tools/ai_consult_screen.dart';
 import '../services/supabase_service.dart';
+import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 final _forumKey = GlobalKey<ForumScreenState>();
 
 /// ═══════════════════════════════════════════════════════════════
-/// ArtLink 艺衡 · 青花瓷典藏版 — 总入口（对齐艺术家 Web 原型）
+/// Artiqore 艺衡 · 青花瓷典藏版 — 总入口（对齐艺术家 Web 原型）
 /// 底部：悬浮式深色胶囊导航；右下：情境化「+」按钮
 /// 子页：首页、发现、合作、学习、我的
 /// ═══════════════════════════════════════════════════════════════
@@ -60,10 +62,9 @@ class _MainScaffoldState extends State<MainScaffold> {
   ];
 
   void _openAiConsult() {
-    setState(() => _currentIndex = 2);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _forumKey.currentState?.switchToToolsAndOpenAiConsult();
-    });
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const AiConsultScreen()),
+    );
   }
 
   void _showCreateSheet() {
@@ -91,7 +92,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: kInk.withOpacity(0.12),
+                        color: context.artC.ink.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -135,7 +136,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     return TextButton(
       onPressed: onTap,
       style: TextButton.styleFrom(
-        foregroundColor: kInk,
+        foregroundColor: context.artC.ink,
         padding: const EdgeInsets.all(16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kRadiusMedium)),
       ),
@@ -161,10 +162,10 @@ class _MainScaffoldState extends State<MainScaffold> {
           const SizedBox(height: 10),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: kInk,
+              color: context.artC.ink,
             ),
           ),
         ],
@@ -188,7 +189,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     const headerHeight = 56.0;
 
     return Scaffold(
-      backgroundColor: kPorcelain,
+      backgroundColor: context.artC.porcelain,
       extendBody: true,
       body: Stack(
         fit: StackFit.expand,
@@ -201,7 +202,7 @@ class _MainScaffoldState extends State<MainScaffold> {
             child: IndexedStack(
               index: _currentIndex,
               children: [
-                HomeScreen(onAiConsultTap: _openAiConsult),
+                const HomeScreen(),
                 const ExploreScreen(),
                 ForumScreen(key: _forumKey),
                 const CasesScreen(),
@@ -235,7 +236,19 @@ class _MainScaffoldState extends State<MainScaffold> {
                         padding: const EdgeInsets.only(right: 16, bottom: 8),
                         child: Align(
                           alignment: Alignment.centerRight,
-                          child: _ArtLinkFab(onPressed: _showCreateSheet),
+                          child: _ArtiqoreFab(onPressed: _showCreateSheet),
+                        ),
+                      ),
+                    if (_currentIndex == 0)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          right: 16,
+                          bottom: 8,
+                          left: 0,
+                        ),
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: _AiConsultFab(onPressed: _openAiConsult),
                         ),
                       ),
                     Padding(
@@ -257,12 +270,12 @@ class _MainScaffoldState extends State<MainScaffold> {
       constraints: const BoxConstraints(maxWidth: 520),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: kInk.withOpacity(0.92),
+        color: context.artC.ink.withOpacity(0.92),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: kPorcelain.withOpacity(0.12)),
+        border: Border.all(color: context.artC.porcelain.withOpacity(0.12)),
         boxShadow: [
           BoxShadow(
-            color: kInk.withOpacity(0.35),
+            color: context.artC.ink.withOpacity(0.35),
             blurRadius: 28,
             offset: const Offset(0, 12),
           ),
@@ -341,20 +354,20 @@ class _HeaderState extends State<_Header> {
     return Container(
       height: widget.height,
       decoration: BoxDecoration(
-        color: kPorcelain.withOpacity(0.92),
+        color: context.artC.porcelain.withOpacity(0.92),
         border: Border(
-          bottom: BorderSide(color: kSilver.withOpacity(0.35)),
+          bottom: BorderSide(color: context.artC.silver.withOpacity(0.35)),
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          const Text(
-            'ArtLink',
+          Text(
+            'Artiqore',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: kInk,
+              color: context.artC.ink,
               letterSpacing: 0.3,
             ),
           ),
@@ -364,20 +377,20 @@ class _HeaderState extends State<_Header> {
             child: Container(
               height: 34,
               decoration: BoxDecoration(
-                color: kSilver.withOpacity(0.35),
+                color: context.artC.silver.withOpacity(0.35),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Row(
                 children: [
                   const SizedBox(width: 12),
-                  Icon(Icons.search, size: 16, color: kInk.withOpacity(0.35)),
+                  Icon(Icons.search, size: 16, color: context.artC.ink.withOpacity(0.35)),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       '搜索艺术家、作品、机构、课程...',
                       style: TextStyle(
                         fontSize: 12,
-                        color: kInk.withOpacity(0.35),
+                        color: context.artC.ink.withOpacity(0.35),
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -392,14 +405,14 @@ class _HeaderState extends State<_Header> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.location_on, size: 14, color: kInk.withOpacity(0.45)),
+              Icon(Icons.location_on, size: 14, color: context.artC.ink.withOpacity(0.45)),
               const SizedBox(width: 2),
               Text(
                 '上海',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: kInk.withOpacity(0.6),
+                  color: context.artC.ink.withOpacity(0.6),
                 ),
               ),
             ],
@@ -408,17 +421,17 @@ class _HeaderState extends State<_Header> {
           // Notification
           Stack(
             children: [
-              Icon(Icons.notifications_none, size: 22, color: kInk.withOpacity(0.55)),
+              Icon(Icons.notifications_none, size: 22, color: context.artC.ink.withOpacity(0.55)),
               Positioned(
                 top: 2,
                 right: 2,
                 child: Container(
                   width: 7,
                   height: 7,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: Colors.red,
                     shape: BoxShape.circle,
-                    border: Border.fromBorderSide(BorderSide(color: kPorcelain, width: 1.5)),
+                    border: Border.fromBorderSide(BorderSide(color: context.artC.porcelain, width: 1.5)),
                   ),
                 ),
               ),
@@ -435,7 +448,7 @@ class _HeaderState extends State<_Header> {
                       color: kCobalt,
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: const Text(
+                    child: Text(
                       '登录',
                       style: TextStyle(
                         fontSize: 11,
@@ -451,9 +464,9 @@ class _HeaderState extends State<_Header> {
                     width: 30,
                     height: 30,
                     decoration: BoxDecoration(
-                      color: kSilver.withOpacity(0.4),
+                      color: context.artC.silver.withOpacity(0.4),
                       shape: BoxShape.circle,
-                      border: Border.all(color: kPorcelain, width: 2),
+                      border: Border.all(color: context.artC.porcelain, width: 2),
                     ),
                     child: ClipOval(
                       child: _avatarUrl != null
@@ -477,7 +490,7 @@ class _HeaderState extends State<_Header> {
     return Center(
       child: Text(
         ch,
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: kCobalt),
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: kCobalt),
       ),
     );
   }
@@ -495,11 +508,64 @@ class _NavItem {
   });
 }
 
-/// 右下角「+」：不用 InkWell，避免 Web 上方形水波纹与浅蓝渐变伪影
-class _ArtLinkFab extends StatelessWidget {
+/// 首页悬浮 AI（对齐稿件 AIAssistant：渐变胶囊 + 星标）
+class _AiConsultFab extends StatelessWidget {
   final VoidCallback onPressed;
 
-  const _ArtLinkFab({required this.onPressed});
+  const _AiConsultFab({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onPressed,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 52),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            gradient: const LinearGradient(
+              colors: [kCobalt, Color(0xFF1E3A5F)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: kCobalt.withOpacity(0.42),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.auto_awesome, color: Colors.white.withOpacity(0.95), size: 22),
+              const SizedBox(width: 8),
+              Text(
+                'AI 助手',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 右下角「+」：不用 InkWell，避免 Web 上方形水波纹与浅蓝渐变伪影
+class _ArtiqoreFab extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const _ArtiqoreFab({required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -516,13 +582,13 @@ class _ArtLinkFab extends StatelessWidget {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: kInk.withOpacity(0.22),
+                color: context.artC.ink.withOpacity(0.22),
                 blurRadius: 14,
                 offset: const Offset(0, 6),
               ),
             ],
           ),
-          child: const Icon(Icons.add, color: Colors.white, size: 28),
+          child: Icon(Icons.add, color: Colors.white, size: 28),
         ),
       ),
     );
@@ -569,12 +635,12 @@ class _NavButtonState extends State<_NavButton> {
               vertical: 8,
             ),
             decoration: BoxDecoration(
-              color: widget.isSelected ? kPorcelain : Colors.transparent,
+              color: widget.isSelected ? context.artC.porcelain : Colors.transparent,
               borderRadius: BorderRadius.circular(999),
               boxShadow: widget.isSelected
                   ? [
                       BoxShadow(
-                        color: kInk.withOpacity(0.12),
+                        color: context.artC.ink.withOpacity(0.12),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -589,17 +655,17 @@ class _NavButtonState extends State<_NavButton> {
                   size: 20,
                   color: widget.isSelected
                       ? kCobalt
-                      : kPorcelain.withOpacity(0.42),
+                      : context.artC.porcelain.withOpacity(0.42),
                 ),
                 if (widget.isSelected) ...[
                   const SizedBox(width: 6),
                   Text(
                     widget.item.label,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.8,
-                      color: kInk,
+                      color: context.artC.ink,
                     ),
                   ),
                 ],

@@ -15,11 +15,14 @@ export function Hero() {
           transition={{ duration: 0.8, ease: "easeOut" }}
           className="lg:col-span-6 z-10"
         >
-          <span className="uppercase tracking-[0.2em] text-xs font-semibold text-secondary mb-6 block">
-            {t('eyebrow')}
-          </span>
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold font-headline leading-[0.95] tracking-tight text-on-surface mb-8 whitespace-pre-line">
-            {t('title')}
+          {t('eyebrow').trim() !== '' && (
+            <span className="uppercase tracking-[0.2em] text-xs font-semibold text-secondary mb-6 block">
+              {t('eyebrow')}
+            </span>
+          )}
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold font-headline leading-[0.95] tracking-tight text-on-surface mb-8">
+            <span className="block whitespace-pre-line">{t('title')}</span>
+            <span className="mt-1 block">{t('subtitle')}</span>
           </h1>
           <p className="text-lg md:text-xl text-on-surface-variant max-w-lg leading-relaxed mb-10 font-light">
             {t('description')}

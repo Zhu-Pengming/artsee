@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../services/storage_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/common.dart';
+import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 /// 注册后冷启动：选择感兴趣的艺术领域（写入 `user_profiles.interested_categories`）
 class ArtInterestOnboardingScreen extends StatefulWidget {
@@ -99,7 +100,7 @@ class _ArtInterestOnboardingScreenState extends State<ArtInterestOnboardingScree
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kPorcelain,
+      backgroundColor: context.artC.porcelain,
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -109,12 +110,12 @@ class _ArtInterestOnboardingScreenState extends State<ArtInterestOnboardingScree
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       '完善你的艺术画像',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
-                        color: kInk,
+                        color: context.artC.ink,
                         height: 1.2,
                       ),
                     ),
@@ -123,7 +124,7 @@ class _ArtInterestOnboardingScreenState extends State<ArtInterestOnboardingScree
                       '选择你感兴趣或擅长的领域，帮助我们为你推荐更相关的内容。',
                       style: TextStyle(
                         fontSize: 14,
-                        color: kInk.withOpacity(0.55),
+                        color: context.artC.ink.withOpacity(0.55),
                         height: 1.45,
                       ),
                     ),
@@ -133,7 +134,7 @@ class _ArtInterestOnboardingScreenState extends State<ArtInterestOnboardingScree
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: kInk.withOpacity(0.75),
+                        color: context.artC.ink.withOpacity(0.75),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -147,11 +148,11 @@ class _ArtInterestOnboardingScreenState extends State<ArtInterestOnboardingScree
                             decoration: BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
-                              border: Border.all(color: kSilver, width: 2),
+                              border: Border.all(color: context.artC.silver, width: 2),
                               boxShadow: [kShadowCard],
                             ),
                             child: _uploading.contains('avatar')
-                                ? const Padding(
+                                ? Padding(
                                     padding: EdgeInsets.all(20),
                                     child: CircularProgressIndicator(strokeWidth: 2, color: kCobalt),
                                   )
@@ -162,17 +163,17 @@ class _ArtInterestOnboardingScreenState extends State<ArtInterestOnboardingScree
                                           width: 72,
                                           height: 72,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => const Icon(Icons.add_a_photo_outlined, color: kCobalt, size: 28),
+                                          errorBuilder: (_, __, ___) => Icon(Icons.add_a_photo_outlined, color: kCobalt, size: 28),
                                         ),
                                       )
-                                    : const Icon(Icons.add_a_photo_outlined, color: kCobalt, size: 28),
+                                    : Icon(Icons.add_a_photo_outlined, color: kCobalt, size: 28),
                           ),
                         ),
                       ],
                     ),
                     if (_error != null) ...[
                       const SizedBox(height: 12),
-                      Text(_error!, style: const TextStyle(fontSize: 12, color: Colors.red)),
+                      Text(_error!, style: TextStyle(fontSize: 12, color: Colors.red)),
                     ],
                   ],
                 ),
@@ -200,7 +201,7 @@ class _ArtInterestOnboardingScreenState extends State<ArtInterestOnboardingScree
                           color: on ? kCobalt.withOpacity(0.12) : Colors.white,
                           borderRadius: BorderRadius.circular(kRadiusMedium),
                           border: Border.all(
-                            color: on ? kCobalt : kSilver.withOpacity(0.8),
+                            color: on ? kCobalt : context.artC.silver.withOpacity(0.8),
                             width: on ? 1.5 : 1,
                           ),
                           boxShadow: on ? [kShadowCard] : null,
@@ -208,7 +209,7 @@ class _ArtInterestOnboardingScreenState extends State<ArtInterestOnboardingScree
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(t.icon, color: on ? kCobalt : kInk.withOpacity(0.45), size: 26),
+                            Icon(t.icon, color: on ? kCobalt : context.artC.ink.withOpacity(0.45), size: 26),
                             const SizedBox(height: 6),
                             Text(
                               t.label,
@@ -218,7 +219,7 @@ class _ArtInterestOnboardingScreenState extends State<ArtInterestOnboardingScree
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: on ? kCobalt : kInk.withOpacity(0.75),
+                                color: on ? kCobalt : context.artC.ink.withOpacity(0.75),
                                 height: 1.2,
                               ),
                             ),
@@ -238,7 +239,7 @@ class _ArtInterestOnboardingScreenState extends State<ArtInterestOnboardingScree
                   children: [
                     Text(
                       '已选 ${_selected.length} / 8（至少 2 个）',
-                      style: TextStyle(fontSize: 12, color: kInk.withOpacity(0.45)),
+                      style: TextStyle(fontSize: 12, color: context.artC.ink.withOpacity(0.45)),
                     ),
                     const SizedBox(height: 16),
                     SizedBox(
@@ -259,7 +260,7 @@ class _ArtInterestOnboardingScreenState extends State<ArtInterestOnboardingScree
                                 height: 22,
                                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                               )
-                            : const Text('进入 ArtLink', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                            : Text('进入 Artiqore', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                       ),
                     ),
                   ],

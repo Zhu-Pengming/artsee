@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../services/storage_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/common.dart';
+import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 class ProfileEditScreen extends StatefulWidget {
   final Map<String, dynamic>? initialProfile;
@@ -101,18 +102,18 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kPorcelain,
+      backgroundColor: context.artC.porcelain,
       appBar: AppBar(
-        backgroundColor: kPorcelain,
+        backgroundColor: context.artC.porcelain,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: kInk, size: 20),
+          icon: Icon(Icons.arrow_back_ios, color: context.artC.ink, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           '编辑资料',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: kInk),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: context.artC.ink),
         ),
         actions: [
           TextButton(
@@ -123,7 +124,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     height: 16,
                     child: CircularProgressIndicator(color: kCobalt, strokeWidth: 2),
                   )
-                : const Text(
+                : Text(
                     '保存',
                     style: TextStyle(
                       fontSize: 14,
@@ -149,12 +150,12 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                         width: 120,
                         height: 120,
                         decoration: BoxDecoration(
-                          color: kSilver.withOpacity(0.35),
+                          color: context.artC.silver.withOpacity(0.35),
                           shape: BoxShape.circle,
-                          border: Border.all(color: kPorcelain, width: 4),
+                          border: Border.all(color: context.artC.porcelain, width: 4),
                           boxShadow: [
                             BoxShadow(
-                              color: kInk.withOpacity(0.08),
+                              color: context.artC.ink.withOpacity(0.08),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -191,9 +192,9 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                           decoration: BoxDecoration(
                             color: kCobalt,
                             shape: BoxShape.circle,
-                            border: Border.all(color: kPorcelain, width: 3),
+                            border: Border.all(color: context.artC.porcelain, width: 3),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.camera_alt,
                             size: 18,
                             color: Colors.white,
@@ -230,7 +231,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 const SizedBox(height: 20),
                 Text(
                   _error!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     color: Color(0xFFC62828),
                     height: 1.5,
@@ -253,7 +254,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     return Center(
       child: Text(
         ch,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 44,
           fontWeight: FontWeight.w700,
           color: kCobalt,
@@ -268,7 +269,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
       style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w600,
-        color: kInk.withOpacity(0.75),
+        color: context.artC.ink.withOpacity(0.75),
       ),
     );
   }
@@ -286,10 +287,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         hintText: hint,
         hintStyle: TextStyle(
           fontSize: 14,
-          color: kInk.withOpacity(0.35),
+          color: context.artC.ink.withOpacity(0.35),
         ),
         filled: true,
-        fillColor: kSilver.withOpacity(0.35),
+        fillColor: context.artC.silver.withOpacity(0.35),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -304,7 +305,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           borderSide: BorderSide.none,
         ),
       ),
-      style: const TextStyle(fontSize: 15, color: kInk),
+      style: TextStyle(fontSize: 15, color: context.artC.ink),
     );
   }
 }

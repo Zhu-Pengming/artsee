@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../services/backend_api_service.dart';
 import '../../widgets/common.dart';
-import '../schools/school_detail_screen.dart';
+import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 /// 专业列表 — 分页查询
 class ProgramListScreen extends StatefulWidget {
@@ -68,7 +68,7 @@ class _ProgramListScreenState extends State<ProgramListScreen> {
   @override
   Widget build(BuildContext context) {
     if (_items.isEmpty && _loading) {
-      return const Center(
+      return Center(
         child: CircularProgressIndicator(color: kCobalt, strokeWidth: 2.5),
       );
     }
@@ -78,12 +78,12 @@ class _ProgramListScreenState extends State<ProgramListScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('加载失败: $_error', style: const TextStyle(color: kInk)),
+            Text('加载失败: $_error', style: TextStyle(color: context.artC.ink)),
             const SizedBox(height: 12),
             ElevatedButton(
               onPressed: _refresh,
               style: ElevatedButton.styleFrom(backgroundColor: kCobalt),
-              child: const Text('重试'),
+              child: Text('重试'),
             ),
           ],
         ),
@@ -91,7 +91,7 @@ class _ProgramListScreenState extends State<ProgramListScreen> {
     }
 
     if (_items.isEmpty) {
-      return const Center(child: Text('暂无专业数据', style: TextStyle(color: kInk)));
+      return Center(child: Text('暂无专业数据', style: TextStyle(color: context.artC.ink)));
     }
 
     return RefreshIndicator(
@@ -104,7 +104,7 @@ class _ProgramListScreenState extends State<ProgramListScreen> {
         itemBuilder: (context, index) {
           if (index >= _items.length) {
             _loadMore();
-            return const Padding(
+            return Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Center(
                 child: SizedBox(
@@ -156,16 +156,16 @@ class _ProgramCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     program.programName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: kInk,
+                      color: context.artC.ink,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Icon(Icons.chevron_right, size: 20, color: kInk.withOpacity(0.25)),
+                Icon(Icons.chevron_right, size: 20, color: context.artC.ink.withOpacity(0.25)),
               ],
             ),
             const SizedBox(height: 8),
@@ -174,7 +174,7 @@ class _ProgramCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: kSilver.withOpacity(0.4),
+                    color: context.artC.silver.withOpacity(0.4),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -182,7 +182,7 @@ class _ProgramCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
-                      color: kInk.withOpacity(0.6),
+                      color: context.artC.ink.withOpacity(0.6),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -239,7 +239,7 @@ class _MetaText extends StatelessWidget {
       text,
       style: TextStyle(
         fontSize: 11,
-        color: kInk.withOpacity(0.45),
+        color: context.artC.ink.withOpacity(0.45),
       ),
     );
   }

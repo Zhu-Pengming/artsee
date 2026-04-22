@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/backend_api_service.dart';
 import '../../widgets/common.dart';
+import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 class SchoolDetailScreen extends StatefulWidget {
   final String id;
@@ -44,12 +45,12 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kPorcelain,
+      backgroundColor: context.artC.porcelain,
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: kCobalt, strokeWidth: 2.5))
+            ? Center(child: CircularProgressIndicator(color: kCobalt, strokeWidth: 2.5))
             : _error != null
-                ? Center(child: Text('加载失败: $_error', style: const TextStyle(color: kInk)))
+                ? Center(child: Text('加载失败: $_error', style: TextStyle(color: context.artC.ink)))
                 : _buildContent(),
       ),
     );
@@ -82,10 +83,10 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: kSilver.withOpacity(0.35),
+                      color: context.artC.silver.withOpacity(0.35),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.arrow_back_ios, size: 18, color: kInk.withOpacity(0.6)),
+                    child: Icon(Icons.arrow_back_ios, size: 18, color: context.artC.ink.withOpacity(0.6)),
                   ),
                 ),
                 const Spacer(),
@@ -116,7 +117,7 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
                             : Center(
                                 child: Text(
                                   nameZh.substring(0, 1),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 36,
                                     fontWeight: FontWeight.w700,
                                     color: kCobalt,
@@ -133,10 +134,10 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
                         children: [
                           Text(
                             nameZh,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.w700,
-                              color: kInk,
+                              color: context.artC.ink,
                               height: 1.2,
                             ),
                           ),
@@ -146,7 +147,7 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
                               nameEn,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: kInk.withOpacity(0.45),
+                                color: context.artC.ink.withOpacity(0.45),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -235,10 +236,10 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
   Widget _buildSectionTitle(String text) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w700,
-        color: kInk,
+        color: context.artC.ink,
       ),
     );
   }
@@ -253,7 +254,7 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
             label,
             style: TextStyle(
               fontSize: 13,
-              color: kInk.withOpacity(0.45),
+              color: context.artC.ink.withOpacity(0.45),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -261,10 +262,10 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: kInk,
+              color: context.artC.ink,
             ),
           ),
         ),
@@ -284,7 +285,7 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w700,
-            color: dimmed ? kInk.withOpacity(0.25) : kCobalt,
+            color: dimmed ? context.artC.ink.withOpacity(0.25) : kCobalt,
           ),
         ),
         const SizedBox(height: 6),
@@ -295,7 +296,7 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 11,
-            color: kInk.withOpacity(0.4),
+            color: context.artC.ink.withOpacity(0.4),
             fontWeight: FontWeight.w500,
           ),
         ),

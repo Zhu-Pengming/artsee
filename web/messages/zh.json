@@ -8,8 +8,9 @@
     "signIn": "登录"
   },
   "hero": {
-    "eyebrow": "数字策展人",
-    "title": "ArtLink：\n数字策展人",
+    "eyebrow": "",
+    "title": "Artiqore",
+    "subtitle": "数字策展人",
     "description": "连接先锋创作与奢侈品收藏的桥梁。为现代鉴赏家与专业艺术家打造的专属平台。",
     "exploreCollection": "探索作品集",
     "ourThesis": "我们的理念",
@@ -18,7 +19,7 @@
   },
   "discover": {
     "title": "全球 visionary 集结",
-    "description": "ArtLink 精心构建了一个横跨大陆的专业网络。从柏林的新锐到东京的大师，我们的平台让您前所未有地触达全球认证的艺术家与策展人。",
+    "description": "Artiqore 精心构建了一个横跨大陆的专业网络。从柏林的新锐到东京的大师，我们的平台让您前所未有地触达全球认证的艺术家与策展人。",
     "viewDirectory": "查看艺术家名录",
     "artists": {
       "elias": {
@@ -41,7 +42,7 @@
   "collaborate": {
     "eyebrow": "奢侈品合作",
     "title": "升华空间，定义品牌。",
-    "description": "我们与全球最具声望的酒店集团与奢侈品牌合作，将定制艺术收藏融入其品牌 DNA。ArtLink 提供端到端的策展、物流与叙事服务。",
+    "description": "我们与全球最具声望的酒店集团与奢侈品牌合作，将定制艺术收藏融入其品牌 DNA。Artiqore 提供端到端的策展、物流与叙事服务。",
     "hospitalityTitle": "酒店整合",
     "hospitalityDesc": "将酒店套房与公共空间转化为沉浸式画廊体验。",
     "brandTitle": "品牌协同",
@@ -50,7 +51,7 @@
   },
   "learn": {
     "title": "精通艺术市场",
-    "description": "ArtLink 不仅是一个市场，更是一所学院。我们提供驾驭专业艺术复杂格局所需的智识框架。",
+    "description": "Artiqore 不仅是一个市场，更是一所学院。我们提供驾驭专业艺术复杂格局所需的智识框架。",
     "educationTitle": "专业艺术教育",
     "educationDesc": "深入探索艺术史、当代理论与批判分析的课程，专为有识之士打造。",
     "exploreCurriculum": "探索课程",
@@ -71,7 +72,7 @@
     "guidelines": "展览指南",
     "press": "媒体资料",
     "contact": "联系我们",
-    "copyright": "© 2024 ArtLink. 保留所有权利。"
+    "copyright": "© 2024 Artiqore. 保留所有权利。"
   },
   "localeSwitcher": {
     "zh": "中文",

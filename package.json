@@ -17,6 +17,8 @@
     "test:backend": "node tests/backend/supabase-health.mjs",
     "test:web": "npm run test --workspace=web",
     "ensure:dev-user": "node scripts/ensure-dev-test-user.mjs",
+    "e2e:admin": "node scripts/browser-admin-e2e.mjs",
+    "postinstall:playwright": "npx playwright install chromium",
     "deploy:web": "bash scripts/deploy-web.sh"
   },
   "repository": {
@@ -36,5 +38,8 @@
     "@supabase/supabase-js": "^2.49.1",
     "axios": "^1.13.6",
     "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.1"
   }
 }

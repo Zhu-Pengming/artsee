@@ -143,7 +143,7 @@ export function CollabPageClient() {
           {[
             {
               title: "感官之维：当代艺术联展",
-              location: "上海 · 艺衡美术馆",
+              location: "上海 · Artiqore 美术馆",
               date: "2024.11.15 - 2025.01.15",
               img: "https://picsum.photos/seed/exh1/1200/600",
             },

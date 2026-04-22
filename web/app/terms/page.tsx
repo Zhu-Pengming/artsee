@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "服务条款 — ArtLink",
-  description: "ArtLink 服务条款与用户协议",
+  title: "服务条款 — Artiqore",
+  description: "Artiqore 服务条款与用户协议",
 };
 
 export default function TermsPage() {
@@ -20,14 +20,14 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-bold text-on-surface mb-3">1. 接受条款</h2>
             <p className="leading-relaxed">
-              欢迎使用 ArtLink（以下简称"本平台"）。当您访问、浏览或使用本平台提供的任何服务时，即表示您已阅读、理解并同意受本服务条款的约束。如果您不同意本条款的任何内容，请立即停止使用本平台服务。
+              欢迎使用 Artiqore（以下简称"本平台"）。当您访问、浏览或使用本平台提供的任何服务时，即表示您已阅读、理解并同意受本服务条款的约束。如果您不同意本条款的任何内容，请立即停止使用本平台服务。
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-bold text-on-surface mb-3">2. 服务内容</h2>
             <p className="leading-relaxed mb-3">
-              ArtLink 是一个面向艺术留学领域的综合性数字平台，致力于连接艺术家、策展人、收藏家及艺术爱好者。我们提供的服务包括但不限于：
+              Artiqore 是一个面向艺术留学领域的综合性数字平台，致力于连接艺术家、策展人、收藏家及艺术爱好者。我们提供的服务包括但不限于：
             </p>
             <ul className="list-disc pl-5 space-y-2 leading-relaxed">
               <li>艺术院校与项目信息展示与查询</li>
@@ -63,10 +63,10 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-bold text-on-surface mb-3">5. 知识产权</h2>
             <p className="leading-relaxed">
-              本平台的所有内容，包括但不限于文字、图片、视频、音频、软件、代码、商标、标识及页面设计，均受知识产权法律法规保护，归 ArtLink 或其权利人所有。未经书面许可，任何个人或组织不得复制、修改、传播、出售或用于商业目的。
+              本平台的所有内容，包括但不限于文字、图片、视频、音频、软件、代码、商标、标识及页面设计，均受知识产权法律法规保护，归 Artiqore 或其权利人所有。未经书面许可，任何个人或组织不得复制、修改、传播、出售或用于商业目的。
             </p>
             <p className="leading-relaxed mt-3">
-              用户在本平台发布的内容，其知识产权归用户本人所有。您授予 ArtLink 一项非独占的、全球性的、免费的许可，允许我们在平台运营所需的范围内使用、展示、复制和分发该内容。
+              用户在本平台发布的内容，其知识产权归用户本人所有。您授予 Artiqore 一项非独占的、全球性的、免费的许可，允许我们在平台运营所需的范围内使用、展示、复制和分发该内容。
             </p>
           </section>
 
@@ -90,7 +90,7 @@ export default function TermsPage() {
               如您对本服务条款有任何疑问，请通过以下方式与我们联系：
             </p>
             <p className="leading-relaxed mt-2">
-              电子邮箱：contact@artlink.app
+              电子邮箱：contact@artiqore.com
             </p>
           </section>
         </div>

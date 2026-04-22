@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Artsee App</string>
+	<string>Artiqore</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -60,7 +60,7 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>用于选择头像与上传图片到 ArtLink</string>
+	<string>用于选择头像与上传图片到 Artiqore</string>
 	<key>NSCameraUsageDescription</key>
 	<string>用于拍摄头像（可选）</string>
 	<key>UISupportedInterfaceOrientations~ipad</key>

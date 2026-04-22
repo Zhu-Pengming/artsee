@@ -113,7 +113,7 @@ export default function LoginPage() {
             <span className="text-sm font-medium">返回首页</span>
           </Link>
           <h1 className="text-5xl xl:text-6xl font-extrabold font-headline leading-[0.95] tracking-tight text-on-surface mb-8 whitespace-pre-line">
-            {'ArtLink:\n你的艺术留学\n第一站'}
+            {'Artiqore:\n你的艺术留学\n第一站'}
           </h1>
           <p className="text-lg md:text-xl text-on-surface-variant max-w-md leading-relaxed mb-10 font-light">
             连接先锋创作与奢侈品收藏的桥梁。加入我们，开启你的艺术留学之旅。
@@ -146,7 +146,7 @@ export default function LoginPage() {
             <div className="w-14 h-14 rounded-md bg-primary flex items-center justify-center mb-3 shadow-lg shadow-primary/10">
               <span className="text-on-primary text-2xl font-bold font-headline">艺</span>
             </div>
-            <h2 className="text-2xl font-bold font-headline text-on-surface">欢迎登录 ArtLink</h2>
+            <h2 className="text-2xl font-bold font-headline text-on-surface">欢迎登录 Artiqore</h2>
             <p className="text-sm text-on-surface-variant mt-1">发现、收藏和分享艺术品</p>
           </div>
 

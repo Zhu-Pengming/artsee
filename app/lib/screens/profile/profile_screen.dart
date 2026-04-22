@@ -6,6 +6,8 @@ import '../auth/login_screen.dart';
 import '../programs/program_detail_screen.dart';
 import '../schools/school_detail_screen.dart';
 import 'profile_edit_screen.dart';
+import 'package:artsee_app/theme/artsee_theme_controller.dart';
+import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 /// ═══════════════════════════════════════════════════════════════
 /// 我的页 — 完全对齐 _artist_ref ProfileView，接入真实用户数据
@@ -34,10 +36,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
     final p = await SupabaseService.fetchProfile();
-    if (mounted) setState(() {
+    if (mounted) {
+      setState(() {
       _profile = p;
       _loading = false;
     });
+    }
   }
 
   Future<void> _openLogin() async {
@@ -51,11 +55,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('退出登录'),
-        content: const Text('确定要退出当前账号吗？'),
+        title: Text('退出登录'),
+        content: Text('确定要退出当前账号吗？'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确定')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('确定')),
         ],
       ),
     );
@@ -88,8 +92,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return _buildGuestView();
     }
     if (_loading) {
-      return const Scaffold(
-        backgroundColor: kPorcelain,
+      return Scaffold(
+        backgroundColor: context.artC.porcelain,
         body: Center(child: CircularProgressIndicator(color: kCobalt, strokeWidth: 2.5)),
       );
     }
@@ -98,59 +102,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildGuestView() {
     return Scaffold(
-      backgroundColor: kPorcelain,
+      backgroundColor: context.artC.porcelain,
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 88,
-                  height: 88,
-                  decoration: BoxDecoration(
-                    color: kSilver.withOpacity(0.35),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: Text(
-                      '艺',
-                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: kCobalt),
+        child: Stack(
+          children: [
+            Positioned(
+              top: 4,
+              right: 8,
+              child: ListenableBuilder(
+                listenable: ArtseeThemeController.instance,
+                builder: (context, _) {
+                  final dark = ArtseeThemeController.instance.isDark;
+                  return IconButton(
+                    onPressed: () => ArtseeThemeController.instance.toggle(),
+                    icon: Icon(
+                      dark ? Icons.wb_sunny_outlined : Icons.nightlight_round,
+                      color: context.artC.ink.withOpacity(0.55),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  '登录后解锁全部功能',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: kInk),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '申请追踪 · 案例分享 · 论坛互动',
-                  style: TextStyle(fontSize: 13, color: kInk.withOpacity(0.45)),
-                ),
-                const SizedBox(height: 24),
-                GestureDetector(
-                  onTap: _openLogin,
-                  child: Container(
-                    width: double.infinity,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: kCobalt,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        '登录 / 注册',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                  );
+                },
+              ),
+            ),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 88,
+                      height: 88,
+                      decoration: BoxDecoration(
+                        color: context.artC.silver.withOpacity(0.35),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '艺',
+                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: kCobalt),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 20),
+                    Text(
+                      '登录后解锁全部功能',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: context.artC.ink),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '申请追踪 · 案例分享 · 论坛互动',
+                      style: TextStyle(fontSize: 13, color: context.artC.ink.withOpacity(0.45)),
+                    ),
+                    const SizedBox(height: 24),
+                    GestureDetector(
+                      onTap: _openLogin,
+                      child: Container(
+                        width: double.infinity,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: kCobalt,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '登录 / 注册',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -158,7 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildProfileView() {
     return Scaffold(
-      backgroundColor: kPorcelain,
+      backgroundColor: context.artC.porcelain,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -187,12 +212,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               width: 110,
               height: 110,
               decoration: BoxDecoration(
-                color: kSilver.withOpacity(0.3),
+                color: context.artC.silver.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: kPorcelain, width: 4),
+                border: Border.all(color: context.artC.porcelain, width: 4),
                 boxShadow: [
                   BoxShadow(
-                    color: kInk.withOpacity(0.1),
+                    color: context.artC.ink.withOpacity(0.1),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -219,15 +244,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   decoration: BoxDecoration(
                     color: kCobalt,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: kPorcelain, width: 3),
+                    border: Border.all(color: context.artC.porcelain, width: 3),
                     boxShadow: [
                       BoxShadow(
-                        color: kInk.withOpacity(0.15),
+                        color: context.artC.ink.withOpacity(0.15),
                         blurRadius: 10,
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.verified, size: 20, color: Colors.white),
+                  child: Icon(Icons.verified, size: 20, color: Colors.white),
                 ),
               ),
           ],
@@ -239,10 +264,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               Text(
                 _nickname,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w700,
-                  color: kInk,
+                  color: context.artC.ink,
                   fontFamily: 'Noto Serif SC',
                 ),
               ),
@@ -252,7 +277,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: kInk.withOpacity(0.4),
+                  color: context.artC.ink.withOpacity(0.4),
                 ),
               ),
               const SizedBox(height: 14),
@@ -282,7 +307,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ],
                       ),
-                      child: const Text(
+                      child: Text(
                         '编辑资料',
                         style: TextStyle(
                           fontSize: 12,
@@ -293,14 +318,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
+                  ListenableBuilder(
+                    listenable: ArtseeThemeController.instance,
+                    builder: (context, _) {
+                      final dark = ArtseeThemeController.instance.isDark;
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => ArtseeThemeController.instance.toggle(),
+                          customBorder: const CircleBorder(),
+                          child: Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: context.artC.silver.withOpacity(0.35),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              dark ? Icons.wb_sunny_outlined : Icons.nightlight_round,
+                              size: 20,
+                              color: context.artC.ink.withOpacity(0.55),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 10),
                   Container(
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: kSilver.withOpacity(0.35),
+                      color: context.artC.silver.withOpacity(0.35),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.share_outlined, size: 20, color: kInk.withOpacity(0.5)),
+                    child: Icon(Icons.share_outlined, size: 20, color: context.artC.ink.withOpacity(0.5)),
                   ),
                 ],
               ),
@@ -316,7 +368,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Center(
       child: Text(
         ch,
-        style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: kCobalt),
+        style: TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: kCobalt),
       ),
     );
   }
@@ -332,7 +384,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Container(
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
-              color: kInk,
+              color: context.artC.deepPanel,
               borderRadius: BorderRadius.circular(32),
               boxShadow: [
                 BoxShadow(
@@ -363,7 +415,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           Text(
                             exposure,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
                               color: kCobaltMuted,
@@ -391,7 +443,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           Text(
                             activeInvitations,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
                               color: kCobaltMuted,
@@ -423,9 +475,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Container(
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
-              color: kSilver.withOpacity(0.12),
+              color: context.artC.silver.withOpacity(0.12),
               borderRadius: BorderRadius.circular(32),
-              border: Border.all(color: kSilver.withOpacity(0.4)),
+              border: Border.all(color: context.artC.silver.withOpacity(0.4)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,7 +487,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: kInk.withOpacity(0.4),
+                    color: context.artC.ink.withOpacity(0.4),
                     letterSpacing: 1.5,
                   ),
                 ),
@@ -449,10 +501,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         Text(
                           wallet,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w700,
-                            color: kInk,
+                            color: context.artC.ink,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -461,7 +513,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
-                            color: kInk.withOpacity(0.3),
+                            color: context.artC.ink.withOpacity(0.3),
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -503,7 +555,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             decoration: BoxDecoration(
-              color: kSilver.withOpacity(0.1),
+              color: context.artC.silver.withOpacity(0.1),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: Colors.transparent),
             ),
@@ -516,16 +568,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: context.artC.cardIconBg,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: kInk.withOpacity(0.04),
+                            color: context.artC.ink.withOpacity(0.04),
                             blurRadius: 8,
                           ),
                         ],
                       ),
-                      child: Icon(item.$2, size: 20, color: kInk.withOpacity(0.35)),
+                      child: Icon(item.$2, size: 20, color: context.artC.ink.withOpacity(0.35)),
                     ),
                     const SizedBox(width: 14),
                     Text(
@@ -533,12 +585,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: kInk.withOpacity(0.8),
+                        color: context.artC.ink.withOpacity(0.8),
                       ),
                     ),
                   ],
                 ),
-                Icon(Icons.chevron_right, size: 22, color: kInk.withOpacity(0.2)),
+                Icon(Icons.chevron_right, size: 22, color: context.artC.ink.withOpacity(0.2)),
               ],
             ),
           );
@@ -549,7 +601,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
             decoration: BoxDecoration(
-              color: kSilver.withOpacity(0.1),
+              color: context.artC.silver.withOpacity(0.1),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: Colors.transparent),
             ),
@@ -562,11 +614,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: context.artC.cardIconBg,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: kInk.withOpacity(0.04),
+                            color: context.artC.ink.withOpacity(0.04),
                             blurRadius: 8,
                           ),
                         ],
@@ -574,7 +626,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Icon(Icons.logout, size: 20, color: Colors.red.withOpacity(0.5)),
                     ),
                     const SizedBox(width: 14),
-                    const Text(
+                    Text(
                       '退出登录',
                       style: TextStyle(
                         fontSize: 15,
@@ -584,7 +636,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
-                Icon(Icons.chevron_right, size: 22, color: kInk.withOpacity(0.2)),
+                Icon(Icons.chevron_right, size: 22, color: context.artC.ink.withOpacity(0.2)),
               ],
             ),
           ),
@@ -649,7 +701,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.artC.cardIconBg,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: kCobalt.withOpacity(0.2)),
         ),

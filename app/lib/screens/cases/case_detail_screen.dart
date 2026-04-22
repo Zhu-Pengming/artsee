@@ -1,3 +1,4 @@
+import 'package:artsee_app/theme/artsee_ui_colors.dart';
 import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../services/supabase_service.dart';
@@ -33,7 +34,7 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
 
     final c = _case!;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F8),
+      backgroundColor: context.artC.porcelain,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(

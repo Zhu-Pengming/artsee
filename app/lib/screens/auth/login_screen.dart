@@ -1,10 +1,10 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../config/dev_test_account.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/common.dart';
+import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -145,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final imageHeight = size.height * 0.42;
 
     return Scaffold(
-      backgroundColor: kPorcelain,
+      backgroundColor: context.artC.porcelain,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -161,7 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       'assets/images/login_hero.png',
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) =>
-                          Container(color: kSilver.withOpacity(0.35)),
+                          Container(color: context.artC.silver.withOpacity(0.35)),
                     ),
                     AnimatedOpacity(
                       opacity: _isColorful ? 0.0 : 1.0,
@@ -173,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           'assets/images/login_hero.png',
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) =>
-                              Container(color: kSilver.withOpacity(0.35)),
+                              Container(color: context.artC.silver.withOpacity(0.35)),
                         ),
                       ),
                     ),
@@ -181,8 +181,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            kInk.withOpacity(0.45),
-                            kInk.withOpacity(0.1),
+                            context.artC.ink.withOpacity(0.45),
+                            context.artC.ink.withOpacity(0.1),
                             Colors.transparent,
                           ],
                           begin: Alignment.topCenter,
@@ -207,13 +207,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                     width: 36,
                                     height: 36,
                                     decoration: BoxDecoration(
-                                      color: kPorcelain.withOpacity(0.12),
+                                      color: context.artC.porcelain.withOpacity(0.12),
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(
                                       Icons.close,
                                       size: 20,
-                                      color: kPorcelain.withOpacity(0.9),
+                                      color: context.artC.porcelain.withOpacity(0.9),
                                     ),
                                   ),
                                 ),
@@ -221,7 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const Spacer(),
                             Text(
-                              'ArtLink',
+                              'Artiqore',
                               style: TextStyle(
                                 fontSize: 40,
                                 fontWeight: FontWeight.w800,
@@ -230,7 +230,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 height: 1.1,
                                 shadows: [
                                   Shadow(
-                                    color: kInk.withOpacity(0.25),
+                                    color: context.artC.ink.withOpacity(0.25),
                                     blurRadius: 12,
                                     offset: const Offset(0, 2),
                                   ),
@@ -247,7 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 height: 1.4,
                                 shadows: [
                                   Shadow(
-                                    color: kInk.withOpacity(0.35),
+                                    color: context.artC.ink.withOpacity(0.35),
                                     blurRadius: 10,
                                     offset: const Offset(0, 2),
                                   ),
@@ -261,7 +261,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
               ),
-              const Expanded(child: ColoredBox(color: kPorcelain)),
+              Expanded(child: ColoredBox(color: context.artC.porcelain)),
             ],
           ),
           Positioned(
@@ -270,8 +270,8 @@ class _LoginScreenState extends State<LoginScreen> {
             right: 0,
             bottom: 0,
             child: Container(
-              decoration: const BoxDecoration(
-                color: kPorcelain,
+              decoration: BoxDecoration(
+                color: context.artC.porcelain,
                 borderRadius: BorderRadius.vertical(
                   top: Radius.circular(32),
                 ),
@@ -294,7 +294,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 child: Icon(
                                   Icons.arrow_back_ios,
                                   size: 18,
-                                  color: kInk.withOpacity(0.45),
+                                  color: context.artC.ink.withOpacity(0.45),
                                 ),
                               ),
                             ),
@@ -316,10 +316,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: Text(
                               _isLogin ? '登录' : '注册',
                               key: ValueKey<bool>(_isLogin),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 26,
                                 fontWeight: FontWeight.w700,
-                                color: kInk,
+                                color: context.artC.ink,
                                 height: 1.2,
                               ),
                             ),
@@ -369,7 +369,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               const SizedBox(height: 16),
                               Text(
                                 _error!,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
                                   color: Color(0xFFC62828),
                                   height: 1.5,
@@ -401,7 +401,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       )
                                     : Text(
                                         _isLogin ? '登录' : '注册',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
                                         ),
@@ -413,7 +413,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               children: [
                                 Expanded(
                                   child: Divider(
-                                    color: kSilver,
+                                    color: context.artC.silver,
                                     thickness: 1,
                                     height: 1,
                                   ),
@@ -425,13 +425,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                     '或使用以下方式登录',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: kInk.withOpacity(0.35),
+                                      color: context.artC.ink.withOpacity(0.35),
                                     ),
                                   ),
                                 ),
                                 Expanded(
                                   child: Divider(
-                                    color: kSilver,
+                                    color: context.artC.silver,
                                     thickness: 1,
                                     height: 1,
                                   ),
@@ -460,7 +460,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     : '已有账号？去登录',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: kInk.withOpacity(0.5),
+                                  color: context.artC.ink.withOpacity(0.5),
                                   fontWeight: FontWeight.w500,
                                 ),
                                 textAlign: TextAlign.center,
@@ -488,13 +488,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: kSilver.withOpacity(0.35),
+                      color: context.artC.silver.withOpacity(0.35),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.login,
                       size: 22,
-                      color: kInk.withOpacity(0.6),
+                      color: context.artC.ink.withOpacity(0.6),
                     ),
                   ),
                 ),
@@ -524,11 +524,11 @@ class _LoginScreenState extends State<LoginScreen> {
         hintText: hint,
         hintStyle: TextStyle(
           fontSize: 14,
-          color: kInk.withOpacity(0.35),
+          color: context.artC.ink.withOpacity(0.35),
         ),
         filled: true,
-        fillColor: kSilver.withOpacity(0.35),
-        prefixIcon: Icon(icon, size: 20, color: kInk.withOpacity(0.35)),
+        fillColor: context.artC.silver.withOpacity(0.35),
+        prefixIcon: Icon(icon, size: 20, color: context.artC.ink.withOpacity(0.35)),
         contentPadding: const EdgeInsets.symmetric(vertical: 18),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -551,7 +551,7 @@ class _LoginScreenState extends State<LoginScreen> {
           borderSide: BorderSide.none,
         ),
       ),
-      style: const TextStyle(fontSize: 15, color: kInk),
+      style: TextStyle(fontSize: 15, color: context.artC.ink),
     );
   }
 }
@@ -570,10 +570,10 @@ class _SocialButton extends StatelessWidget {
         width: 52,
         height: 52,
         decoration: BoxDecoration(
-          color: kSilver.withOpacity(0.35),
+          color: context.artC.silver.withOpacity(0.35),
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, size: 22, color: kInk.withOpacity(0.6)),
+        child: Icon(icon, size: 22, color: context.artC.ink.withOpacity(0.6)),
       ),
     );
   }

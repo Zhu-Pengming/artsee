@@ -8,8 +8,9 @@
     "signIn": "Sign In"
   },
   "hero": {
-    "eyebrow": "The Digital Curator",
-    "title": "ArtLink:\nThe Digital Curator",
+    "eyebrow": "",
+    "title": "Artiqore",
+    "subtitle": "The Digital Curator",
     "description": "Bridging the gap between avant-garde creation and luxury acquisition. A dedicated platform for the modern connoisseur and the professional artist.",
     "exploreCollection": "Explore Collection",
     "ourThesis": "Our Thesis",
@@ -18,7 +19,7 @@
   },
   "discover": {
     "title": "A Global Collective of Visionaries",
-    "description": "ArtLink curates a professional network that spans continents. From emerging talents in Berlin to established masters in Tokyo, our platform offers unparalleled access to a global network of vetted artists and curators.",
+    "description": "Artiqore curates a professional network that spans continents. From emerging talents in Berlin to established masters in Tokyo, our platform offers unparalleled access to a global network of vetted artists and curators.",
     "viewDirectory": "View Artist Directory",
     "artists": {
       "elias": {
@@ -41,7 +42,7 @@
   "collaborate": {
     "eyebrow": "Luxury Partnerships",
     "title": "Elevating Spaces, Defining Brands.",
-    "description": "We collaborate with the world’s most prestigious hospitality groups and luxury brands to integrate bespoke art collections into their DNA. ArtLink provides end-to-end curation, logistics, and storytelling.",
+    "description": "We collaborate with the world’s most prestigious hospitality groups and luxury brands to integrate bespoke art collections into their DNA. Artiqore provides end-to-end curation, logistics, and storytelling.",
     "hospitalityTitle": "Hospitality Integration",
     "hospitalityDesc": "Transforming hotel suites and public spaces into immersive gallery experiences.",
     "brandTitle": "Brand Synergy",
@@ -50,7 +51,7 @@
   },
   "learn": {
     "title": "Mastery of the Art Market",
-    "description": "ArtLink is not just a marketplace; it’s an academy. We provide the intellectual framework needed to navigate the complex landscape of professional art.",
+    "description": "Artiqore is not just a marketplace; it’s an academy. We provide the intellectual framework needed to navigate the complex landscape of professional art.",
     "educationTitle": "Professional Art Education",
     "educationDesc": "Deep-dive courses into art history, contemporary theory, and critical analysis for the discerning professional.",
     "exploreCurriculum": "Explore Curriculum",
@@ -71,7 +72,7 @@
     "guidelines": "Exhibition Guidelines",
     "press": "Press Kit",
     "contact": "Contact",
-    "copyright": "© 2024 ArtLink. All rights reserved."
+    "copyright": "© 2024 Artiqore. All rights reserved."
   },
   "localeSwitcher": {
     "zh": "中文",

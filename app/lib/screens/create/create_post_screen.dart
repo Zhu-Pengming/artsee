@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../widgets/common.dart';
+import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 /// 小红书风格图文发布编辑器
 class CreatePostScreen extends StatefulWidget {
@@ -51,18 +52,18 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kPorcelain,
+      backgroundColor: context.artC.porcelain,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: kInk, size: 20),
+          icon: Icon(Icons.arrow_back_ios, color: context.artC.ink, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
+        title: Text(
           '发布图文',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: kInk),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: context.artC.ink),
         ),
         actions: [
           TextButton(
@@ -73,7 +74,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2, color: kCobalt),
                   )
-                : const Text(
+                : Text(
                     '发布',
                     style: TextStyle(
                       fontSize: 14,
@@ -110,26 +111,26 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               // 标题
               TextField(
                 controller: _titleCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: '填写标题会有更多赞哦~',
-                  hintStyle: TextStyle(fontSize: 18, color: kSilver, fontWeight: FontWeight.w600),
+                  hintStyle: TextStyle(fontSize: 18, color: context.artC.silver, fontWeight: FontWeight.w600),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
                 ),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: kInk),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: context.artC.ink),
                 maxLines: 2,
               ),
               const SizedBox(height: 12),
               // 正文
               TextField(
                 controller: _contentCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: '添加正文…',
-                  hintStyle: TextStyle(fontSize: 14, color: kSilver),
+                  hintStyle: TextStyle(fontSize: 14, color: context.artC.silver),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.zero,
                 ),
-                style: const TextStyle(fontSize: 14, height: 1.6, color: kInk),
+                style: TextStyle(fontSize: 14, height: 1.6, color: context.artC.ink),
                 maxLines: null,
                 minLines: 6,
               ),
@@ -148,11 +149,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         width: 110,
         height: 110,
         decoration: BoxDecoration(
-          color: kSilver.withOpacity(0.25),
+          color: context.artC.silver.withOpacity(0.25),
           borderRadius: BorderRadius.circular(kRadiusMedium),
-          border: Border.all(color: kSilver.withOpacity(0.6), width: 1),
+          border: Border.all(color: context.artC.silver.withOpacity(0.6), width: 1),
         ),
-        child: const Icon(Icons.add_photo_alternate_outlined, color: kCobaltMuted, size: 32),
+        child: Icon(Icons.add_photo_alternate_outlined, color: kCobaltMuted, size: 32),
       ),
     );
   }
@@ -170,8 +171,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             errorBuilder: (_, __, ___) => Container(
               width: 110,
               height: 110,
-              color: kSilver.withOpacity(0.35),
-              child: const Icon(Icons.broken_image_outlined, color: kSilver),
+              color: context.artC.silver.withOpacity(0.35),
+              child: Icon(Icons.broken_image_outlined, color: context.artC.silver),
             ),
           ),
           Positioned(
@@ -181,11 +182,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               onTap: () => setState(() => _images.removeAt(index)),
               child: Container(
                 padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: Colors.black45,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.close, size: 14, color: Colors.white),
+                child: Icon(Icons.close, size: 14, color: Colors.white),
               ),
             ),
           ),

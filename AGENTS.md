@@ -1,4 +1,4 @@
-# Artsee / ArtLink 艺衡 — Agent 速览
+# Artsee / Artiqore 艺衡 — Agent 速览
 
 面向 AI 与协作者：**先读本段结构，再改代码。**
 
@@ -39,6 +39,13 @@
 | 邮箱 | `dev.test@artsee.app` |
 | 密码 | `ArtseeDev2026!` |
 | 默认昵称（`user_profiles.nickname`） | `Artsee开发者` |
+| 角色（`user_profiles.role`） | 脚本**尽量**写入 `admin`（若库中无 `role` 列会降级为仅 `nickname` 并告警） |
+
+**权限说明：** 运行 `npm run ensure:dev-user` 时，在表结构支持的前提下会将 `role` 设为 `admin`，以便调用 `requireAdmin` 的写接口。若你本地/远程库尚未有 `role` 列，请先按 `docs/ADMIN_SETUP.md` 加列后重跑脚本，或在 Supabase 中手动将 `user_profiles.role` 设为 `admin`。
+
+**后台说明页：** 登录邮箱账号后访问站点路径 **`/admin`**，可查看 BFF 根址、只读 API 链接及表数据管理提示（不替代 Supabase 控制台）。
+
+**BFF 地址（本地）：** 以你启动 Next 时实际端口为准；Flutter Web 默认 `AppConfig` 中 `WEB_DEV_PORT` 多为 **3003**（portman 分配时亦可能占用该端口），文档亦常写 **9090** —— 以 `http://localhost:<端口>` 为 API 基址即可。
 
 **创建或修复该用户（需 Service Role，勿提交仓库）：** 在项目根配置 `SUPABASE_URL`、`SUPABASE_SERVICE_ROLE_KEY` 后执行：
 

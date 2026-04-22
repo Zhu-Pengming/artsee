@@ -1,4 +1,4 @@
--- ArtLink 艺衡：Supabase Storage 公开桶 avatars + RLS
+-- Artiqore 艺衡：Supabase Storage 公开桶 avatars + RLS
 -- 路径约定：bucket `avatars` 内 object key = `{user_id}/avatar.{ext}`
 -- 执行：Supabase Dashboard → SQL Editor，或 supabase db push
 

@@ -1,39 +1,149 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../widgets/common.dart';
+import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
-/// ═══════════════════════════════════════════════════════════════
-/// 首页 — 完全对齐 _artist_ref HomeView
-/// ═══════════════════════════════════════════════════════════════
+/// 对齐稿件 HomeView 核心结构：展览主视觉 + 热门展厅横滑 + 近期展会列表
+/// 顶部/底部导航与全局配色由 MainScaffold 统一控制，本页仅负责内容区。
 
 const _greyscale = ColorFilter.matrix([
   0.2126, 0.7152, 0.0722, 0, 0,
   0.2126, 0.7152, 0.0722, 0, 0,
   0.2126, 0.7152, 0.0722, 0, 0,
-  0,      0,      0,      1, 0,
+  0, 0, 0, 1, 0,
 ]);
 
-class HomeScreen extends StatelessWidget {
-  final VoidCallback? onAiConsultTap;
-  const HomeScreen({super.key, this.onAiConsultTap});
+class _ExhibitionItem {
+  final String title;
+  final String img;
+  const _ExhibitionItem(this.title, this.img);
+}
+
+const List<_ExhibitionItem> _kHotHallCarousel = [
+  _ExhibitionItem(
+    '解构青花：数字维度的传统重塑',
+    'https://images.unsplash.com/photo-1626074311105-0255c4d3609c?auto=format&fit=crop&q=80&w=800',
+  ),
+  _ExhibitionItem(
+    '媒介考古：模拟时代的感官记忆',
+    'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&q=80&w=800',
+  ),
+  _ExhibitionItem(
+    '光影变迁：叙事性空间的数字边界',
+    'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&q=80&w=800',
+  ),
+  _ExhibitionItem(
+    '赛博禅意：机械冥想与算法秩序',
+    'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=800',
+  ),
+  _ExhibitionItem(
+    '极简空间：光影与白墙的对话',
+    'https://images.unsplash.com/photo-1554188248-986adbb73be4?auto=format&fit=crop&q=80&w=800',
+  ),
+];
+
+const List<_ExhibitionItem> _kRecentExhibitions = [
+  _ExhibitionItem(
+    '威尼斯双年展中国馆主题发布',
+    'https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&q=80&w=1200',
+  ),
+  _ExhibitionItem(
+    '西岸美术馆：丝绸与光影',
+    'https://images.unsplash.com/photo-1554188248-986adbb73be4?auto=format&fit=crop&q=80&w=800',
+  ),
+  _ExhibitionItem(
+    '当代摄影：城市褶皱',
+    'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&q=80&w=800',
+  ),
+];
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late final PageController _carouselCtrl;
+  Timer? _autoTimer;
+  int _carouselPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _carouselCtrl = PageController(viewportFraction: 0.82);
+    _autoTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted || !_carouselCtrl.hasClients) return;
+      final next = (_carouselPage + 1) % _kHotHallCarousel.length;
+      _carouselCtrl.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 520),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoTimer?.cancel();
+    _carouselCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bottom = mainTabBottomInset(context);
     return Scaffold(
-      backgroundColor: kPorcelain,
+      backgroundColor: context.artC.porcelain,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildBanner(),
+              _buildHeroBanner(),
               const SizedBox(height: 28),
-              _buildQuickAccessGrid(),
+              _buildHotHallHeader(),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 200,
+                child: PageView.builder(
+                  controller: _carouselCtrl,
+                  onPageChanged: (i) => setState(() {
+                    _carouselPage = i;
+                  }),
+                  itemCount: _kHotHallCarousel.length,
+                  itemBuilder: (context, i) {
+                    final item = _kHotHallCarousel[i];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: _HotHallCard(item: item),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(_kHotHallCarousel.length, (i) {
+                  final on = i == _carouselPage;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: on ? 18 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: on ? kCobalt : context.artC.silver.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  );
+                }),
+              ),
               const SizedBox(height: 32),
-              _buildRecommendedContent(),
-              const SizedBox(height: 32),
-              _buildAnnouncements(),
-              const SizedBox(height: 120), // 底部导航占位
+              _buildRecentSection(),
+              SizedBox(height: bottom),
             ],
           ),
         ),
@@ -41,7 +151,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBanner() {
+  Widget _buildHeroBanner() {
     return AspectRatio(
       aspectRatio: 21 / 9,
       child: ClipRRect(
@@ -52,19 +162,23 @@ class HomeScreen extends StatelessWidget {
             Image.asset(
               'assets/images/home_banner.jpg',
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(color: kSilver.withOpacity(0.35)),
+              errorBuilder: (_, __, ___) => Image.network(
+                'https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&q=80&w=2000',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(color: context.artC.silver.withOpacity(0.35)),
+              ),
             ),
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    kInk.withOpacity(0.0),
-                    kInk.withOpacity(0.5),
-                    kInk.withOpacity(0.9),
+                    context.artC.ink.withOpacity(0.0),
+                    context.artC.ink.withOpacity(0.25),
+                    context.artC.ink.withOpacity(0.88),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  stops: const [0.0, 0.4, 1.0],
+                  stops: const [0.0, 0.35, 1.0],
                 ),
               ),
             ),
@@ -75,22 +189,22 @@ class HomeScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(
-                    '重磅展览',
+                    'SPECIAL / 陶瓷重构专场',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white.withOpacity(0.6),
-                      letterSpacing: 3,
+                      color: kCobalt.withOpacity(0.95),
+                      letterSpacing: 3.2,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    '感官之维：当代艺术联展',
+                  Text(
+                    '灵感碎片的万合\n青花新境',
                     style: TextStyle(
                       fontSize: 22,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w300,
+                      height: 1.15,
                       color: Colors.white,
-                      height: 1.2,
                       fontFamily: 'Noto Serif SC',
                     ),
                   ),
@@ -98,15 +212,16 @@ class HomeScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                     decoration: BoxDecoration(
-                      color: kPorcelain,
+                      color: context.artC.porcelain,
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: const Text(
-                      '立即观展',
+                    child: Text(
+                      '立即观展 (Virtual Access)',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: kCobalt,
+                        letterSpacing: 2,
+                        color: context.artC.ink,
                       ),
                     ),
                   ),
@@ -119,72 +234,54 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickAccessGrid() {
-    final items = [
-      ('AI咨询', Icons.auto_awesome_outlined, onAiConsultTap),
-      ('机构入驻', Icons.language_outlined, null),
-      ('展览报名', Icons.calendar_today_outlined, null),
-      ('联名合作', Icons.handshake_outlined, null),
-      ('作品集指导', Icons.description_outlined, null),
-      ('国际资讯', Icons.visibility_outlined, null),
-      ('艺术家库', Icons.people_outline, null),
-      ('线下活动', Icons.location_on_outlined, null),
-    ];
-
-    return GridView.count(
-      crossAxisCount: 4,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 16,
-      crossAxisSpacing: 8,
-      childAspectRatio: 0.85,
-      children: items.map((item) {
-        return GestureDetector(
-          onTap: item.$3 ?? () {},
+  Widget _buildHotHallHeader() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: kSilver.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(kRadiusMedium),
-                ),
-                child: Icon(item.$2, size: 22, color: kInk.withOpacity(0.6)),
-              ),
-              const SizedBox(height: 8),
               Text(
-                item.$1,
+                '热门展厅 (Discovery)',
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: kInk.withOpacity(0.8),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  fontStyle: FontStyle.italic,
+                  color: context.artC.ink,
+                  fontFamily: 'Noto Serif SC',
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Virtual Exhibition Halls • Exploring Multi-dimensions',
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 1.2,
+                  color: context.artC.ink.withOpacity(0.38),
+                ),
               ),
             ],
           ),
-        );
-      }).toList(),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          'Virtual Realms',
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 3,
+            color: context.artC.ink.withOpacity(0.18),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildRecommendedContent() {
-    final items = [
-      (
-        '顶奢酒店联名招募：空间重塑计划',
-        '联名项目',
-        'https://picsum.photos/seed/art1/800/450'
-      ),
-      (
-        '国际艺术资讯：威尼斯双年展前瞻',
-        '国际资讯',
-        'https://picsum.photos/seed/art2/800/450'
-      ),
-    ];
-
+  Widget _buildRecentSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -194,169 +291,166 @@ class HomeScreen extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '推荐内容',
+                Text(
+                  '近期展会',
                   style: TextStyle(
                     fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: kInk,
+                    fontWeight: FontWeight.w600,
+                    color: context.artC.ink,
                     fontFamily: 'Noto Serif SC',
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Curated For You',
+                  'Upcoming & Ongoing',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
-                    color: kInk.withOpacity(0.35),
-                    letterSpacing: 1.5,
+                    letterSpacing: 1.4,
+                    color: context.artC.ink.withOpacity(0.35),
                   ),
                 ),
-              ],
-            ),
-            Row(
-              children: [
-                Text(
-                  '查看全部',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: kCobalt.withOpacity(0.9),
-                  ),
-                ),
-                Icon(Icons.arrow_forward_ios, size: 12, color: kCobalt.withOpacity(0.9)),
               ],
             ),
           ],
         ),
         const SizedBox(height: 16),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 16 / 14,
-          children: items.map((item) {
-            return GestureDetector(
-              onTap: () {},
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(kRadiusMedium),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          ColorFiltered(
-                            colorFilter: _greyscale,
-                            child: Image.network(
-                              item.$3,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(color: kSilver.withOpacity(0.35)),
-                            ),
-                          ),
-                          Positioned(
-                            top: 10,
-                            left: 10,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: kPorcelain.withOpacity(0.92),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                item.$2,
-                                style: const TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w700,
-                                  color: kCobalt,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    item.$1,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: kInk,
-                      height: 1.3,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
+        ..._kRecentExhibitions.map((e) => Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: _RecentExhibitionTile(item: e),
+            )),
       ],
     );
   }
+}
 
-  Widget _buildAnnouncements() {
-    final items = [
-      '艺术市场规则 (2024修订版)',
-      '版权声明与创作者权益保护',
-      '品牌入驻合作规范',
-    ];
+class _HotHallCard extends StatelessWidget {
+  final _ExhibitionItem item;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: kSilver.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(kRadiusLarge),
-        border: Border.all(color: kSilver.withOpacity(0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  const _HotHallCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(32),
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          Row(
-            children: [
-              Icon(Icons.notifications_none, size: 18, color: kInk.withOpacity(0.35)),
-              const SizedBox(width: 8),
-              Text(
-                '平台公告',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: kInk.withOpacity(0.45),
-                  letterSpacing: 1.5,
-                ),
-              ),
-            ],
+          ColorFiltered(
+            colorFilter: _greyscale,
+            child: Image.network(
+              item.img,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(color: context.artC.silver.withOpacity(0.35)),
+            ),
           ),
-          const SizedBox(height: 14),
-          ...items.map((text) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      text,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: kInk.withOpacity(0.65),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  context.artC.ink.withOpacity(0.82),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.white,
+                    fontFamily: 'Noto Serif SC',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Container(
+                      width: 5,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: kCobalt,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                  ),
-                  Icon(Icons.chevron_right, size: 18, color: kInk.withOpacity(0.25)),
-                ],
-              ),
-            );
-          }),
+                    const SizedBox(width: 6),
+                    Text(
+                      'LIVE NOW',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.6,
+                        color: Colors.white.withOpacity(0.65),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _RecentExhibitionTile extends StatelessWidget {
+  final _ExhibitionItem item;
+
+  const _RecentExhibitionTile({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(kRadiusMedium),
+      child: SizedBox(
+        height: 104,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 132,
+              child: ColorFiltered(
+                colorFilter: _greyscale,
+                child: Image.network(
+                  item.img,
+                  fit: BoxFit.cover,
+                  height: 104,
+                  errorBuilder: (_, __, ___) => Container(color: context.artC.silver.withOpacity(0.35)),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Container(
+                color: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  item.title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    height: 1.35,
+                    color: context.artC.ink,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
