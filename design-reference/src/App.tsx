@@ -1,0 +1,453 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { useState, useEffect, useRef } from 'react';
+import { Layout } from './components/Layout';
+import { BusinessLayout } from './components/BusinessLayout';
+import { HomeView } from './views/HomeView';
+import { InfoView } from './views/InfoView';
+import { SocialView } from './views/SocialView';
+import { DiscoverView } from './views/DiscoverView';
+import { MeView } from './views/MeView';
+import { WorkplaceView } from './views/business/WorkplaceView';
+import { ArtistMarketView } from './views/business/ArtistMarketView';
+import { ProjectManagementView } from './views/business/ProjectManagementView';
+import { CoBrandView } from './views/business/CoBrandView';
+import { BrandCenterView } from './views/business/BrandCenterView';
+import { PostDetailView } from './views/PostDetailView';
+import { UserProfileView } from './views/UserProfileView';
+import { ExhibitionDetailView } from './views/ExhibitionDetailView';
+import { InstitutionsView } from './views/InstitutionsView';
+import { InstitutionDetailView } from './views/InstitutionDetailView';
+import { TopicDetailView } from './views/TopicDetailView';
+import { CircleDetailView } from './views/CircleDetailView';
+import { QuestionDetailView } from './views/QuestionDetailView';
+import { CovenantDetailView } from './views/CovenantDetailView';
+import { SalonDetailView } from './views/SalonDetailView';
+import { CategoryDetailView } from './views/CategoryDetailView';
+import { ModuleDetailView } from './views/ModuleDetailView';
+import { BusinessDetailView } from './views/BusinessDetailView';
+import { DiscoverDetailView } from './views/DiscoverDetailView';
+import { ClubView } from './views/ClubView';
+import { AnimatePresence, motion } from 'motion/react';
+import { UserRole, ChatUser, Post } from './types';
+import { MOCK_POSTS } from './data';
+import { Institution } from './data/institutions';
+import { ChatWindow } from './components/ChatSystem';
+import { ArrowLeft } from 'lucide-react';
+
+import { AIAssistant } from './components/AIAssistant';
+
+export default function App() {
+  const [role, setRole] = useState<UserRole>('consumer');
+  const [activeView, setActiveView] = useState('home');
+  const [activeBusinessView, setActiveBusinessView] = useState('workplace');
+  const [activeChatUser, setActiveChatUser] = useState<ChatUser | null>(null);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedExhibitionId, setSelectedExhibitionId] = useState<string | null>(null);
+  const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<any | null>(null);
+  const [selectedCircle, setSelectedCircle] = useState<any | null>(null);
+  const [selectedQuestion, setSelectedQuestion] = useState<any | null>(null);
+  const [selectedSalonEvent, setSelectedSalonEvent] = useState<any | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<any | null>(null);
+  const [selectedModule, setSelectedModule] = useState<string | null>(null);
+  const [selectedBusinessDetail, setSelectedBusinessDetail] = useState<string | null>(null);
+  const [selectedDiscoverDetail, setSelectedDiscoverDetail] = useState<any | null>(null);
+  const [isCovenantOpen, setIsCovenantOpen] = useState(false);
+
+  const [viewHistory, setViewHistory] = useState<string[]>(['home']);
+
+  const isSubView = !!(selectedPostId || selectedUserId || selectedExhibitionId || selectedInstitution || selectedTopic || selectedCircle || selectedQuestion || selectedSalonEvent || selectedCategory || selectedModule || selectedDiscoverDetail || isCovenantOpen);
+
+  const handleBack = () => {
+    if (selectedDiscoverDetail) setSelectedDiscoverDetail(null);
+    else if (selectedBusinessDetail) setSelectedBusinessDetail(null);
+    else if (selectedModule) setSelectedModule(null);
+    else if (selectedSalonEvent) setSelectedSalonEvent(null);
+    else if (selectedCategory) setSelectedCategory(null);
+    else if (selectedQuestion) setSelectedQuestion(null);
+    else if (selectedCircle) setSelectedCircle(null);
+    else if (selectedTopic) setSelectedTopic(null);
+    else if (selectedInstitution) setSelectedInstitution(null);
+    else if (selectedExhibitionId) setSelectedExhibitionId(null);
+    else if (selectedPostId) setSelectedPostId(null);
+    else if (selectedUserId) setSelectedUserId(null);
+    else if (isCovenantOpen) setIsCovenantOpen(false);
+    else if (role === 'business') {
+      setRole('consumer');
+      setActiveView(viewHistory[viewHistory.length - 1] || 'home');
+    } else if (viewHistory.length > 1) {
+      const newHistory = [...viewHistory];
+      newHistory.pop(); // remove current
+      const prev = newHistory.pop() || 'home';
+      setActiveView(prev);
+      setViewHistory([...newHistory, prev]);
+    }
+  };
+
+  useEffect(() => {
+    if (!isSubView && role === 'consumer') {
+      setViewHistory(prev => {
+        if (prev[prev.length - 1] === activeView) return prev;
+        return [...prev, activeView].slice(-10); // Keep last 10
+      });
+    }
+  }, [activeView, isSubView, role]);
+
+  const isSubOrBackable = isSubView || role === 'business' || (role === 'consumer' && viewHistory.length > 1 && activeView !== 'home');
+
+  const currentViewKey = (() => {
+    if (selectedUserId) return `user-${selectedUserId}`;
+    const post = MOCK_POSTS.find(p => p.id === selectedPostId);
+    if (post) return `post-${selectedPostId}`;
+    if (selectedExhibitionId) return `exh-${selectedExhibitionId}`;
+    if (selectedInstitution) return `inst-${selectedInstitution.id}`;
+    if (selectedTopic) return `topic-${selectedTopic.id}`;
+    if (selectedCircle) return `circle-${selectedCircle.id}`;
+    if (selectedQuestion) return `q-${selectedQuestion.id}`;
+    if (selectedSalonEvent) return `salon-${selectedSalonEvent.id}`;
+    if (selectedCategory) return `cat-${selectedCategory.id}`;
+    if (selectedModule) return `module-${selectedModule}`;
+    if (selectedDiscoverDetail) return `disc-${selectedDiscoverDetail.id || selectedDiscoverDetail.title || 'detail'}`;
+    if (selectedBusinessDetail) return `biz-detail-${selectedBusinessDetail}`;
+    if (isCovenantOpen) return 'covenant';
+    
+    if (role === 'business') return `biz-${activeBusinessView}`;
+    return `consumer-${activeView}`;
+  })();
+
+  const selectedPost = MOCK_POSTS.find(p => p.id === selectedPostId);
+
+  const handleRoleSwitch = () => {
+    setRole(prev => (prev === 'consumer' ? 'business' : 'consumer'));
+  };
+
+  const scrollMap = useRef<Record<string, number>>({});
+  const ongoingScroll = useRef(0);
+  const lastViewKey = useRef(currentViewKey);
+
+  useEffect(() => {
+    const main = document.querySelector('main');
+    if (!main) return;
+
+    const handleScroll = () => {
+      ongoingScroll.current = main.scrollTop;
+    };
+    main.addEventListener('scroll', handleScroll);
+    return () => main.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const main = document.querySelector('main');
+    if (!main) return;
+
+    if (lastViewKey.current !== currentViewKey) {
+      // Transition detected
+      // 1. Save what was recorded for the OLD key
+      scrollMap.current[lastViewKey.current] = ongoingScroll.current;
+      
+      // 2. Determine if it's a detail view (should reset)
+      const isDetailView = currentViewKey.startsWith('user-') || 
+                           currentViewKey.startsWith('post-') || 
+                           currentViewKey.startsWith('exh-') || 
+                           currentViewKey.startsWith('inst-') || 
+                           currentViewKey.startsWith('topic-') || 
+                           currentViewKey.startsWith('circle-') || 
+                           currentViewKey.startsWith('q-') || 
+                           currentViewKey.startsWith('salon-') || 
+                           currentViewKey.startsWith('cat-') || 
+                           currentViewKey.startsWith('module-') || 
+                           currentViewKey.startsWith('disc-') || 
+                           currentViewKey.startsWith('biz-detail-') || 
+                           currentViewKey === 'covenant';
+
+      // 3. Restore or reset for NEW key
+      const saved = isDetailView ? 0 : (scrollMap.current[currentViewKey] || 0);
+      main.scrollTo({ top: saved, behavior: 'auto' });
+      ongoingScroll.current = saved;
+      
+      lastViewKey.current = currentViewKey;
+    }
+  }, [currentViewKey]);
+
+  const renderConsumerView = () => {
+    if (selectedUserId) {
+      return (
+        <UserProfileView 
+          userId={selectedUserId} 
+          posts={MOCK_POSTS} 
+          onBack={() => setSelectedUserId(null)}
+          onPostClick={(id) => {
+            setSelectedUserId(null);
+            setSelectedPostId(id);
+          }}
+        />
+      );
+    }
+
+    if (selectedPost) {
+      return (
+        <PostDetailView 
+          post={selectedPost} 
+          onBack={() => setSelectedPostId(null)} 
+          onAuthorClick={(uid) => {
+            setSelectedPostId(null);
+            setSelectedUserId(uid);
+          }}
+        />
+      );
+    }
+
+    if (selectedExhibitionId) {
+      return (
+        <ExhibitionDetailView onBack={() => setSelectedExhibitionId(null)} />
+      );
+    }
+
+    if (selectedInstitution) {
+      return (
+        <InstitutionDetailView 
+          institution={selectedInstitution} 
+          onBack={() => setSelectedInstitution(null)} 
+        />
+      );
+    }
+
+    if (selectedTopic) {
+      return (
+        <TopicDetailView 
+          topic={selectedTopic} 
+          onBack={() => setSelectedTopic(null)} 
+        />
+      );
+    }
+
+    if (selectedCircle) {
+      return (
+        <CircleDetailView 
+          circle={selectedCircle} 
+          onBack={() => setSelectedCircle(null)} 
+          onOpenChat={setActiveChatUser}
+        />
+      );
+    }
+
+    if (selectedQuestion) {
+      return (
+        <QuestionDetailView 
+          question={selectedQuestion} 
+          onBack={() => setSelectedQuestion(null)} 
+          onOpenChat={setActiveChatUser}
+        />
+      );
+    }
+
+    if (selectedSalonEvent) {
+      return (
+        <SalonDetailView 
+          event={selectedSalonEvent} 
+          onBack={() => setSelectedSalonEvent(null)} 
+        />
+      );
+    }
+
+    if (selectedCategory) {
+      return (
+        <CategoryDetailView 
+          category={selectedCategory} 
+          onBack={() => setSelectedCategory(null)} 
+          onSalonClick={setSelectedSalonEvent}
+        />
+      );
+    }
+
+    if (isCovenantOpen) {
+      return (
+        <CovenantDetailView onBack={() => setIsCovenantOpen(false)} />
+      );
+    }
+
+    if (selectedModule) {
+      return (
+        <ModuleDetailView moduleId={selectedModule} />
+      );
+    }
+
+    if (selectedDiscoverDetail) {
+      return (
+        <DiscoverDetailView item={selectedDiscoverDetail} />
+      );
+    }
+
+    switch (activeView) {
+      case 'home':
+        return (
+          <HomeView 
+            onChatRequest={setActiveChatUser} 
+            onPostClick={setSelectedPostId}
+            onUserClick={setSelectedUserId}
+            onExhibitionClick={setSelectedExhibitionId}
+            onViewChange={setActiveView}
+          />
+        );
+      case 'info':
+        return <InstitutionsView onInstitutionClick={setSelectedInstitution} />;
+      case 'club':
+        return (
+          <ClubView 
+            onSalonClick={setSelectedSalonEvent} 
+            onCategoryClick={setSelectedCategory}
+          />
+        );
+      case 'social':
+        return (
+          <SocialView 
+            onChatRequest={setActiveChatUser} 
+            onTopicClick={setSelectedTopic}
+            onCircleClick={setSelectedCircle}
+            onQuestionClick={setSelectedQuestion}
+            onSalonClick={setSelectedSalonEvent}
+            onCovenantClick={() => setIsCovenantOpen(true)}
+          />
+        );
+      case 'discover':
+        return <DiscoverView onDetailClick={setSelectedDiscoverDetail} />;
+      case 'me':
+        return (
+          <MeView 
+            onSwitchRole={() => setRole('business')} 
+            onEditProfile={() => setSelectedUserId('me')}
+            onStatClick={(type) => setSelectedModule(type)}
+            onReportClick={() => setSelectedModule('report')}
+            onMenuClick={(label) => {
+              const labelToId: Record<string, string> = {
+                '我的收藏与喜欢': 'collections',
+                '灵感书签库': 'bookmarks',
+                '项目申请记录': 'applications',
+                '艺术家隐私保护': 'privacy',
+                '支付与钱包安全': 'wallet',
+                '平台账户偏好': 'settings'
+              };
+              setSelectedModule(labelToId[label] || 'settings');
+            }}
+            onLogout={() => {
+               if (confirm('Are you sure you want to exit?')) {
+                 location.reload();
+               }
+            }}
+            onModuleClick={setSelectedModule}
+          />
+        );
+      default:
+        return (
+          <HomeView 
+            onChatRequest={setActiveChatUser} 
+            onPostClick={setSelectedPostId}
+            onUserClick={setSelectedUserId}
+            onExhibitionClick={setSelectedExhibitionId}
+            onViewChange={setActiveView}
+          />
+        );
+    }
+  };
+
+  const renderBusinessView = () => {
+    if (selectedBusinessDetail) {
+      return (
+        <BusinessDetailView detailId={selectedBusinessDetail} />
+      );
+    }
+
+    switch (activeBusinessView) {
+      case 'workplace':
+        return <WorkplaceView onDetailClick={setSelectedBusinessDetail} />;
+      case 'artist-market':
+        return <ArtistMarketView onDetailClick={setSelectedBusinessDetail} />;
+      case 'projects':
+        return <ProjectManagementView onDetailClick={setSelectedBusinessDetail} />;
+      case 'co-brand':
+        return <CoBrandView onDetailClick={setSelectedBusinessDetail} />;
+      case 'brand-center':
+        return <BrandCenterView onDetailClick={setSelectedBusinessDetail} />;
+      default:
+        return <WorkplaceView onDetailClick={setSelectedBusinessDetail} />;
+    }
+  };
+
+  return (
+    <div className="relative h-screen">
+      {role === 'business' ? (
+        <BusinessLayout 
+          activeView={activeBusinessView} 
+          onViewChange={setActiveBusinessView}
+          onSwitchRole={() => setRole('consumer')}
+        >
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeBusinessView}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="min-h-full"
+            >
+              {renderBusinessView()}
+            </motion.div>
+          </AnimatePresence>
+        </BusinessLayout>
+      ) : (
+        <Layout activeView={activeView} setActiveView={setActiveView}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeView + (isSubView ? currentViewKey : '')}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="min-h-full"
+            >
+              {renderConsumerView()}
+            </motion.div>
+          </AnimatePresence>
+        </Layout>
+      )}
+
+      {/* Floating Back Button - Global */}
+      <AnimatePresence>
+        {isSubOrBackable && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.5, x: 20 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.5, x: 20 }}
+            onClick={handleBack}
+            className="fixed bottom-44 right-8 lg:bottom-32 lg:right-12 w-14 h-14 bg-ink text-white rounded-2xl flex items-center justify-center shadow-2xl border border-white/10 hover:bg-cobalt hover:scale-110 transition-all active:scale-95 group z-[100]"
+          >
+            <ArrowLeft size={24} className="group-hover:-translate-x-0.5 transition-transform" />
+            <div className="absolute right-full mr-4 px-3 py-1.5 bg-ink text-white text-[10px] font-bold uppercase tracking-widest rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+              返回上一级
+            </div>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      <AIAssistant />
+
+      <AnimatePresence>
+        {activeChatUser && (
+          <div className="fixed inset-0 z-[110] pointer-events-none flex items-center justify-center">
+             <div className="pointer-events-auto">
+                <ChatWindow 
+                  user={activeChatUser} 
+                  onClose={() => setActiveChatUser(null)} 
+                />
+             </div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
