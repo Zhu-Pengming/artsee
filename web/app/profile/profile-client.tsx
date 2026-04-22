@@ -9,7 +9,12 @@ import { signOut, createTrackerEntry, updateProfile } from '@/lib/actions'
 import { DraftModal } from '@/components/profile/draft-modal'
 import { createClient } from '@/lib/supabase/client'
 
-const profileTabs = ['申请追踪', '我的案例', '我的收藏'] as const
+const profileTabs: { key: string; label: string; href?: string }[] = [
+  { key: '申请追踪', label: '申请追踪' },
+  { key: '我的案例', label: '我的案例' },
+  { key: '收藏', label: '收藏' },
+  { key: '选校', label: '选校', href: '/explore' },
+]
 
 type MyCaseRow = {
   id: string
@@ -38,7 +43,7 @@ type Props = {
 }
 
 export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, userId }: Props) {
-  const [activeTab, setActiveTab] = useState<typeof profileTabs[number]>('申请追踪')
+  const [activeTab, setActiveTab] = useState<string>('申请追踪')
   const [showAddTracker, setShowAddTracker] = useState(false)
   const [addingTracker, setAddingTracker] = useState(false)
   const [trackerError, setTrackerError] = useState('')
@@ -53,6 +58,8 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
   const bio = profile?.bio ?? '目标：英国艺术院校 · 努力备考中'
   const avatarUrl = profile?.avatar_url
   const avatarInitial = nickname[0]
+
+  const totalLikes = myCases.reduce((sum, c) => sum + (c.like_count ?? 0), 0)
 
   const handleAvatarClick = () => {
     if (!isSelf) return
@@ -109,144 +116,139 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
         className="hidden"
         onChange={handleFileChange}
       />
-      <div className="pb-6 max-w-4xl mx-auto space-y-8">
-        {/* 个人信息 — 典藏版横版 */}
-        <div className="flex flex-col sm:flex-row sm:items-start gap-8 sm:gap-12">
-          <div className="relative flex justify-center sm:justify-start">
+
+      <div className="pb-6 max-w-4xl mx-auto">
+        {/* 个人信息 — 小红书风格 */}
+        <div className="flex items-start gap-5 sm:gap-6 px-4 sm:px-6 pt-6">
+          {/* 左侧头像 */}
+          <div className="relative flex-shrink-0">
             <button
               type="button"
               onClick={handleAvatarClick}
               disabled={uploadingAvatar}
-              className={`w-36 h-36 sm:w-44 sm:h-44 rounded-[2rem] overflow-hidden bg-al-silver/50 border-4 border-al-shell shadow-2xl flex items-center justify-center text-5xl ${isSelf ? 'cursor-pointer hover:opacity-90' : 'cursor-default'} disabled:opacity-60 transition-opacity`}
+              className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-al-silver/50 border-2 border-al-shell shadow-lg flex items-center justify-center ${isSelf ? 'cursor-pointer hover:opacity-90' : 'cursor-default'} disabled:opacity-60 transition-opacity`}
             >
               {avatarUrl ? (
                 <img src={avatarUrl} alt={nickname} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-al-cobalt font-serif font-bold text-6xl">{avatarInitial}</span>
+                <span className="text-al-cobalt font-serif font-bold text-3xl sm:text-4xl">{avatarInitial}</span>
               )}
             </button>
             {isSelf && (
-              <div className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 w-8 h-8 bg-al-cobalt text-al-shell rounded-full shadow-lg flex items-center justify-center text-lg font-bold pointer-events-none">
+              <div className="absolute bottom-0 right-0 w-6 h-6 bg-al-cobalt text-al-shell rounded-full shadow-md flex items-center justify-center text-sm font-bold pointer-events-none">
                 +
               </div>
             )}
-            {profile?.is_verified && (
-              <div className="absolute -bottom-2 -right-2 sm:bottom-auto sm:top-0 sm:-right-2 bg-al-cobalt text-al-shell px-3 py-1.5 rounded-2xl shadow-xl text-xs font-bold">
-                已认证
-              </div>
-            )}
           </div>
-          <div className="flex-1 text-center sm:text-left">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-              <div>
-                <h2 className="text-3xl sm:text-4xl font-serif font-bold text-al-ink mb-2">{nickname}</h2>
-                <p className="text-al-ink/50 font-medium text-sm sm:text-base">
-                  {profile?.location ? `${profile.location} · ` : ''}{bio}
-                </p>
-              </div>
-              {isSelf && (
-                <div className="flex gap-3 justify-center sm:justify-end">
-                  <button
-                    type="button"
-                    onClick={() => { setShowEditProfile(true); setEditError('') }}
-                    className="bg-al-cobalt text-al-shell px-6 sm:px-8 py-2.5 rounded-full text-sm font-bold hover:opacity-90 shadow-lg shadow-al-cobalt/20"
-                  >
-                    编辑资料
-                  </button>
-                  <button
-                    type="button"
-                    className="bg-al-silver/60 text-al-ink/60 px-4 py-2.5 rounded-full hover:bg-al-silver transition-colors text-sm font-medium"
-                    aria-label="分享"
-                  >
-                    分享
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (confirm('确定要退出登录吗？')) {
-                        await signOut()
-                        window.location.href = '/'
-                      }
-                    }}
-                    className="bg-al-silver/60 text-al-ink/60 px-4 py-2.5 rounded-full hover:bg-al-silver transition-colors text-sm font-medium"
-                    title="退出登录"
-                  >
-                    退出
-                  </button>
-                </div>
+
+          {/* 右侧信息 */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-al-ink mb-1">{nickname}</h1>
+            <p className="text-xs text-al-ink/40 mb-2 truncate">
+              ID: {userId.slice(0, 12)}… {profile?.location ? `· ${profile.location}` : ''}
+            </p>
+            <p className="text-sm text-al-ink/70 mb-3 leading-relaxed">{bio}</p>
+
+            {/* 标签 */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {profile?.role && (
+                <span className="px-3 py-1 rounded-full bg-al-silver/40 text-al-ink/60 text-xs font-medium">
+                  {profile.role === 'admin' ? '管理员' : profile.role}
+                </span>
+              )}
+              {profile?.user_type && (
+                <span className="px-3 py-1 rounded-full bg-al-silver/40 text-al-ink/60 text-xs font-medium">
+                  {profile.user_type === 'student' ? '学生' : profile.user_type}
+                </span>
+              )}
+              {profile?.is_verified && (
+                <span className="px-3 py-1 rounded-full bg-al-cobalt/10 text-al-cobalt text-xs font-medium">
+                  已认证
+                </span>
               )}
             </div>
-          </div>
-        </div>
 
-        {/* 统计 */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          {[
-            { label: '关注', value: profile?.following_count ?? 0 },
-            { label: '粉丝', value: profile?.followers_count ?? 0 },
-            { label: '案例', value: myCases.length },
-            { label: '收藏', value: favorites.length },
-          ].map(s => (
-            <div
-              key={s.label}
-              className="rounded-2xl border border-al-silver/60 bg-al-shell py-4 text-center shadow-sm"
-            >
-              <span className="text-xl font-serif font-bold text-al-ink">{s.value}</span>
-              <p className="text-[10px] uppercase tracking-widest text-al-ink/40 mt-1">{s.label}</p>
+            {/* 统计数字 — 小红书风格 */}
+            <div className="flex items-center gap-5 mb-4">
+              <div className="text-center">
+                <span className="text-base font-bold text-al-ink">{profile?.following_count ?? 0}</span>
+                <span className="text-xs text-al-ink/50 ml-1">关注</span>
+              </div>
+              <div className="text-center">
+                <span className="text-base font-bold text-al-ink">{profile?.followers_count ?? 0}</span>
+                <span className="text-xs text-al-ink/50 ml-1">粉丝</span>
+              </div>
+              <div className="text-center">
+                <span className="text-base font-bold text-al-ink">{totalLikes + (profile?.favorites_count ?? 0)}</span>
+                <span className="text-xs text-al-ink/50 ml-1">获赞与收藏</span>
+              </div>
             </div>
-          ))}
-        </div>
 
-        {/* 快捷工具 */}
-        {isSelf && (
-          <div className="grid grid-cols-4 gap-2 sm:gap-3 py-2 border-b border-al-silver/50">
-            {[
-              { label: '选校清单', color: 'bg-al-cobalt/8 text-al-cobalt', href: '/explore', onClick: undefined },
-              { label: '我的收藏', color: 'bg-al-silver/50 text-al-cobalt-muted', href: undefined, onClick: () => setActiveTab('我的收藏') },
-              { label: '文书草稿', color: 'bg-al-silver/50 text-al-ink/70', href: undefined, onClick: () => setShowDraft(true) },
-              { label: '分享案例', color: 'bg-al-cobalt/10 text-al-cobalt', href: '/cases/new', onClick: undefined },
-            ].map(({ label, color, href, onClick }) =>
-              href ? (
-                <Link key={label} href={href} className="flex flex-col items-center gap-1">
-                  <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center text-xs font-bold`}>
-                    {label.slice(0, 1)}
-                  </div>
-                  <span className="text-[9px] text-al-ink/50 text-center leading-tight">{label}</span>
-                </Link>
-              ) : (
-                <button key={label} onClick={onClick} className="flex flex-col items-center gap-1">
-                  <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center text-xs font-bold`}>
-                    {label.slice(0, 1)}
-                  </div>
-                  <span className="text-[9px] text-al-ink/50 text-center leading-tight">{label}</span>
+            {/* 操作按钮 */}
+            {isSelf && (
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setShowEditProfile(true); setEditError('') }}
+                  className="flex-1 max-w-[140px] py-2 rounded-full bg-al-cobalt text-al-shell text-sm font-semibold hover:opacity-90 transition-opacity shadow-md shadow-al-cobalt/15"
+                >
+                  编辑资料
                 </button>
-              )
+                <button
+                  type="button"
+                  className="flex-1 max-w-[140px] py-2 rounded-full border border-al-silver text-al-ink/70 text-sm font-medium hover:bg-al-silver/30 transition-colors"
+                >
+                  分享
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDraft(true)}
+                  className="flex-1 max-w-[140px] py-2 rounded-full border border-al-silver text-al-ink/70 text-sm font-medium hover:bg-al-silver/30 transition-colors"
+                >
+                  草稿
+                </button>
+              </div>
             )}
           </div>
-        )}
+        </div>
 
-        {/* Tab 切换 */}
-        <div className="flex border-b border-al-silver/50">
-          {profileTabs.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-2.5 text-xs font-medium border-b-2 transition-colors ${
-                activeTab === tab
-                  ? 'border-al-cobalt text-al-cobalt'
-                  : 'border-transparent text-al-ink/40'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+        {/* Tab 切换 — 居中，小红书风格 */}
+        <div className="flex justify-center border-b border-al-silver/40 mt-6 mx-4 sm:mx-6">
+          {profileTabs.map((tab) => {
+            const isActive = activeTab === tab.key
+            const isLink = !!tab.href
+            return isLink ? (
+              <Link
+                key={tab.key}
+                href={tab.href!}
+                className="px-4 sm:px-6 py-3 text-sm font-medium text-al-ink/50 hover:text-al-ink transition-colors"
+              >
+                {tab.label}
+              </Link>
+            ) : (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-4 sm:px-6 py-3 text-sm font-medium transition-colors relative ${
+                  isActive
+                    ? 'text-al-ink font-bold'
+                    : 'text-al-ink/50 hover:text-al-ink'
+                }`}
+              >
+                {tab.label}
+                {isActive && (
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-al-cobalt rounded-full" />
+                )}
+              </button>
+            )
+          })}
         </div>
 
         {/* 内容区 */}
-        <div className="pt-4">
+        <div className="pt-5 px-4 sm:px-6">
           {activeTab === '申请追踪' && (
             <>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-4">
                 <p className="text-xs text-gray-500">共 {trackers.length} 所学校</p>
                 {isSelf && (
                   <button onClick={() => { setShowAddTracker(true); setTrackerError('') }} className="text-xs text-al-cobalt font-medium">
@@ -257,9 +259,9 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
               {trackers.length > 0
                 ? trackers.map(t => <TrackerCard key={t.id} tracker={t} />)
                 : (
-                  <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                    <span className="text-3xl mb-2">📋</span>
-                    <p className="text-sm mb-3">还没有追踪的学校</p>
+                  <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                    <span className="text-4xl mb-3">📋</span>
+                    <p className="text-sm mb-2">还没有追踪的学校</p>
                     <p className="text-xs text-gray-400">前往探索页选择心仪院校</p>
                   </div>
                 )}
@@ -269,18 +271,18 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
           {activeTab === '我的案例' && (
             <>
               {myCases.length > 0 ? (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {myCases.map(c => (
                     <Link key={c.id} href={`/cases/${c.id}`}>
-                      <div className={`rounded-xl overflow-hidden border border-gray-100 shadow-sm`}>
-                        <div className={`h-16 bg-gradient-to-br ${c.cover_gradient ?? 'from-blue-500 to-purple-600'} flex items-center px-3`}>
-                          <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${resultColor[c.result]}`}>
+                      <div className="rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div className={`h-24 bg-gradient-to-br ${c.cover_gradient ?? 'from-blue-500 to-purple-600'} flex items-end p-3`}>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${resultColor[c.result]}`}>
                             {resultLabel[c.result]}
                           </span>
                         </div>
                         <div className="p-3 bg-white">
                           <p className="text-xs font-semibold text-gray-900 line-clamp-1">{c.title}</p>
-                          <div className="flex items-center justify-between mt-1">
+                          <div className="flex items-center justify-between mt-1.5">
                             <span className="text-[10px] text-gray-500">{c.target_school}</span>
                             <span className="text-[10px] text-gray-400">{timeAgo(c.created_at)}</span>
                           </div>
@@ -290,10 +292,10 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                  <span className="text-3xl mb-2">📝</span>
-                  <p className="text-sm mb-3">还没有分享过案例</p>
-                  <Link href="/cases/new" className="bg-al-cobalt text-white text-xs px-4 py-2 rounded-full font-medium">
+                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                  <span className="text-4xl mb-3">📝</span>
+                  <p className="text-sm mb-2">还没有分享过案例</p>
+                  <Link href="/cases/new" className="bg-al-cobalt text-white text-xs px-5 py-2.5 rounded-full font-medium mt-2">
                     分享我的申请经历
                   </Link>
                 </div>
@@ -301,27 +303,27 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
             </>
           )}
 
-          {activeTab === '我的收藏' && (
+          {activeTab === '收藏' && (
             <>
               {favorites.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {favorites.map(f => (
                     <Link key={f.id} href={`/explore/${f.programs?.id ?? '#'}`}>
-                      <div className="bg-white rounded-xl border border-gray-100 p-3 flex items-center justify-between">
+                      <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
                         <div>
-                          <p className="text-xs font-semibold text-gray-900">{f.programs?.program_name ?? '项目'}</p>
-                          <p className="text-[10px] text-gray-500 mt-0.5">{f.programs?.schools?.name_zh ?? ''}</p>
+                          <p className="text-sm font-semibold text-gray-900">{f.programs?.program_name ?? '项目'}</p>
+                          <p className="text-xs text-gray-500 mt-1">{f.programs?.schools?.name_zh ?? ''}</p>
                         </div>
-                        <span className="text-rose-500 text-xs">❤</span>
+                        <span className="text-rose-500">❤</span>
                       </div>
                     </Link>
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                  <span className="text-3xl mb-2">🔖</span>
-                  <p className="text-sm mb-3">还没有收藏内容</p>
-                  <Link href="/explore" className="bg-al-cobalt text-white text-xs px-4 py-2 rounded-full font-medium">
+                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                  <span className="text-4xl mb-3">🔖</span>
+                  <p className="text-sm mb-2">还没有收藏内容</p>
+                  <Link href="/explore" className="bg-al-cobalt text-white text-xs px-5 py-2.5 rounded-full font-medium mt-2">
                     去探索院校
                   </Link>
                 </div>
