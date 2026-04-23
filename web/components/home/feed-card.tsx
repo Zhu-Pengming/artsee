@@ -15,7 +15,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
   }[item.type];
 
   return (
-    <article className="mx-4 mb-4 rounded-2xl overflow-hidden bg-white shadow-sm border border-gray-100">
+    <article className="mx-4 mb-4 rounded-2xl overflow-hidden bg-card shadow-sm border border-outline-variant/10">
       {/* 封面图（渐变色代替图片） */}
       <div className={`h-44 bg-gradient-to-br ${item.coverGradient} relative`}>
         {/* 类型 badge */}
@@ -32,7 +32,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
 
       {/* 内容区 */}
       <div className="p-3">
-        <h3 className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2 mb-1">
+        <h3 className="text-sm font-semibold text-on-surface leading-snug line-clamp-2 mb-1">
           {item.title}
         </h3>
         <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-3">

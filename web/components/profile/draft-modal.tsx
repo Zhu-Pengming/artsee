@@ -67,15 +67,15 @@ export function DraftModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center">
-      <div className="bg-white rounded-t-3xl w-full max-w-[390px] flex flex-col" style={{ height: '80vh' }}>
+      <div className="bg-surface-container-lowest rounded-t-3xl w-full max-w-[390px] flex flex-col" style={{ height: '80vh' }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant/10 flex-shrink-0">
           {editing ? (
             <button onClick={() => setEditing(null)} className="flex items-center gap-1 text-[#1A4B8C] text-sm">
               <ChevronLeft size={16} /> 草稿列表
             </button>
           ) : (
-            <h3 className="font-semibold text-gray-900">文书草稿</h3>
+            <h3 className="font-semibold text-on-surface">文书草稿</h3>
           )}
           <div className="flex items-center gap-2">
             {editing && (
@@ -98,7 +98,7 @@ export function DraftModal({ onClose }: { onClose: () => void }) {
                 value={editing.title}
                 onChange={e => setEditing({ ...editing, title: e.target.value })}
                 placeholder="草稿标题"
-                className="w-full text-base font-semibold text-gray-900 outline-none border-b border-gray-100 pb-2 mb-0"
+                className="w-full text-base font-semibold text-on-surface outline-none border-b border-outline-variant/10 pb-2 mb-0"
               />
             </div>
             <textarea
@@ -133,10 +133,10 @@ export function DraftModal({ onClose }: { onClose: () => void }) {
                   {drafts.map(d => (
                     <div
                       key={d.id}
-                      className="bg-white border border-gray-100 rounded-2xl p-3 flex items-start gap-3 active:bg-gray-50"
+                      className="bg-card border border-outline-variant/10 rounded-2xl p-3 flex items-start gap-3 active:bg-surface-container-low"
                     >
                       <button className="flex-1 text-left" onClick={() => setEditing(d)}>
-                        <p className="text-sm font-semibold text-gray-900 line-clamp-1">{d.title || '无标题'}</p>
+                        <p className="text-sm font-semibold text-on-surface line-clamp-1">{d.title || '无标题'}</p>
                         <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2 leading-relaxed">
                           {d.content || '（空白草稿）'}
                         </p>

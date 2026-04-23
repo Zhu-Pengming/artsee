@@ -37,7 +37,7 @@ export function UniversityCard({ program }: { program: Program }) {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              <h3 className="text-sm font-semibold text-gray-900 truncate">{schoolDisplayName}</h3>
+              <h3 className="text-sm font-semibold text-on-surface truncate">{schoolDisplayName}</h3>
               {school?.qs_art_rank && (
                 <span className="flex-shrink-0 flex items-center gap-0.5 text-[9px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-full">
                   <Star size={8} />QS #{school.qs_art_rank}
@@ -90,7 +90,7 @@ export function UniversityCard({ program }: { program: Program }) {
             <span className="text-[9px] bg-purple-50 text-purple-600 border border-purple-200 px-2 py-0.5 rounded-full">需作品集</span>
           )}
           {admission?.reference_count && (
-            <span className="text-[9px] bg-gray-50 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full">
+            <span className="text-[9px] bg-surface-container-low text-on-surface-variant/70 border border-outline-variant/20 px-2 py-0.5 rounded-full">
               推荐信 ×{admission.reference_count}
             </span>
           )}

@@ -31,14 +31,14 @@ export function TopBar() {
   }, []);
 
   return (
-    <header className="flex-shrink-0 bg-white border-b border-gray-100">
+    <header className="flex-shrink-0 bg-surface-container-lowest border-b border-outline-variant/10">
       <div className="flex items-center justify-between h-14 px-4">
         {isHome ? (
           <div className="flex items-center gap-1.5">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#1A4B8C] to-[#4A90D9] flex items-center justify-center">
               <span className="text-white text-xs font-bold">艺</span>
             </div>
-            <span className="text-lg font-bold text-gray-900 font-[family-name:var(--font-poppins)]">
+            <span className="text-lg font-bold text-on-surface font-[family-name:var(--font-poppins)]">
               艺见心
             </span>
             <span className="text-[10px] text-[#1A4B8C] font-medium border border-[#1A4B8C]/30 rounded px-1 ml-0.5">
@@ -46,16 +46,16 @@ export function TopBar() {
             </span>
           </div>
         ) : (
-          <h1 className="text-base font-semibold text-gray-900">{title}</h1>
+          <h1 className="text-base font-semibold text-on-surface">{title}</h1>
         )}
 
         <div className="flex items-center gap-2">
           <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-            <Search size={18} className="text-gray-600" />
+            <Search size={18} className="text-on-surface-variant" />
           </button>
           {user ? (
             <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors relative">
-              <Bell size={18} className="text-gray-600" />
+              <Bell size={18} className="text-on-surface-variant" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-[#1A4B8C] rounded-full" />
             </button>
           ) : (

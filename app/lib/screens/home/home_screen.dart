@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../widgets/common.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
+import '../../services/backend_api_service.dart';
+import '../../models/models.dart';
 
 /// 对齐稿件 HomeView 核心结构：展览主视觉 + 热门展厅横滑 + 近期展会列表
 /// 顶部/底部导航与全局配色由 MainScaffold 统一控制，本页仅负责内容区。
@@ -14,48 +16,32 @@ const _greyscale = ColorFilter.matrix([
   0, 0, 0, 1, 0,
 ]);
 
-class _ExhibitionItem {
-  final String title;
-  final String img;
-  const _ExhibitionItem(this.title, this.img);
-}
+/// 硬编码 fallback 数据（API 加载前或加载失败时显示）
+const _kFallbackBanner = HomeContent(
+  id: 'fallback_banner',
+  sectionType: 'hero_banner',
+  title: '灵感碎片的万合\n青花新境',
+  subtitle: 'SPECIAL / 陶瓷重构专场',
+  imageUrl: 'https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&q=80&w=2000',
+  linkText: '立即观展 (Virtual Access)',
+  displayOrder: 0,
+  isActive: true,
+  createdAt: '',
+  updatedAt: '',
+);
 
-const List<_ExhibitionItem> _kHotHallCarousel = [
-  _ExhibitionItem(
-    '解构青花：数字维度的传统重塑',
-    'https://images.unsplash.com/photo-1626074311105-0255c4d3609c?auto=format&fit=crop&q=80&w=800',
-  ),
-  _ExhibitionItem(
-    '媒介考古：模拟时代的感官记忆',
-    'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&q=80&w=800',
-  ),
-  _ExhibitionItem(
-    '光影变迁：叙事性空间的数字边界',
-    'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&q=80&w=800',
-  ),
-  _ExhibitionItem(
-    '赛博禅意：机械冥想与算法秩序',
-    'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=800',
-  ),
-  _ExhibitionItem(
-    '极简空间：光影与白墙的对话',
-    'https://images.unsplash.com/photo-1554188248-986adbb73be4?auto=format&fit=crop&q=80&w=800',
-  ),
+final _kFallbackHotHalls = <HomeContent>[
+  const HomeContent(id: '', sectionType: 'hot_hall', title: '解构青花：数字维度的传统重塑', imageUrl: 'https://images.unsplash.com/photo-1626074311105-0255c4d3609c?auto=format&fit=crop&q=80&w=800', badge: 'LIVE NOW', displayOrder: 0, isActive: true, createdAt: '', updatedAt: ''),
+  const HomeContent(id: '', sectionType: 'hot_hall', title: '媒介考古：模拟时代的感官记忆', imageUrl: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?auto=format&fit=crop&q=80&w=800', badge: 'LIVE NOW', displayOrder: 1, isActive: true, createdAt: '', updatedAt: ''),
+  const HomeContent(id: '', sectionType: 'hot_hall', title: '光影变迁：叙事性空间的数字边界', imageUrl: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&q=80&w=800', badge: 'LIVE NOW', displayOrder: 2, isActive: true, createdAt: '', updatedAt: ''),
+  const HomeContent(id: '', sectionType: 'hot_hall', title: '赛博禅意：机械冥想与算法秩序', imageUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=800', badge: 'LIVE NOW', displayOrder: 3, isActive: true, createdAt: '', updatedAt: ''),
+  const HomeContent(id: '', sectionType: 'hot_hall', title: '极简空间：光影与白墙的对话', imageUrl: 'https://images.unsplash.com/photo-1554188248-986adbb73be4?auto=format&fit=crop&q=80&w=800', badge: 'LIVE NOW', displayOrder: 4, isActive: true, createdAt: '', updatedAt: ''),
 ];
 
-const List<_ExhibitionItem> _kRecentExhibitions = [
-  _ExhibitionItem(
-    '威尼斯双年展中国馆主题发布',
-    'https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&q=80&w=1200',
-  ),
-  _ExhibitionItem(
-    '西岸美术馆：丝绸与光影',
-    'https://images.unsplash.com/photo-1554188248-986adbb73be4?auto=format&fit=crop&q=80&w=800',
-  ),
-  _ExhibitionItem(
-    '当代摄影：城市褶皱',
-    'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&q=80&w=800',
-  ),
+final _kFallbackRecentExhibitions = <HomeContent>[
+  const HomeContent(id: '', sectionType: 'recent_exhibition', title: '威尼斯双年展中国馆主题发布', imageUrl: 'https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&q=80&w=1200', displayOrder: 0, isActive: true, createdAt: '', updatedAt: ''),
+  const HomeContent(id: '', sectionType: 'recent_exhibition', title: '西岸美术馆：丝绸与光影', imageUrl: 'https://images.unsplash.com/photo-1554188248-986adbb73be4?auto=format&fit=crop&q=80&w=800', displayOrder: 1, isActive: true, createdAt: '', updatedAt: ''),
+  const HomeContent(id: '', sectionType: 'recent_exhibition', title: '当代摄影：城市褶皱', imageUrl: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&q=80&w=800', displayOrder: 2, isActive: true, createdAt: '', updatedAt: ''),
 ];
 
 class HomeScreen extends StatefulWidget {
@@ -70,19 +56,47 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _autoTimer;
   int _carouselPage = 0;
 
+  HomeContent _heroBanner = _kFallbackBanner;
+  List<HomeContent> _hotHalls = _kFallbackHotHalls;
+  List<HomeContent> _recentExhibitions = _kFallbackRecentExhibitions;
+
   @override
   void initState() {
     super.initState();
     _carouselCtrl = PageController(viewportFraction: 0.82);
+    _loadData();
     _autoTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted || !_carouselCtrl.hasClients) return;
-      final next = (_carouselPage + 1) % _kHotHallCarousel.length;
+      final count = _hotHalls.length;
+      if (count == 0) return;
+      final next = (_carouselPage + 1) % count;
       _carouselCtrl.animateToPage(
         next,
         duration: const Duration(milliseconds: 520),
         curve: Curves.easeOutCubic,
       );
     });
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final contents = await BackendApiService.fetchHomeContents();
+      if (!mounted) return;
+      final banners = contents.where((c) => c.sectionType == 'hero_banner' && c.isActive).toList()
+        ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+      final halls = contents.where((c) => c.sectionType == 'hot_hall' && c.isActive).toList()
+        ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+      final recents = contents.where((c) => c.sectionType == 'recent_exhibition' && c.isActive).toList()
+        ..sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
+      setState(() {
+        if (banners.isNotEmpty) _heroBanner = banners.first;
+        if (halls.isNotEmpty) _hotHalls = halls;
+        if (recents.isNotEmpty) _recentExhibitions = recents;
+      });
+    } catch (e) {
+      // 静默失败：保留 fallback 数据
+      debugPrint('HomeScreen _loadData error: $e');
+    }
   }
 
   @override
@@ -114,9 +128,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPageChanged: (i) => setState(() {
                     _carouselPage = i;
                   }),
-                  itemCount: _kHotHallCarousel.length,
+                  itemCount: _hotHalls.length,
                   itemBuilder: (context, i) {
-                    final item = _kHotHallCarousel[i];
+                    final item = _hotHalls[i];
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 6),
                       child: _HotHallCard(item: item),
@@ -127,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(_kHotHallCarousel.length, (i) {
+                children: List.generate(_hotHalls.length, (i) {
                   final on = i == _carouselPage;
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 220),
@@ -152,6 +166,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHeroBanner() {
+    final banner = _heroBanner;
+    final imageUrl = banner.imageUrl ?? 'https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&q=80&w=2000';
     return AspectRatio(
       aspectRatio: 21 / 9,
       child: ClipRRect(
@@ -159,11 +175,11 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.asset(
-              'assets/images/home_banner.jpg',
+            Image.network(
+              imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Image.network(
-                'https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&q=80&w=2000',
+              errorBuilder: (_, __, ___) => Image.asset(
+                'assets/images/home_banner.jpg',
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(color: context.artC.silver.withOpacity(0.35)),
               ),
@@ -188,19 +204,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Text(
-                    'SPECIAL / 陶瓷重构专场',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: kCobalt.withOpacity(0.95),
-                      letterSpacing: 3.2,
+                  if (banner.subtitle != null && banner.subtitle!.isNotEmpty)
+                    Text(
+                      banner.subtitle!,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: kCobalt.withOpacity(0.95),
+                        letterSpacing: 3.2,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
+                  if (banner.subtitle != null && banner.subtitle!.isNotEmpty)
+                    const SizedBox(height: 8),
                   Text(
-                    '灵感碎片的万合\n青花新境',
-                    style: TextStyle(
+                    banner.title,
+                    style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w300,
                       height: 1.15,
@@ -209,22 +227,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: context.artC.porcelain,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '立即观展 (Virtual Access)',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 2,
-                        color: context.artC.ink,
+                  if (banner.linkText != null && banner.linkText!.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: context.artC.porcelain,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        banner.linkText!,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 2,
+                          color: context.artC.ink,
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -315,7 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        ..._kRecentExhibitions.map((e) => Padding(
+        ..._recentExhibitions.map((e) => Padding(
               padding: const EdgeInsets.only(bottom: 14),
               child: _RecentExhibitionTile(item: e),
             )),
@@ -325,7 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _HotHallCard extends StatelessWidget {
-  final _ExhibitionItem item;
+  final HomeContent item;
 
   const _HotHallCard({required this.item});
 
@@ -339,7 +358,7 @@ class _HotHallCard extends StatelessWidget {
           ColorFiltered(
             colorFilter: _greyscale,
             child: Image.network(
-              item.img,
+              item.imageUrl ?? '',
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(color: context.artC.silver.withOpacity(0.35)),
             ),
@@ -366,7 +385,7 @@ class _HotHallCard extends StatelessWidget {
                   item.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     fontStyle: FontStyle.italic,
@@ -375,28 +394,29 @@ class _HotHallCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Container(
-                      width: 5,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: kCobalt,
-                        shape: BoxShape.circle,
+                if (item.badge != null && item.badge!.isNotEmpty)
+                  Row(
+                    children: [
+                      Container(
+                        width: 5,
+                        height: 5,
+                        decoration: const BoxDecoration(
+                          color: kCobalt,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'LIVE NOW',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.6,
-                        color: Colors.white.withOpacity(0.65),
+                      const SizedBox(width: 6),
+                      Text(
+                        item.badge!,
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.6,
+                          color: Colors.white.withOpacity(0.65),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -407,7 +427,7 @@ class _HotHallCard extends StatelessWidget {
 }
 
 class _RecentExhibitionTile extends StatelessWidget {
-  final _ExhibitionItem item;
+  final HomeContent item;
 
   const _RecentExhibitionTile({required this.item});
 
@@ -424,7 +444,7 @@ class _RecentExhibitionTile extends StatelessWidget {
               child: ColorFiltered(
                 colorFilter: _greyscale,
                 child: Image.network(
-                  item.img,
+                  item.imageUrl ?? '',
                   fit: BoxFit.cover,
                   height: 104,
                   errorBuilder: (_, __, ___) => Container(color: context.artC.silver.withOpacity(0.35)),

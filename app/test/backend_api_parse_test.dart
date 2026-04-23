@@ -40,4 +40,31 @@ void main() {
     expect(prog.ieltsOverall, 6.5);
     expect(prog.internationalTuitionFee, 25000);
   });
+
+  test('HomeContent.fromJson 解析 /api/v1/home-contents 返回字段', () {
+    final json = {
+      'id': 'f8ab9832-ca22-4c94-9ad4-e73e36a48e7c',
+      'section_type': 'hero_banner',
+      'title': '灵感碎片的万合\n青花新境',
+      'subtitle': 'SPECIAL / 陶瓷重构专场',
+      'image_url': 'https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&q=80&w=2000',
+      'link_url': null,
+      'link_text': '立即观展 (Virtual Access)',
+      'badge': null,
+      'display_order': 0,
+      'is_active': true,
+      'created_at': '2026-04-22T22:11:15.025063+00:00',
+      'updated_at': '2026-04-22T22:11:15.025063+00:00',
+    };
+    final c = HomeContent.fromJson(json);
+    expect(c.id, 'f8ab9832-ca22-4c94-9ad4-e73e36a48e7c');
+    expect(c.sectionType, 'hero_banner');
+    expect(c.title, '灵感碎片的万合\n青花新境');
+    expect(c.subtitle, 'SPECIAL / 陶瓷重构专场');
+    expect(c.imageUrl, 'https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&q=80&w=2000');
+    expect(c.linkText, '立即观展 (Virtual Access)');
+    expect(c.badge, null);
+    expect(c.displayOrder, 0);
+    expect(c.isActive, true);
+  });
 }

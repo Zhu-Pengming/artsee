@@ -50,5 +50,20 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    // DDC 模式下手动触发 main()，兼容非 Chrome-CDP 打开（如手动访问 localhost:3004）
+    // 通过 _flutter.didCreateEngineInitializer 拦截，确保只触发一次
+    (function() {
+      var orig = window._flutter;
+      window._flutter = window._flutter || {};
+      window._flutter.didCreateEngineInitializer = function(initializeEngine) {
+        if (window.__artseeEngineStarted) return;
+        window.__artseeEngineStarted = true;
+        initializeEngine().then(function(engine) {
+          engine.runApp();
+        });
+      };
+    })();
+  </script>
 </body>
 </html>

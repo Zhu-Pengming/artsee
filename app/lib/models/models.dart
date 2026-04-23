@@ -237,6 +237,54 @@ class AppReply {
   }
 }
 
+/// 首页内容（`home_contents` 表，经 Next `/api/v1/home-contents`）
+class HomeContent {
+  final String id;
+  final String sectionType;
+  final String title;
+  final String? subtitle;
+  final String? imageUrl;
+  final String? linkUrl;
+  final String? linkText;
+  final String? badge;
+  final int displayOrder;
+  final bool isActive;
+  final String createdAt;
+  final String updatedAt;
+
+  const HomeContent({
+    required this.id,
+    required this.sectionType,
+    required this.title,
+    this.subtitle,
+    this.imageUrl,
+    this.linkUrl,
+    this.linkText,
+    this.badge,
+    required this.displayOrder,
+    required this.isActive,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory HomeContent.fromJson(Map<String, dynamic> json) {
+    return HomeContent(
+      id: json['id'] as String? ?? '',
+      sectionType: json['section_type'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      subtitle: json['subtitle'] as String?,
+      imageUrl: json['image_url'] as String?,
+      linkUrl: json['link_url'] as String?,
+      linkText: json['link_text'] as String?,
+      badge: json['badge'] as String?,
+      displayOrder: json['display_order'] as int? ?? 0,
+      isActive: json['is_active'] as bool? ?? true,
+      createdAt: json['created_at'] as String? ?? '',
+      updatedAt: json['updated_at'] as String? ?? '',
+    );
+  }
+}
+
 /// 兼容 Supabase 一对一关系返回的 Object 或一对多返回的 List
 Map<String, dynamic>? _firstOrSingle(dynamic value) {
   if (value == null) return null;

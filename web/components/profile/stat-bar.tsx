@@ -7,10 +7,10 @@ export function StatBar() {
   ];
 
   return (
-    <div className="flex divide-x divide-gray-100 bg-white border-t border-gray-100">
+    <div className="flex divide-x divide-outline-variant/10 bg-card border-t border-outline-variant/10">
       {stats.map((s) => (
         <button key={s.label} className="flex-1 flex flex-col items-center py-3">
-          <span className="text-sm font-bold text-gray-900">{s.value}</span>
+          <span className="text-sm font-bold text-on-surface">{s.value}</span>
           <span className="text-[10px] text-gray-400 mt-0.5">{s.label}</span>
         </button>
       ))}

@@ -11,7 +11,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       {!hideNav && <Navbar />}
-      <main className={hideNav ? '' : 'pt-24'}>{children}</main>
+      <main className={hideNav ? 'min-h-[90vh]' : 'pt-24 min-h-[90vh]'}>{children}</main>
       {!hideNav && <Footer />}
     </>
   );

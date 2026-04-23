@@ -92,7 +92,7 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
         <FavoriteButton programId={program.id} initialFavorited={isFavorited} isLoggedIn={!!user} />
         {school?.official_website && (
           <a href={school.official_website} target="_blank" rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-gray-200 bg-white rounded-xl text-xs font-medium text-gray-600 shadow-sm">
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border border-outline-variant/20 bg-card rounded-xl text-xs font-medium text-on-surface-variant shadow-sm">
             <Globe size={14} /> 官网
           </a>
         )}
@@ -109,7 +109,7 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
       {/* 项目简介 */}
       {program.program_overview && (
         <Section title="项目简介" icon={<FileText size={14} className="text-[#1A4B8C]" />}>
-          <p className="text-xs text-gray-600 leading-relaxed">{program.program_overview}</p>
+          <p className="text-xs text-on-surface-variant leading-relaxed">{program.program_overview}</p>
         </Section>
       )}
 
@@ -137,7 +137,7 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
       {/* 作品集要求 */}
       {admission?.portfolio_requirements && (
         <Section title="作品集要求" icon={<Video size={14} className="text-purple-500" />}>
-          <p className="text-xs text-gray-600 leading-relaxed">{admission.portfolio_requirements}</p>
+          <p className="text-xs text-on-surface-variant leading-relaxed">{admission.portfolio_requirements}</p>
         </Section>
       )}
 
@@ -161,14 +161,14 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
       {/* 核心课程 */}
       {program.core_courses && (
         <Section title="核心课程" icon={<Users size={14} className="text-teal-500" />}>
-          <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line">{program.core_courses}</p>
+          <p className="text-xs text-on-surface-variant leading-relaxed whitespace-pre-line">{program.core_courses}</p>
         </Section>
       )}
 
       {/* 职业发展 */}
       {program.career_paths && (
         <Section title="职业发展方向" icon={<Heart size={14} className="text-rose-500" />}>
-          <p className="text-xs text-gray-600 leading-relaxed">{program.career_paths}</p>
+          <p className="text-xs text-on-surface-variant leading-relaxed">{program.career_paths}</p>
         </Section>
       )}
 
@@ -194,10 +194,10 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
 
 function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="mx-4 mt-3 bg-white rounded-2xl p-4 border border-gray-100">
+    <div className="mx-4 mt-3 bg-card rounded-2xl p-4 border border-outline-variant/10">
       <div className="flex items-center gap-2 mb-3">
         {icon}
-        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+        <h2 className="text-sm font-semibold text-on-surface">{title}</h2>
       </div>
       {children}
     </div>

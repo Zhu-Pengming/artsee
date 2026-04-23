@@ -126,7 +126,7 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
               type="button"
               onClick={handleAvatarClick}
               disabled={uploadingAvatar}
-              className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-al-silver/50 border-2 border-al-shell shadow-lg flex items-center justify-center ${isSelf ? 'cursor-pointer hover:opacity-90' : 'cursor-default'} disabled:opacity-60 transition-opacity`}
+              className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-surface-container border-2 border-outline-variant/30 shadow-lg flex items-center justify-center ${isSelf ? 'cursor-pointer hover:opacity-90' : 'cursor-default'} disabled:opacity-60 transition-opacity`}
             >
               {avatarUrl ? (
                 <img src={avatarUrl} alt={nickname} className="w-full h-full object-cover" />
@@ -144,25 +144,25 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
           {/* 右侧信息 */}
           <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-al-ink mb-1">{nickname}</h1>
-            <p className="text-xs text-al-ink/40 mb-2 truncate">
+            <p className="text-xs text-on-surface-variant/80 mb-2 truncate">
               ID: {userId.slice(0, 12)}… {profile?.location ? `· ${profile.location}` : ''}
             </p>
-            <p className="text-sm text-al-ink/70 mb-3 leading-relaxed">{bio}</p>
+            <p className="text-sm text-on-surface-variant mb-3 leading-relaxed">{bio}</p>
 
             {/* 标签 */}
             <div className="flex flex-wrap gap-2 mb-4">
               {profile?.role && (
-                <span className="px-3 py-1 rounded-full bg-al-silver/40 text-al-ink/60 text-xs font-medium">
+                <span className="px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-xs font-medium">
                   {profile.role === 'admin' ? '管理员' : profile.role}
                 </span>
               )}
               {profile?.user_type && (
-                <span className="px-3 py-1 rounded-full bg-al-silver/40 text-al-ink/60 text-xs font-medium">
+                <span className="px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-xs font-medium">
                   {profile.user_type === 'student' ? '学生' : profile.user_type}
                 </span>
               )}
               {profile?.is_verified && (
-                <span className="px-3 py-1 rounded-full bg-al-cobalt/10 text-al-cobalt text-xs font-medium">
+                <span className="px-3 py-1 rounded-full bg-al-cobalt/20 text-al-cobalt text-xs font-medium">
                   已认证
                 </span>
               )}
@@ -172,15 +172,15 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
             <div className="flex items-center gap-5 mb-4">
               <div className="text-center">
                 <span className="text-base font-bold text-al-ink">{profile?.following_count ?? 0}</span>
-                <span className="text-xs text-al-ink/50 ml-1">关注</span>
+                <span className="text-xs text-on-surface-variant/80 ml-1">关注</span>
               </div>
               <div className="text-center">
                 <span className="text-base font-bold text-al-ink">{profile?.followers_count ?? 0}</span>
-                <span className="text-xs text-al-ink/50 ml-1">粉丝</span>
+                <span className="text-xs text-on-surface-variant/80 ml-1">粉丝</span>
               </div>
               <div className="text-center">
                 <span className="text-base font-bold text-al-ink">{totalLikes + (profile?.favorites_count ?? 0)}</span>
-                <span className="text-xs text-al-ink/50 ml-1">获赞与收藏</span>
+                <span className="text-xs text-on-surface-variant/80 ml-1">获赞与收藏</span>
               </div>
             </div>
 
@@ -196,14 +196,14 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
                 </button>
                 <button
                   type="button"
-                  className="flex-1 max-w-[140px] py-2 rounded-full border border-al-silver text-al-ink/70 text-sm font-medium hover:bg-al-silver/30 transition-colors"
+                  className="flex-1 max-w-[140px] py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-container transition-colors"
                 >
                   分享
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowDraft(true)}
-                  className="flex-1 max-w-[140px] py-2 rounded-full border border-al-silver text-al-ink/70 text-sm font-medium hover:bg-al-silver/30 transition-colors"
+                  className="flex-1 max-w-[140px] py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-container transition-colors"
                 >
                   草稿
                 </button>
@@ -213,7 +213,7 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
         </div>
 
         {/* Tab 切换 — 居中，小红书风格 */}
-        <div className="flex justify-center border-b border-al-silver/40 mt-6 mx-4 sm:mx-6">
+        <div className="flex justify-center border-b border-outline-variant/20 mt-6 mx-4 sm:mx-6">
           {profileTabs.map((tab) => {
             const isActive = activeTab === tab.key
             const isLink = !!tab.href
@@ -221,7 +221,7 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
               <Link
                 key={tab.key}
                 href={tab.href!}
-                className="px-4 sm:px-6 py-3 text-sm font-medium text-al-ink/50 hover:text-al-ink transition-colors"
+                className="px-4 sm:px-6 py-3 text-sm font-medium text-on-surface-variant/80 hover:text-on-surface transition-colors"
               >
                 {tab.label}
               </Link>
@@ -232,7 +232,7 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
                 className={`px-4 sm:px-6 py-3 text-sm font-medium transition-colors relative ${
                   isActive
                     ? 'text-al-ink font-bold'
-                    : 'text-al-ink/50 hover:text-al-ink'
+                    : 'text-on-surface-variant/80 hover:text-on-surface'
                 }`}
               >
                 {tab.label}
@@ -249,7 +249,7 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
           {activeTab === '申请追踪' && (
             <>
               <div className="flex items-center justify-between mb-4">
-                <p className="text-xs text-gray-500">共 {trackers.length} 所学校</p>
+                <p className="text-xs text-on-surface-variant/80">共 {trackers.length} 所学校</p>
                 {isSelf && (
                   <button onClick={() => { setShowAddTracker(true); setTrackerError('') }} className="text-xs text-al-cobalt font-medium">
                     + 添加学校
@@ -259,10 +259,10 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
               {trackers.length > 0
                 ? trackers.map(t => <TrackerCard key={t.id} tracker={t} />)
                 : (
-                  <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                  <div className="flex flex-col items-center justify-center py-16 text-on-surface-variant/70">
                     <span className="text-4xl mb-3">📋</span>
                     <p className="text-sm mb-2">还没有追踪的学校</p>
-                    <p className="text-xs text-gray-400">前往探索页选择心仪院校</p>
+                    <p className="text-xs text-on-surface-variant/70">前往探索页选择心仪院校</p>
                   </div>
                 )}
             </>
@@ -274,17 +274,17 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {myCases.map(c => (
                     <Link key={c.id} href={`/cases/${c.id}`}>
-                      <div className="rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="rounded-xl overflow-hidden border border-outline-variant/10 shadow-sm hover:shadow-md transition-shadow">
                         <div className={`h-24 bg-gradient-to-br ${c.cover_gradient ?? 'from-blue-500 to-purple-600'} flex items-end p-3`}>
                           <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${resultColor[c.result]}`}>
                             {resultLabel[c.result]}
                           </span>
                         </div>
-                        <div className="p-3 bg-white">
-                          <p className="text-xs font-semibold text-gray-900 line-clamp-1">{c.title}</p>
+                        <div className="p-3 bg-card">
+                          <p className="text-xs font-semibold text-on-surface line-clamp-1">{c.title}</p>
                           <div className="flex items-center justify-between mt-1.5">
-                            <span className="text-[10px] text-gray-500">{c.target_school}</span>
-                            <span className="text-[10px] text-gray-400">{timeAgo(c.created_at)}</span>
+                            <span className="text-[10px] text-on-surface-variant/80">{c.target_school}</span>
+                            <span className="text-[10px] text-on-surface-variant/70">{timeAgo(c.created_at)}</span>
                           </div>
                         </div>
                       </div>
@@ -292,10 +292,10 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                <div className="flex flex-col items-center justify-center py-16 text-on-surface-variant/70">
                   <span className="text-4xl mb-3">📝</span>
                   <p className="text-sm mb-2">还没有分享过案例</p>
-                  <Link href="/cases/new" className="bg-al-cobalt text-white text-xs px-5 py-2.5 rounded-full font-medium mt-2">
+                  <Link href="/cases/new" className="bg-al-cobalt text-al-shell text-xs px-5 py-2.5 rounded-full font-medium mt-2">
                     分享我的申请经历
                   </Link>
                 </div>
@@ -309,10 +309,10 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
                 <div className="space-y-3">
                   {favorites.map(f => (
                     <Link key={f.id} href={`/explore/${f.programs?.id ?? '#'}`}>
-                      <div className="bg-white rounded-xl border border-gray-100 p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                      <div className="bg-card rounded-xl border border-outline-variant/10 p-4 flex items-center justify-between hover:bg-surface-container-low transition-colors">
                         <div>
-                          <p className="text-sm font-semibold text-gray-900">{f.programs?.program_name ?? '项目'}</p>
-                          <p className="text-xs text-gray-500 mt-1">{f.programs?.schools?.name_zh ?? ''}</p>
+                          <p className="text-sm font-semibold text-on-surface">{f.programs?.program_name ?? '项目'}</p>
+                          <p className="text-xs text-on-surface-variant/80 mt-1">{f.programs?.schools?.name_zh ?? ''}</p>
                         </div>
                         <span className="text-rose-500">❤</span>
                       </div>
@@ -320,10 +320,10 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                <div className="flex flex-col items-center justify-center py-16 text-on-surface-variant/70">
                   <span className="text-4xl mb-3">🔖</span>
                   <p className="text-sm mb-2">还没有收藏内容</p>
-                  <Link href="/explore" className="bg-al-cobalt text-white text-xs px-5 py-2.5 rounded-full font-medium mt-2">
+                  <Link href="/explore" className="bg-al-cobalt text-al-shell text-xs px-5 py-2.5 rounded-full font-medium mt-2">
                     去探索院校
                   </Link>
                 </div>
@@ -336,10 +336,10 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
       {/* 添加追踪 Modal */}
       {showAddTracker && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center">
-          <div className="bg-white rounded-t-3xl w-full max-w-lg p-6">
+          <div className="bg-surface-container-lowest rounded-t-3xl w-full max-w-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">添加申请学校</h3>
-              <button onClick={() => setShowAddTracker(false)} className="text-gray-400 text-sm">关闭</button>
+              <h3 className="font-semibold text-on-surface">添加申请学校</h3>
+              <button onClick={() => setShowAddTracker(false)} className="text-on-surface-variant/70 text-sm">关闭</button>
             </div>
             <form action={async (fd: FormData) => {
               setAddingTracker(true)
@@ -350,20 +350,20 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
               setShowAddTracker(false)
             }}>
               <div className="space-y-3">
-                <input name="school_name" required placeholder="院校名称" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt" />
-                <input name="program_name" required placeholder="专业方向" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt" />
-                <select name="tier" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt">
+                <input name="school_name" required placeholder="院校名称" className="w-full border border-outline-variant/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt" />
+                <input name="program_name" required placeholder="专业方向" className="w-full border border-outline-variant/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt" />
+                <select name="tier" className="w-full border border-outline-variant/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt">
                   <option value="reach">冲刺</option>
                   <option value="match">匹配</option>
                   <option value="safety">保底</option>
                 </select>
-                <select name="status" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt">
+                <select name="status" className="w-full border border-outline-variant/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt">
                   <option value="planning">规划中</option>
                   <option value="preparing">准备材料</option>
                   <option value="submitted">已提交</option>
                 </select>
                 {trackerError && <p className="text-xs text-red-500">{trackerError}</p>}
-                <button type="submit" disabled={addingTracker} className="w-full py-3 bg-al-cobalt text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60">
+                <button type="submit" disabled={addingTracker} className="w-full py-3 bg-al-cobalt text-al-shell rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60">
                   {addingTracker ? <span className="animate-pulse">保存中…</span> : '添加'}
                 </button>
               </div>
@@ -375,10 +375,10 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
       {/* 编辑资料 Modal */}
       {showEditProfile && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center">
-          <div className="bg-white rounded-t-3xl w-full max-w-lg p-6">
+          <div className="bg-surface-container-lowest rounded-t-3xl w-full max-w-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">编辑资料</h3>
-              <button onClick={() => setShowEditProfile(false)} className="text-gray-400 text-sm">关闭</button>
+              <h3 className="font-semibold text-on-surface">编辑资料</h3>
+              <button onClick={() => setShowEditProfile(false)} className="text-on-surface-variant/70 text-sm">关闭</button>
             </div>
             <form action={async (fd: FormData) => {
               setEditingProfile(true)
@@ -390,38 +390,38 @@ export function ProfileClient({ profile, trackers, myCases, favorites, isSelf, u
             }}>
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">昵称</label>
+                  <label className="text-xs text-on-surface-variant/80 mb-1 block">昵称</label>
                   <input
                     name="nickname"
                     defaultValue={profile?.nickname ?? ''}
                     placeholder="你的昵称"
                     maxLength={20}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt"
+                    className="w-full border border-outline-variant/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">简介</label>
+                  <label className="text-xs text-on-surface-variant/80 mb-1 block">简介</label>
                   <textarea
                     name="bio"
                     defaultValue={profile?.bio ?? ''}
                     placeholder="介绍一下自己..."
                     maxLength={80}
                     rows={2}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt resize-none"
+                    className="w-full border border-outline-variant/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt resize-none"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">所在地</label>
+                  <label className="text-xs text-on-surface-variant/80 mb-1 block">所在地</label>
                   <input
                     name="location"
                     defaultValue={profile?.location ?? ''}
                     placeholder="城市 / 国家"
                     maxLength={30}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt"
+                    className="w-full border border-outline-variant/20 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-al-cobalt"
                   />
                 </div>
                 {editError && <p className="text-xs text-red-500">{editError}</p>}
-                <button type="submit" disabled={editingProfile} className="w-full py-3 bg-al-cobalt text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60">
+                <button type="submit" disabled={editingProfile} className="w-full py-3 bg-al-cobalt text-al-shell rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60">
                   {editingProfile ? <span className="animate-pulse">保存中…</span> : '保存'}
                 </button>
               </div>

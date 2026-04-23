@@ -33,10 +33,6 @@
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
-  --color-secondary-foreground: #fff8ea;
-  --color-secondary: #6d5f07;
-  --color-primary-foreground: #faf7f6;
-  --color-primary: #5f5e5e;
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -48,13 +44,6 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-
-  /* Legacy al-* colors for internal pages backward compatibility */
-  --color-al-shell: #f8f9fa;
-  --color-al-cobalt: #003399;
-  --color-al-cobalt-muted: #4a6fa5;
-  --color-al-ink: #1a1a1a;
-  --color-al-silver: #e9ecef;
   --font-serif: Georgia, ui-serif, serif;
 }
 
@@ -130,6 +119,13 @@
   --color-on-surface-variant: #5a6061;
   
   --color-outline-variant: #adb3b4;
+
+  /* Legacy al-* colors — must live in @theme (not inline) so html.dark overrides work */
+  --color-al-shell: #f8f9fa;
+  --color-al-cobalt: #003399;
+  --color-al-cobalt-muted: #4a6fa5;
+  --color-al-ink: #1a1a1a;
+  --color-al-silver: #e9ecef;
 }
 
 .glass-nav {
@@ -151,8 +147,9 @@ html.dark {
   --color-al-shell: #0a0a0b;
   --color-al-ink: #e8e8eb;
   --color-al-silver: #2c3038;
-  --color-al-cobalt: #4d6ab8;
-  --color-al-cobalt-muted: #6b8cc4;
+  --color-al-cobalt: #6b9cf5;
+  --color-al-cobalt-muted: #8ab4f8;
+  --color-primary: #8ab4f8;
 
   --background: oklch(0.14 0.012 255);
   --foreground: oklch(0.93 0.008 255);
@@ -166,6 +163,13 @@ html.dark {
   --accent-foreground: oklch(0.95 0.008 255);
   --border: oklch(0.3 0.02 255);
   --input: oklch(0.3 0.02 255);
+  --primary: #9aa0a6;
+  --primary-foreground: oklch(0.14 0.012 255);
+  --secondary: #8a7a3a;
+  --secondary-foreground: #fff8ea;
+  --sidebar-primary: #9aa0a6;
+  --sidebar-ring: #9aa0a6;
+  --ring: #9aa0a6;
 }
 
 html.dark .glass-nav {

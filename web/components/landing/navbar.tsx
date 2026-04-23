@@ -113,7 +113,7 @@ export function Navbar() {
   return (
     <>
       <header className="fixed top-0 w-full z-50 glass-nav">
-        <nav className="flex justify-between items-center px-6 md:px-12 py-6 w-full">
+        <nav className="relative flex justify-between items-center px-6 md:px-12 py-6 w-full">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -122,7 +122,8 @@ export function Navbar() {
             <Link href="/">Artiqore</Link>
           </motion.div>
 
-          <div className="hidden md:flex items-center gap-10 font-headline tracking-tight font-medium">
+          {/* 桌面端导航 */}
+          <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-10 font-headline tracking-tight font-medium">
             {navItems.map((item) => {
               const active = isActive(item.href);
               return (
@@ -130,8 +131,28 @@ export function Navbar() {
                   key={item.href}
                   className={`transition-colors pb-1 ${
                     active
-                      ? 'text-primary border-b border-on-surface'
-                      : 'text-primary/60 hover:text-on-surface'
+                      ? 'text-on-surface border-b border-on-surface'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                  href={item.href}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* 移动端绝对居中导航 */}
+          <div className="flex md:hidden absolute left-1/2 -translate-x-1/2 items-center gap-2 font-headline tracking-tight font-medium text-[11px]">
+            {navItems.map((item) => {
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  className={`transition-colors pb-1 whitespace-nowrap ${
+                    active
+                      ? 'text-on-surface border-b border-on-surface'
+                      : 'text-on-surface-variant hover:text-on-surface'
                   }`}
                   href={item.href}
                 >
@@ -243,7 +264,7 @@ export function Navbar() {
                       <button
                         type="button"
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-500/10 dark:hover:bg-red-500/20 transition-colors text-left"
                       >
                         <LogOut className="w-4 h-4" />
                         退出登录

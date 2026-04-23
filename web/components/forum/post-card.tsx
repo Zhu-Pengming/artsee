@@ -13,7 +13,7 @@ export function PostCard({ post }: { post: Post }) {
   const ts = typeStyle[post.type] ?? typeStyle.discussion;
   return (
     <Link href={`/forum/${post.id}`}>
-      <article className="px-4 py-3 border-b border-gray-100 active:bg-gray-50 transition-colors">
+      <article className="px-4 py-3 border-b border-outline-variant/10 active:bg-surface-container-low transition-colors">
         {/* 作者行 */}
         <div className="flex items-center gap-2 mb-2">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#1A4B8C] to-[#4A90D9] flex items-center justify-center text-white text-xs font-bold">
@@ -37,7 +37,7 @@ export function PostCard({ post }: { post: Post }) {
               <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 ${ts.cls}`}>
                 {ts.label}
               </span>
-              <h3 className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">
+              <h3 className="text-sm font-semibold text-on-surface leading-snug line-clamp-2">
                 {post.title}
               </h3>
             </div>
@@ -49,7 +49,7 @@ export function PostCard({ post }: { post: Post }) {
             {post.tags?.length > 0 && (
               <div className="flex gap-1.5 mb-2 flex-wrap">
                 {post.tags.map((tag) => (
-                  <span key={tag} className="text-[9px] text-gray-400 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded">
+                  <span key={tag} className="text-[9px] text-on-surface-variant/50 bg-surface-container-low border border-outline-variant/20 px-1.5 py-0.5 rounded">
                     #{tag}
                   </span>
                 ))}

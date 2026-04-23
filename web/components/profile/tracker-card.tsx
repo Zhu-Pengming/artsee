@@ -9,23 +9,23 @@ export function TrackerCard({ tracker }: { tracker: ApplicationTracker }) {
   const isFinished = tracker.status === "admitted" || tracker.status === "rejected" || tracker.status === "waitlisted";
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 mb-3">
+    <div className="bg-card rounded-2xl border border-outline-variant/10 shadow-sm p-3 mb-3">
       {/* 院校信息 */}
       <div className="flex items-center justify-between mb-2">
         <div>
           <div className="flex items-center gap-1.5">
-            <h3 className="text-sm font-semibold text-gray-900">{tracker.school_name}</h3>
+            <h3 className="text-sm font-semibold text-on-surface">{tracker.school_name}</h3>
             <span className={`text-[9px] font-bold ${tierColor[tracker.tier]}`}>
               [{tierLabel[tracker.tier]}]
             </span>
           </div>
-          <p className="text-[10px] text-gray-500">{tracker.program_name}</p>
+          <p className="text-[10px] text-on-surface-variant/80">{tracker.program_name}</p>
         </div>
         <div className="flex items-center gap-1">
           <span className={`text-[9px] font-medium px-2 py-0.5 rounded-full ${statusColor[tracker.status]}`}>
             {statusLabel[tracker.status]}
           </span>
-          <ChevronRight size={14} className="text-gray-300" />
+          <ChevronRight size={14} className="text-outline-variant" />
         </div>
       </div>
 
@@ -36,7 +36,7 @@ export function TrackerCard({ tracker }: { tracker: ApplicationTracker }) {
             <div key={step} className="flex items-center flex-1">
               <div
                 className={`w-full h-1 rounded-full transition-colors ${
-                  i <= currentStep ? "bg-[#1A4B8C]" : "bg-gray-200"
+                  i <= currentStep ? "bg-al-cobalt" : "bg-surface-container"
                 }`}
               />
             </div>
@@ -46,11 +46,11 @@ export function TrackerCard({ tracker }: { tracker: ApplicationTracker }) {
 
       {/* 截止日期 */}
       <div className="flex items-center justify-between mt-2">
-        <span className="text-[10px] text-gray-400">
+        <span className="text-[10px] text-on-surface-variant/70">
           截止：{tracker.deadline ?? '—'}
         </span>
         {isFinished && tracker.status === "admitted" && (
-          <span className="text-[10px] text-green-600 font-medium">🎉 恭喜录取！</span>
+          <span className="text-[10px] text-green-600 dark:text-green-400 font-medium">🎉 恭喜录取！</span>
         )}
       </div>
     </div>

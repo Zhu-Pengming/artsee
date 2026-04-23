@@ -10,7 +10,7 @@ export default function MarketPage() {
   return (
     <main className="min-h-screen bg-porcelain-white">
       {/* 顶部标题 */}
-      <div className="bg-white border-b border-porcelain-cream">
+      <div className="bg-card border-b border-outline-variant/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
@@ -64,7 +64,7 @@ export default function MarketPage() {
         {activeTab === "tours" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {artResources.map((resource) => (
-              <div key={resource.id} className="bg-white rounded-2xl shadow-porcelain overflow-hidden hover-lift">
+              <div key={resource.id} className="bg-card rounded-2xl shadow-porcelain overflow-hidden hover-lift">
                 {/* 封面 */}
                 <div className="h-56 bg-gradient-to-br from-porcelain to-porcelain-light relative">
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -73,7 +73,7 @@ export default function MarketPage() {
                     </svg>
                   </div>
                   <div className="absolute top-4 left-4">
-                    <span className="px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-full text-sm font-medium text-porcelain">
+                    <span className="px-3 py-1.5 bg-surface-container-lowest/90 backdrop-blur-sm rounded-full text-sm font-medium text-porcelain">
                       {resource.type === "tour" ? "艺术游学" : resource.type === "camp" ? "写生营地" : "暑期课程"}
                     </span>
                   </div>
@@ -129,7 +129,7 @@ export default function MarketPage() {
         {activeTab === "artworks" && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {artworks.map((artwork) => (
-              <div key={artwork.id} className="bg-white rounded-2xl shadow-porcelain overflow-hidden hover-lift">
+              <div key={artwork.id} className="bg-card rounded-2xl shadow-porcelain overflow-hidden hover-lift">
                 {/* 图片 */}
                 <div className="aspect-[3/4] bg-gradient-to-br from-porcelain to-porcelain-light relative">
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -137,7 +137,7 @@ export default function MarketPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <button className="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center">
+                  <button className="absolute top-3 right-3 w-8 h-8 bg-surface-container-lowest/90 backdrop-blur-sm rounded-full flex items-center justify-center">
                     <svg className="w-4 h-4 text-ink-light" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                     </svg>
@@ -170,7 +170,7 @@ export default function MarketPage() {
           <div className="max-w-3xl mx-auto">
             {/* 角色选择 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-              <div className="bg-white rounded-2xl shadow-porcelain p-8 hover-lift">
+              <div className="bg-card rounded-2xl shadow-porcelain p-8 hover-lift">
                 <div className="w-16 h-16 rounded-2xl bg-porcelain/10 flex items-center justify-center mb-6">
                   <svg className="w-8 h-8 text-porcelain" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -183,7 +183,7 @@ export default function MarketPage() {
                 </button>
               </div>
               
-              <div className="bg-white rounded-2xl shadow-porcelain p-8 hover-lift">
+              <div className="bg-card rounded-2xl shadow-porcelain p-8 hover-lift">
                 <div className="w-16 h-16 rounded-2xl bg-porcelain-dark/10 flex items-center justify-center mb-6">
                   <svg className="w-8 h-8 text-porcelain-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />

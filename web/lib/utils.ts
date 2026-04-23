@@ -53,9 +53,9 @@ export const resultLabel = {
 } as const
 
 export const resultColor = {
-  admitted: 'bg-green-100 text-green-700',
-  waitlisted: 'bg-yellow-100 text-yellow-700',
-  rejected: 'bg-red-100 text-red-600',
+  admitted: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  waitlisted: 'bg-yellow-100 text-yellow-700 dark:bg-amber-900/30 dark:text-amber-400',
+  rejected: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
 } as const
 
 export const statusLabel = {
@@ -64,17 +64,17 @@ export const statusLabel = {
 } as const
 
 export const statusColor = {
-  planning: 'bg-gray-100 text-gray-600',
-  preparing: 'bg-blue-100 text-blue-700',
-  submitted: 'bg-purple-100 text-purple-700',
-  interview: 'bg-blue-100 text-blue-700',
-  admitted: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-600',
-  waitlisted: 'bg-yellow-100 text-yellow-700',
+  planning: 'bg-surface-container-high text-on-surface-variant dark:bg-surface-container-high dark:text-on-surface-variant',
+  preparing: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  submitted: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  interview: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  admitted: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  rejected: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+  waitlisted: 'bg-yellow-100 text-yellow-700 dark:bg-amber-900/30 dark:text-amber-400',
 } as const
 
 export const tierLabel = { reach: '冲刺', match: '匹配', safety: '保底' } as const
-export const tierColor = { reach: 'text-red-500', match: 'text-blue-500', safety: 'text-green-500' } as const
+export const tierColor = { reach: 'text-red-500 dark:text-red-400', match: 'text-blue-500 dark:text-blue-400', safety: 'text-green-500 dark:text-green-400' } as const
 
 export function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()

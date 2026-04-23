@@ -149,7 +149,7 @@ export function CiyanChat() {
 
       {/* Chat Panel */}
       <div
-        className={`fixed inset-x-0 bottom-0 z-[55] max-w-lg mx-auto w-full flex flex-col rounded-t-2xl bg-white shadow-2xl transition-transform duration-300 ease-out ${
+        className={`fixed inset-x-0 bottom-0 z-[55] max-w-lg mx-auto w-full flex flex-col rounded-t-2xl bg-surface-container-lowest shadow-2xl transition-transform duration-300 ease-out ${
           open ? 'translate-y-0' : 'translate-y-full'
         }`}
         style={{ height: '72vh' }}
@@ -191,7 +191,7 @@ export function CiyanChat() {
                 className={`max-w-[78%] px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
                   msg.role === 'user'
                     ? 'bg-[#1A4B8C] text-white rounded-tr-sm'
-                    : 'bg-gray-100 text-gray-800 rounded-tl-sm'
+                    : 'bg-surface-container text-on-surface rounded-tl-sm'
                 }`}
               >
                 {msg.content}
@@ -211,7 +211,7 @@ export function CiyanChat() {
               <button
                 key={prompt}
                 onClick={() => sendMessage(prompt)}
-                className="flex-shrink-0 text-[11px] px-3 py-1.5 rounded-full border border-[#1A4B8C]/30 text-[#1A4B8C] bg-blue-50 hover:bg-blue-100 transition-colors whitespace-nowrap"
+                className="flex-shrink-0 text-[11px] px-3 py-1.5 rounded-full border border-[#1A4B8C]/30 text-[#1A4B8C] bg-surface-container-low hover:bg-surface-container transition-colors transition-colors whitespace-nowrap"
               >
                 {prompt}
               </button>
@@ -220,7 +220,7 @@ export function CiyanChat() {
         )}
 
         {/* Input */}
-        <div className="flex items-end gap-2 px-4 py-3 border-t border-gray-100 flex-shrink-0">
+        <div className="flex items-end gap-2 px-4 py-3 border-t border-outline-variant/10 flex-shrink-0">
           <textarea
             ref={inputRef}
             value={input}
@@ -228,7 +228,7 @@ export function CiyanChat() {
             onKeyDown={handleKeyDown}
             placeholder="问我任何艺术留学的问题～"
             rows={1}
-            className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-[#1A4B8C] transition-colors max-h-24 scrollbar-hide"
+            className="flex-1 resize-none rounded-xl border border-outline-variant/20 px-3 py-2 text-sm outline-none focus:border-[#1A4B8C] transition-colors max-h-24 scrollbar-hide"
             style={{ minHeight: '38px' }}
           />
           <button

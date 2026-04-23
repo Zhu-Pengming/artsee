@@ -195,6 +195,24 @@ class BackendApiService {
     }
   }
 
+  /// 首页内容（`home_contents` 表，经 Next `/api/v1/home-contents`）
+  static Future<List<HomeContent>> fetchHomeContents({String? sectionType}) async {
+    final params = <String, String>{};
+    if (sectionType != null && sectionType.isNotEmpty) {
+      params['section_type'] = sectionType;
+    }
+    final r = await http.get(
+      _api('/api/v1/home-contents', params),
+      headers: await _headers(),
+    );
+    final body = jsonDecode(r.body) as Map<String, dynamic>;
+    if (r.statusCode != 200 || body['success'] != true) {
+      throw Exception(body['error'] ?? 'home_contents ${r.statusCode}');
+    }
+    final list = body['data'] as List<dynamic>? ?? [];
+    return list.map((e) => HomeContent.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
   /// AI 选校：返回 Next 侧 JSON（含 `result` 表格字段）
   static Future<Map<String, dynamic>> aiSchoolSearch(String query, {int limitPrograms = 40}) async {
     final r = await http.post(

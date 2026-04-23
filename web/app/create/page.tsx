@@ -64,9 +64,9 @@ export default function CreatePage() {
   ];
 
   return (
-    <main className="min-h-screen bg-porcelain-white">
+    <main className="min-h-screen bg-surface">
       {/* 顶部导航 */}
-      <nav className="bg-white border-b border-porcelain-cream sticky top-0 z-10">
+      <nav className="bg-card border-b border-outline-variant/10 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
@@ -98,7 +98,7 @@ export default function CreatePage() {
           {createOptions.map((option) => (
             <button
               key={option.id}
-              className={`group bg-white rounded-2xl p-6 shadow-porcelain hover-lift text-left border-2 ${option.borderColor} hover:border-porcelain transition-all`}
+              className={`group bg-card rounded-2xl p-6 shadow-porcelain hover-lift text-left border-2 ${option.borderColor} hover:border-porcelain transition-all`}
             >
               <div className={`w-16 h-16 rounded-2xl ${option.bgColor} ${option.textColor} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform`}>
                 {option.icon}
@@ -118,7 +118,7 @@ export default function CreatePage() {
         </div>
 
         {/* 草稿箱 */}
-        <div className="mt-12 bg-white rounded-2xl shadow-porcelain p-6">
+        <div className="mt-12 bg-card rounded-2xl shadow-porcelain p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-porcelain-muted flex items-center justify-center">
