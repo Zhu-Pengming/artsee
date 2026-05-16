@@ -1,0 +1,330 @@
+[    1596ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/:0
+[    1936ms] Error: ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find native binding. npm has a bug related to optional dependencies (https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing both package-lock.json and node_modules directory.
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:559:11)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+    [at Function._load (node:internal/modules/cjs/loader:1108:12)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js:1:1406)]
+Caused by: Error: Cannot find module '@tailwindcss/oxide-win32-x64-msvc'
+Require stack:
+- D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at requireNative (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:131:25)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:526:17)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+Caused by: Error: Cannot find module './tailwindcss-oxide.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at requireNative (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:126:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:526:17)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component]
+
+
+    at Object.getCompilationErrors (file://D:\files\artsee\web\node_modules\next\dist\server\dev\hot-reloader-turbopack.js:1189:59)
+    at DevBundlerService.getCompilationError (file://D:\files\artsee\web\node_modules\next\dist\server\lib\dev-bundler-service.js:44:55)
+    at DevServer.getCompilationError (file://D:\files\artsee\web\node_modules\next\dist\server\dev\next-dev-server.js:719:42)
+    at DevServer.findPageComponents (file://D:\files\artsee\web\node_modules\next\dist\server\dev\next-dev-server.js:689:43)
+    at async DevServer.renderErrorToResponseImpl (file://D:\files\artsee\web\node_modules\next\dist\server\base-server.js:1745:26)
+[    2080ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find native binding. npm has a bug related to optional dependencies (https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing both package-lock.json and node_modules directory.
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:559:11)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+    [at Function._load (node:internal/modules/cjs/loader:1108:12)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js:1:1406)]
+Caused by: Error: Cannot find module '@tailwindcss/oxide-win32-x64-msvc'
+Require stack:
+- D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at requireNative (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:131:25)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:526:17)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+Caused by: Error: Cannot find module './tailwindcss-oxide.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at requireNative (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:126:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:526:17)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[    2080ms] [ERROR] [next]/internal/font/google/noto_sans_sc_39f62071.module.css:2434:8
+Module not found: Can't resolve '@vercel/turbopack-next/internal/font/google/font'
+  2432 |   font-weight: 700;
+  2433 |   font-display: swap;
+> 2434 |   src: url(@vercel/turbopack-next/internal/font/google/font?{%22url%22:%22https://fonts....
+       |        ^
+  2435 |   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, ...
+  2436 | }
+  2437 | @font-face {
+
+Import map: Resolved by import map
+
+Import trace:
+  Server Component:
+    [next]/internal/font/google/noto_sans_sc_39f62071.module.css
+    [next]/internal/font/google/noto_sans_sc_39f62071.js
+    ./web/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[    2080ms] [ERROR] [next]/internal/font/google/poppins_fb95fc0b.module.css:106:8
+Module not found: Can't resolve '@vercel/turbopack-next/internal/font/google/font'
+  104 |   font-weight: 700;
+  105 |   font-display: swap;
+> 106 |   src: url(@vercel/turbopack-next/internal/font/google/font?{%22url%22:%22https://fonts.g...
+      |        ^
+  107 |   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U...
+  108 | }
+  109 | @font-face {
+
+Import map: Resolved by import map
+
+Import trace:
+  Server Component:
+    [next]/internal/font/google/poppins_fb95fc0b.module.css
+    [next]/internal/font/google/poppins_fb95fc0b.js
+    ./web/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[    2149ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find native binding. npm has a bug related to optional dependencies (https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing both package-lock.json and node_modules directory.
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:559:11)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+    [at Function._load (node:internal/modules/cjs/loader:1108:12)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js:1:1406)]
+Caused by: Error: Cannot find module '@tailwindcss/oxide-win32-x64-msvc'
+Require stack:
+- D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at requireNative (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:131:25)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:526:17)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+Caused by: Error: Cannot find module './tailwindcss-oxide.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at requireNative (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:126:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:526:17)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[    2150ms] [ERROR] [next]/internal/font/google/noto_sans_sc_39f62071.module.css:2434:8
+Module not found: Can't resolve '@vercel/turbopack-next/internal/font/google/font'
+  2432 |   font-weight: 700;
+  2433 |   font-display: swap;
+> 2434 |   src: url(@vercel/turbopack-next/internal/font/google/font?{%22url%22:%22https://fonts....
+       |        ^
+  2435 |   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, ...
+  2436 | }
+  2437 | @font-face {
+
+Import map: Resolved by import map
+
+Import trace:
+  Server Component:
+    [next]/internal/font/google/noto_sans_sc_39f62071.module.css
+    [next]/internal/font/google/noto_sans_sc_39f62071.js
+    ./web/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[    2150ms] [ERROR] [next]/internal/font/google/poppins_fb95fc0b.module.css:106:8
+Module not found: Can't resolve '@vercel/turbopack-next/internal/font/google/font'
+  104 |   font-weight: 700;
+  105 |   font-display: swap;
+> 106 |   src: url(@vercel/turbopack-next/internal/font/google/font?{%22url%22:%22https://fonts.g...
+      |        ^
+  107 |   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U...
+  108 | }
+  109 | @font-face {
+
+Import map: Resolved by import map
+
+Import trace:
+  Server Component:
+    [next]/internal/font/google/poppins_fb95fc0b.module.css
+    [next]/internal/font/google/poppins_fb95fc0b.js
+    ./web/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[    2922ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find native binding. npm has a bug related to optional dependencies (https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing both package-lock.json and node_modules directory.
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:559:11)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+    [at Function._load (node:internal/modules/cjs/loader:1108:12)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js:1:1406)]
+Caused by: Error: Cannot find module '@tailwindcss/oxide-win32-x64-msvc'
+Require stack:
+- D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at requireNative (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:131:25)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:526:17)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+Caused by: Error: Cannot find module './tailwindcss-oxide.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at requireNative (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:126:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\@tailwindcss\oxide\index.js:526:17)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[    2922ms] [ERROR] [next]/internal/font/google/noto_sans_sc_39f62071.module.css:2434:8
+Module not found: Can't resolve '@vercel/turbopack-next/internal/font/google/font'
+  2432 |   font-weight: 700;
+  2433 |   font-display: swap;
+> 2434 |   src: url(@vercel/turbopack-next/internal/font/google/font?{%22url%22:%22https://fonts....
+       |        ^
+  2435 |   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, ...
+  2436 | }
+  2437 | @font-face {
+
+Import map: Resolved by import map
+
+Import trace:
+  Server Component:
+    [next]/internal/font/google/noto_sans_sc_39f62071.module.css
+    [next]/internal/font/google/noto_sans_sc_39f62071.js
+    ./web/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[    2922ms] [ERROR] [next]/internal/font/google/poppins_fb95fc0b.module.css:106:8
+Module not found: Can't resolve '@vercel/turbopack-next/internal/font/google/font'
+  104 |   font-weight: 700;
+  105 |   font-display: swap;
+> 106 |   src: url(@vercel/turbopack-next/internal/font/google/font?{%22url%22:%22https://fonts.g...
+      |        ^
+  107 |   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U...
+  108 | }
+  109 | @font-face {
+
+Import map: Resolved by import map
+
+Import trace:
+  Server Component:
+    [next]/internal/font/google/poppins_fb95fc0b.module.css
+    [next]/internal/font/google/poppins_fb95fc0b.js
+    ./web/app/layout.tsx
+
+https://nextjs.org/docs/messages/module-not-found @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945

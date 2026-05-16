@@ -132,14 +132,14 @@ export function CiyanChat() {
 
   return (
     <>
-      {/* Floating Button — fixed：全宽布局下不再依赖手机壳 relative */}
+      {/* Floating Button */}
       <button
         onClick={() => setOpen(true)}
-        className={`fixed bottom-28 left-4 sm:left-8 w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white font-bold text-lg transition-all z-[45] ${
+        className={`absolute bottom-20 right-4 w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white font-bold text-lg transition-all z-30 ${
           open ? 'scale-0 opacity-0' : 'scale-100 opacity-100'
         }`}
         style={{
-          background: 'linear-gradient(135deg, #1A4B8C 0%, #4A90D9 50%, #1A4B8C 100%)',
+          background: 'linear-gradient(135deg, #2c2018 0%, #5c4033 50%, #2c2018 100%)',
           backgroundSize: '200% 200%',
         }}
         aria-label="打开瓷言AI助手"
@@ -149,7 +149,7 @@ export function CiyanChat() {
 
       {/* Chat Panel */}
       <div
-        className={`fixed inset-x-0 bottom-0 z-[55] max-w-lg mx-auto w-full flex flex-col rounded-t-2xl bg-surface-container-lowest shadow-2xl transition-transform duration-300 ease-out ${
+        className={`absolute inset-x-0 bottom-0 z-40 flex flex-col rounded-t-2xl bg-white shadow-2xl transition-transform duration-300 ease-out ${
           open ? 'translate-y-0' : 'translate-y-full'
         }`}
         style={{ height: '72vh' }}
@@ -157,7 +157,7 @@ export function CiyanChat() {
         {/* Header */}
         <div
           className="flex items-center justify-between px-4 py-3 rounded-t-2xl flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #1A4B8C, #4A90D9)' }}
+          style={{ background: 'linear-gradient(135deg, #2c2018, #5c4033)' }}
         >
           <div className="flex items-center gap-2">
             {/* Avatar */}
@@ -183,20 +183,20 @@ export function CiyanChat() {
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} gap-2`}>
               {msg.role === 'assistant' && (
                 <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
-                  style={{ background: 'linear-gradient(135deg, #1A4B8C, #4A90D9)' }}>
+                  style={{ background: 'linear-gradient(135deg, #2c2018, #5c4033)' }}>
                   <span className="text-white font-serif text-xs">瓷</span>
                 </div>
               )}
               <div
                 className={`max-w-[78%] px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
                   msg.role === 'user'
-                    ? 'bg-[#1A4B8C] text-white rounded-tr-sm'
-                    : 'bg-surface-container text-on-surface rounded-tl-sm'
+                    ? 'bg-[#2c2018] text-white rounded-tr-sm'
+                    : 'bg-gray-100 text-gray-800 rounded-tl-sm'
                 }`}
               >
                 {msg.content}
                 {msg.streaming && (
-                  <span className="inline-block w-1.5 h-4 bg-[#1A4B8C] ml-0.5 animate-pulse rounded-sm align-middle" />
+                  <span className="inline-block w-1.5 h-4 bg-[#8c6230] ml-0.5 animate-pulse rounded-sm align-middle" />
                 )}
               </div>
             </div>
@@ -211,7 +211,7 @@ export function CiyanChat() {
               <button
                 key={prompt}
                 onClick={() => sendMessage(prompt)}
-                className="flex-shrink-0 text-[11px] px-3 py-1.5 rounded-full border border-[#1A4B8C]/30 text-[#1A4B8C] bg-surface-container-low hover:bg-surface-container transition-colors transition-colors whitespace-nowrap"
+                className="flex-shrink-0 text-[11px] px-3 py-1.5 rounded-full border border-[#8c6230]/30 text-[#6b4820] bg-[#f5ead8] hover:bg-[#eedcc0] transition-colors whitespace-nowrap"
               >
                 {prompt}
               </button>
@@ -220,7 +220,7 @@ export function CiyanChat() {
         )}
 
         {/* Input */}
-        <div className="flex items-end gap-2 px-4 py-3 border-t border-outline-variant/10 flex-shrink-0">
+        <div className="flex items-end gap-2 px-4 py-3 border-t border-gray-100 flex-shrink-0">
           <textarea
             ref={inputRef}
             value={input}
@@ -228,7 +228,7 @@ export function CiyanChat() {
             onKeyDown={handleKeyDown}
             placeholder="问我任何艺术留学的问题～"
             rows={1}
-            className="flex-1 resize-none rounded-xl border border-outline-variant/20 px-3 py-2 text-sm outline-none focus:border-[#1A4B8C] transition-colors max-h-24 scrollbar-hide"
+            className="flex-1 resize-none rounded-xl border border-[#e0ddd8] px-3 py-2 text-sm outline-none focus:border-[#8c6230] transition-colors max-h-24 scrollbar-hide"
             style={{ minHeight: '38px' }}
           />
           <button
@@ -237,7 +237,7 @@ export function CiyanChat() {
             className="w-9 h-9 rounded-xl flex items-center justify-center transition-all flex-shrink-0"
             style={{
               background: input.trim() && !loading
-                ? 'linear-gradient(135deg, #1A4B8C, #4A90D9)'
+                ? 'linear-gradient(135deg, #2c2018, #5c4033)'
                 : '#e5e7eb',
             }}
           >
@@ -249,9 +249,9 @@ export function CiyanChat() {
       {/* Backdrop */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/20 z-[50]"
+          className="absolute inset-0 bg-black/20 z-30"
           onClick={() => setOpen(false)}
-          aria-hidden
+          style={{ bottom: '72vh' }}
         />
       )}
     </>

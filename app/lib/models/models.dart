@@ -55,7 +55,9 @@ class AppCase {
       excerpt: json['excerpt'] as String?,
       coverGradient: json['cover_gradient'] as String?,
       isAnonymous: json['is_anonymous'] as bool? ?? false,
-      tags: (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      tags:
+          (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+              [],
       year: json['year'] as String?,
       likeCount: json['like_count'] as int? ?? 0,
       commentCount: json['comment_count'] as int? ?? 0,
@@ -75,8 +77,10 @@ class AppCommunityPost {
   final int likeCount;
   final int commentCount;
   final int viewCount;
+  final bool likedByMe;
   final String createdAt;
   final String? authorNickname;
+  final String? authorAvatarUrl;
 
   const AppCommunityPost({
     required this.id,
@@ -86,8 +90,10 @@ class AppCommunityPost {
     required this.likeCount,
     required this.commentCount,
     required this.viewCount,
+    this.likedByMe = false,
     required this.createdAt,
     this.authorNickname,
+    this.authorAvatarUrl,
   });
 
   factory AppCommunityPost.fromJson(Map<String, dynamic> json) {
@@ -95,6 +101,10 @@ class AppCommunityPost {
     String? nick;
     if (up is Map<String, dynamic>) {
       nick = up['nickname'] as String?;
+    }
+    String? avatarUrl;
+    if (up is Map<String, dynamic>) {
+      avatarUrl = up['avatar_url'] as String?;
     }
     final urls = json['image_urls'];
     return AppCommunityPost(
@@ -105,8 +115,46 @@ class AppCommunityPost {
       likeCount: json['like_count'] as int? ?? 0,
       commentCount: json['comment_count'] as int? ?? 0,
       viewCount: json['view_count'] as int? ?? 0,
+      likedByMe: json['liked_by_me'] as bool? ?? false,
       createdAt: json['created_at'] as String,
       authorNickname: nick,
+      authorAvatarUrl: avatarUrl,
+    );
+  }
+}
+
+class AppCommunityComment {
+  final String id;
+  final String body;
+  final int likeCount;
+  final String createdAt;
+  final String? authorNickname;
+  final String? authorAvatarUrl;
+
+  const AppCommunityComment({
+    required this.id,
+    required this.body,
+    required this.likeCount,
+    required this.createdAt,
+    this.authorNickname,
+    this.authorAvatarUrl,
+  });
+
+  factory AppCommunityComment.fromJson(Map<String, dynamic> json) {
+    final up = json['user_profiles'];
+    String? nick;
+    String? avatarUrl;
+    if (up is Map<String, dynamic>) {
+      nick = up['nickname'] as String?;
+      avatarUrl = up['avatar_url'] as String?;
+    }
+    return AppCommunityComment(
+      id: json['id'] as String,
+      body: json['body'] as String? ?? '',
+      likeCount: json['like_count'] as int? ?? 0,
+      createdAt: json['created_at'] as String? ?? '',
+      authorNickname: nick,
+      authorAvatarUrl: avatarUrl,
     );
   }
 }
@@ -145,7 +193,9 @@ class AppPost {
       type: json['type'] as String? ?? 'question',
       title: json['title'] as String,
       content: json['content'] as String?,
-      tags: (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      tags:
+          (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+              [],
       likeCount: json['like_count'] as int? ?? 0,
       answerCount: json['answer_count'] as int? ?? 0,
       viewCount: json['view_count'] as int? ?? 0,
@@ -157,7 +207,7 @@ class AppPost {
 }
 
 class AppProgram {
-  final int id;
+  final String id;
   final String programName;
   final String? degreeType;
   final String? durationText;
@@ -193,18 +243,22 @@ class AppProgram {
     final fee = _firstOrSingle(json['program_fees']);
 
     return AppProgram(
-      id: json['id'] as int,
+      id: json['id'].toString(),
       programName: json['program_name'] as String,
-      degreeType: json['degree_type'] as String?,
+      degreeType: (json['degree_type'] ??
+          json['normalized_degree_type'] ??
+          json['raw_degree_type']) as String?,
       durationText: json['duration_text'] as String?,
       requiresPortfolio: json['requires_portfolio'] as bool? ?? false,
       requiresInterview: json['requires_interview'] as bool? ?? false,
       programOverview: json['program_overview'] as String?,
       schoolNameZh: school?['name_zh'] as String?,
-      qsArtRank: school?['qs_art_rank'] as int?,
+      qsArtRank:
+          (school?['qs_art_rank'] ?? school?['qs_art_design_rank']) as int?,
       ieltsOverall: (admission?['ielts_overall'] as num?)?.toDouble(),
       regularDeadline: admission?['regular_deadline'] as String?,
-      internationalTuitionFee: fee?['international_tuition_fee'] as int?,
+      internationalTuitionFee:
+          (fee?['international_tuition_fee'] as num?)?.round(),
       currencyCode: fee?['currency_code'] as String?,
     );
   }
@@ -289,6 +343,8 @@ class HomeContent {
 Map<String, dynamic>? _firstOrSingle(dynamic value) {
   if (value == null) return null;
   if (value is Map<String, dynamic>) return value;
-  if (value is List && value.isNotEmpty) return value.first as Map<String, dynamic>?;
+  if (value is List && value.isNotEmpty) {
+    return value.first as Map<String, dynamic>?;
+  }
   return null;
 }

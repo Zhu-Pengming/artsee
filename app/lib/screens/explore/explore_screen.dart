@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../models/models.dart';
+import '../../services/backend_api_service.dart';
 import '../../widgets/common.dart';
+import '../community/community_post_detail_screen.dart';
 import 'institutions_archive_screen.dart';
 import '../programs/program_list_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
@@ -12,12 +15,14 @@ class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
 
   @override
-  State<ExploreScreen> createState() => _ExploreScreenState();
+  State<ExploreScreen> createState() => ExploreScreenState();
 }
 
-class _ExploreScreenState extends State<ExploreScreen>
+class ExploreScreenState extends State<ExploreScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final GlobalKey<CommunityFeedTabState> _communityKey =
+      GlobalKey<CommunityFeedTabState>();
 
   @override
   void initState() {
@@ -29,6 +34,17 @@ class _ExploreScreenState extends State<ExploreScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  void showCommunityFeed({bool refresh = false}) {
+    if (_tabController.index != 2) {
+      _tabController.animateTo(2);
+    }
+    if (refresh) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _communityKey.currentState?.refresh();
+      });
+    }
   }
 
   @override
@@ -69,11 +85,11 @@ class _ExploreScreenState extends State<ExploreScreen>
             Expanded(
               child: TabBarView(
                 controller: _tabController,
-                children: const [
-                  InstitutionsArchiveScreen(),
-                  ProgramListScreen(),
-                  _ImageGridTab(),
-                  _QaTab(),
+                children: [
+                  const InstitutionsArchiveScreen(),
+                  const ProgramListScreen(),
+                  CommunityFeedTab(key: _communityKey),
+                  const _QaTab(),
                 ],
               ),
             ),
@@ -84,104 +100,380 @@ class _ExploreScreenState extends State<ExploreScreen>
   }
 }
 
-class _ImageGridTab extends StatelessWidget {
-  const _ImageGridTab();
+class CommunityFeedTab extends StatefulWidget {
+  const CommunityFeedTab({super.key});
+
+  @override
+  State<CommunityFeedTab> createState() => CommunityFeedTabState();
+}
+
+class CommunityFeedTabState extends State<CommunityFeedTab> {
+  List<AppCommunityPost> _posts = const [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    refresh();
+  }
+
+  Future<void> refresh({bool showLoading = true}) async {
+    if (showLoading && mounted) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
+    try {
+      final posts = await BackendApiService.fetchCommunityPosts(limit: 40);
+      if (!mounted) return;
+      setState(() {
+        _posts = posts;
+        _loading = false;
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisSpacing: 14,
-        mainAxisSpacing: 14,
-        childAspectRatio: 3 / 4.6,
-        children: List.generate(8, (i) {
-          return GestureDetector(
-            onTap: () {},
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(kRadiusMedium),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.network(
-                          'https://picsum.photos/seed/disc$i/600/800',
-                          fit: BoxFit.cover,
-                        ),
-                        Positioned(
-                          left: 10,
-                          right: 10,
-                          bottom: 10,
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: context.artC.porcelain.withOpacity(0.92),
-                              borderRadius: BorderRadius.circular(kRadiusSmall),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '作品标题 #${i + 1}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: context.artC.ink,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '艺术家名称',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w500,
-                                    color: context.artC.ink.withOpacity(0.35),
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '先锋艺术探索系列',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: context.artC.ink,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '创作过程 / 技法解析',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: context.artC.ink.withOpacity(0.35),
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
+    if (_loading && _posts.isEmpty) {
+      return const LoadingIndicator();
+    }
+
+    if (_error != null && _posts.isEmpty) {
+      return _CommunityError(message: _error!, onRetry: () => refresh());
+    }
+
+    if (_posts.isEmpty) {
+      return RefreshIndicator(
+        color: kCobalt,
+        onRefresh: () => refresh(showLoading: false),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(20, 60, 20, mainTabBottomInset(context)),
+          children: [
+            Icon(
+              Icons.auto_awesome_mosaic_outlined,
+              size: 44,
+              color: context.artC.ink.withOpacity(0.22),
             ),
+            const SizedBox(height: 14),
+            Text(
+              '还没有社区内容',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: context.artC.ink,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '点击右下角 + 发布第一篇作品、灵感或申请记录。',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.5,
+                color: context.artC.ink.withOpacity(0.45),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: kCobalt,
+      onRefresh: () => refresh(showLoading: false),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = constraints.maxWidth >= 720 ? 3 : 2;
+          return GridView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding:
+                EdgeInsets.fromLTRB(20, 20, 20, mainTabBottomInset(context)),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 18,
+              childAspectRatio: 0.58,
+            ),
+            itemCount: _posts.length,
+            itemBuilder: (context, i) => _CommunityPostCard(post: _posts[i]),
           );
-        }),
+        },
       ),
     );
   }
+}
+
+class _CommunityPostCard extends StatelessWidget {
+  final AppCommunityPost post;
+
+  const _CommunityPostCard({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    final firstImage = post.imageUrls.isNotEmpty ? post.imageUrls.first : null;
+    final subtitle = (post.body ?? '').trim();
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => CommunityPostDetailScreen(
+              postId: post.id,
+              initialPost: post,
+            ),
+          ),
+        );
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(kRadiusMedium),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (firstImage != null)
+                    Image.network(
+                      firstImage,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _CommunityImageFallback(post: post),
+                    )
+                  else
+                    _CommunityImageFallback(post: post),
+                  Positioned(
+                    left: 10,
+                    right: 10,
+                    bottom: 10,
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: context.artC.porcelain.withOpacity(0.92),
+                        borderRadius: BorderRadius.circular(kRadiusSmall),
+                      ),
+                      child: Row(
+                        children: [
+                          _CommunityAvatar(post: post, size: 24),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              post.authorNickname ?? 'Artsee 用户',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: context.artC.ink.withOpacity(0.72),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            post.title.isNotEmpty ? post.title : '作品分享',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              height: 1.25,
+              color: context.artC.ink,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 10,
+                height: 1.35,
+                color: context.artC.ink.withOpacity(0.4),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          const SizedBox(height: 7),
+          Row(
+            children: [
+              Icon(Icons.favorite_border,
+                  size: 13, color: context.artC.ink.withOpacity(0.35)),
+              const SizedBox(width: 3),
+              Text(
+                _shortCount(post.likeCount),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: context.artC.ink.withOpacity(0.42),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Icon(Icons.chat_bubble_outline,
+                  size: 13, color: context.artC.ink.withOpacity(0.35)),
+              const SizedBox(width: 3),
+              Text(
+                _shortCount(post.commentCount),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: context.artC.ink.withOpacity(0.42),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                timeAgo(post.createdAt),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: context.artC.ink.withOpacity(0.32),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CommunityImageFallback extends StatelessWidget {
+  final AppCommunityPost post;
+
+  const _CommunityImageFallback({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: context.artC.silver.withOpacity(0.25),
+      padding: const EdgeInsets.all(18),
+      alignment: Alignment.center,
+      child: Text(
+        post.title.isNotEmpty ? post.title : '作品分享',
+        maxLines: 5,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 18,
+          height: 1.25,
+          fontWeight: FontWeight.w800,
+          color: kCobalt.withOpacity(0.82),
+          fontFamily: 'Noto Serif SC',
+        ),
+      ),
+    );
+  }
+}
+
+class _CommunityAvatar extends StatelessWidget {
+  final AppCommunityPost post;
+  final double size;
+
+  const _CommunityAvatar({required this.post, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    final avatar = post.authorAvatarUrl;
+    final name = post.authorNickname ?? 'A';
+    return ClipOval(
+      child: Container(
+        width: size,
+        height: size,
+        color: kCobalt.withOpacity(0.09),
+        child: avatar != null && avatar.isNotEmpty
+            ? Image.network(
+                avatar,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _AvatarInitial(name: name),
+              )
+            : _AvatarInitial(name: name),
+      ),
+    );
+  }
+}
+
+class _AvatarInitial extends StatelessWidget {
+  final String name;
+
+  const _AvatarInitial({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        name.isNotEmpty ? name.substring(0, 1).toUpperCase() : 'A',
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          color: kCobalt,
+        ),
+      ),
+    );
+  }
+}
+
+class _CommunityError extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _CommunityError({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.cloud_off_outlined,
+              size: 42,
+              color: context.artC.ink.withOpacity(0.25),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.5,
+                color: context.artC.ink.withOpacity(0.58),
+              ),
+            ),
+            const SizedBox(height: 16),
+            CobaltButton(label: '重试', onTap: onRetry),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _shortCount(int value) {
+  if (value >= 10000) {
+    final text = (value / 10000).toStringAsFixed(value >= 100000 ? 0 : 1);
+    return '${text.replaceAll('.0', '')}万';
+  }
+  return '$value';
 }
 
 class _QaTab extends StatelessWidget {
@@ -190,21 +482,9 @@ class _QaTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final questions = [
-      (
-        '艺术留学怎么选校？有哪些避坑指南？',
-        '128 位艺术家已参与讨论',
-        '留学申请'
-      ),
-      (
-        '如何跟顶奢酒店达成长期艺术合作？',
-        '86 位策展人已参与讨论',
-        '市场与商业'
-      ),
-      (
-        '一二级市场规则是什么？艺术家如何定价？',
-        '210 位专业人士已参与讨论',
-        '职业发展'
-      ),
+      ('艺术留学怎么选校？有哪些避坑指南？', '128 位艺术家已参与讨论', '留学申请'),
+      ('如何跟顶奢酒店达成长期艺术合作？', '86 位策展人已参与讨论', '市场与商业'),
+      ('一二级市场规则是什么？艺术家如何定价？', '210 位专业人士已参与讨论', '职业发展'),
     ];
 
     final categories = [
@@ -234,7 +514,8 @@ class _QaTab extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: kCobalt.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(4),
@@ -308,7 +589,8 @@ class _QaTab extends StatelessWidget {
                             color: Colors.white,
                           ),
                         ),
-                        Icon(Icons.chevron_right, size: 16, color: Colors.white.withOpacity(0.4)),
+                        Icon(Icons.chevron_right,
+                            size: 16, color: Colors.white.withOpacity(0.4)),
                       ],
                     ),
                   );

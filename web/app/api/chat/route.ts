@@ -2,9 +2,12 @@ import OpenAI from 'openai'
 import { NextRequest } from 'next/server'
 
 function getClient() {
+  const apiKey = process.env.OPENAI_API_KEY || process.env.MOONSHOT_API_KEY || 'dummy-key-for-build'
+  const baseURL = process.env.OPENAI_BASE_URL || process.env.AI_BASE_URL || 'https://api.openai.com/v1'
+
   return new OpenAI({
-    apiKey: process.env.MOONSHOT_API_KEY || 'dummy-key-for-build',
-    baseURL: 'https://api.moonshot.cn/v1',
+    apiKey,
+    baseURL,
   })
 }
 
@@ -63,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     // Create streaming response
     const stream = await getClient().chat.completions.create({
-      model: 'kimi-k2.5',
+      model: process.env.AI_MODEL || 'gpt-4o-mini',
       max_tokens: 2048,
       stream: true,
       messages: [

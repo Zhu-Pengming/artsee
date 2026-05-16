@@ -1,0 +1,11 @@
+[      -5ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/coach/discovery:0
+[   44124ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/coach/discovery?_rsc=ydj87:0
+[   44263ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/coach/discovery:0
+[  153362ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/coach/discovery?_rsc=ydj87:0
+[  154458ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/coach/discovery:0
+[  276271ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/coach/discovery?_rsc=ydj87:0
+[  277925ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/coach/discovery:0
+[ 3826194ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/coach/discovery?_rsc=ydj87:0
+[ 3826586ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/coach/discovery?_rsc=ydj87:0
+[ 3826957ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/coach/discovery?_rsc=ydj87:0
+[ 3828176ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/coach/discovery:0

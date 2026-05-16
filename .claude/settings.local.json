@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__supabase__list_projects",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__execute_sql",
+      "Bash(git -C /d/files/artsee remote -v)",
+      "Bash(git -C /d/files/artsee branch --show-current)",
+      "Bash(git -C /d/files/artsee status --short)",
+      "Bash(git -C /d/files/artsee fetch origin main)",
+      "Bash(git -C /d/files/artsee log --oneline HEAD..origin/main)",
+      "Bash(git -C /d/files/artsee rev-list --count HEAD..origin/main)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "Bash(cp *)",
+      "Bash(cp /d/files/artsee/web/node_modules/lightningcss-win32-x64-msvc/lightningcss.win32-x64-msvc.node /d/files/artsee/web/node_modules/lightningcss/lightningcss.win32-x64-msvc.node)",
+      "Bash(taskkill //PID 43076 //F)"
+    ]
+  }
+}

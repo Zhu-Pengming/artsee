@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { motion } from 'motion/react'
+import { WaterfallGrid } from '@/components/cases/waterfall-grid'
 import Link from 'next/link'
-import { CaseCard } from '@/components/cases/case-card'
 import type { Case } from '@/lib/supabase/types'
 
 const tabs = ['全部案例', '录取', '等候', '已拒绝'] as const
@@ -23,63 +22,39 @@ export function CasesClient({ cases }: { cases: Case[] }) {
   }, [cases, activeTab, activeTag])
 
   return (
-    <div className="space-y-10 pb-10 px-6 md:px-12 lg:px-24 pt-6">
-      <div className="flex gap-8 sm:gap-10 border-b border-al-silver/80 pb-4 overflow-x-auto scrollbar-hide">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            className={`text-sm font-bold tracking-widest transition-all relative shrink-0 ${
-              activeTab === tab
-                ? "text-al-cobalt"
-                : "text-al-ink/40 hover:text-al-ink/60"
-            }`}
-          >
-            {tab}
-            {activeTab === tab && (
-              <motion.div
-                layoutId="cases-underline"
-                className="absolute -bottom-[17px] left-0 right-0 h-0.5 bg-al-cobalt"
-              />
-            )}
-          </button>
+    <div className="pb-6 bg-[#faf9f7]">
+      <div className="flex gap-1.5 px-4 pt-3 pb-2.5 border-b border-[#eeece8] bg-white">
+        {tabs.map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-1.5 rounded-[12px] text-[11.5px] font-semibold transition-all ${
+              activeTab === tab ? 'bg-[#1A4B8C] text-white shadow-sm' : 'text-[#9b9b93] hover:bg-[#f0ede8]'
+            }`}>{tab}</button>
         ))}
       </div>
 
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
-        {tagFilters.map((tag) => (
-          <button
-            key={tag}
-            type="button"
-            onClick={() => setActiveTag(tag)}
-            className={`text-xs font-medium px-4 py-2 rounded-full transition-all shrink-0 ${
-              activeTag === tag
-                ? 'bg-al-ink text-al-shell'
-                : 'bg-al-silver/40 text-al-ink/60 hover:bg-al-silver/60'
-            }`}
-          >
-            {tag}
-          </button>
+      <div className="flex gap-2 px-4 py-2 overflow-x-auto scrollbar-hide">
+        {tagFilters.map(tag => (
+          <button key={tag} onClick={() => setActiveTag(tag)}
+            className={`flex-shrink-0 text-[10px] px-2.5 py-1 rounded-full font-medium transition-colors ${
+              activeTag === tag ? 'bg-[#1A4B8C] text-white shadow-sm' : 'bg-[#e8e8e2] text-[#6b6b63]'
+            }`}>{tag}</button>
         ))}
+      </div>
+
+      <div className="flex items-center justify-between px-4 mb-3">
+        <span className="text-xs text-gray-500">{filtered.length} 条案例</span>
+        <Link href="/cases/new"
+          className="flex items-center gap-1.5 bg-[#1A4B8C] text-white text-[11px] font-semibold px-3 py-1.5 rounded-full shadow-sm active:scale-95 transition-transform">
+          <span>+</span><span>分享案例</span>
+        </Link>
       </div>
 
       {filtered.length > 0 ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-          {filtered.map((c) => (
-            <CaseCard key={c.id} c={c} />
-          ))}
-        </div>
+        <WaterfallGrid items={filtered} />
       ) : (
-        <div className="text-center py-20 text-al-ink/45">
-          <p className="font-serif text-lg text-al-ink/70 mb-2">暂无案例</p>
-          <p className="text-sm mb-6">成为第一个分享经验的人</p>
-          <Link
-            href="/cases/new"
-            className="inline-flex px-6 py-3 rounded-full bg-al-cobalt text-al-shell text-sm font-bold"
-          >
-            分享案例
-          </Link>
+        <div className="text-center py-12 text-gray-400 text-sm">
+          <p className="text-2xl mb-2">📝</p>
+          <p>暂无案例，成为第一个分享的人！</p>
         </div>
       )}
     </div>

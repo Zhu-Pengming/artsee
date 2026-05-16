@@ -32,35 +32,35 @@ export function ForumClient({ posts }: { posts: Post[] }) {
   }, [posts, activeTab, activeTag])
 
   return (
-    <div className="pb-6 space-y-3">
+    <div className="pb-6 bg-[#faf9f7]">
       {/* Tab + 发布按钮 */}
-      <div className="flex items-center gap-2 pt-1 pb-2 border-b border-al-silver/50">
-        <div className="flex flex-1 bg-al-silver/50 rounded-xl p-0.5 border border-al-silver/40">
+      <div className="flex items-center gap-2 px-4 pt-3 pb-2 border-b border-[#eeece8] bg-white">
+        <div className="flex flex-1 bg-[#f0ede8] rounded-[14px] p-0.5">
           {tabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                activeTab === tab ? 'bg-al-shell text-al-ink shadow-sm' : 'text-al-ink/45'
+              className={`flex-1 py-1.5 rounded-[12px] text-[11.5px] font-semibold transition-colors ${
+                activeTab === tab ? 'bg-white text-[#1e1e1a] shadow-sm' : 'text-[#9b9b93]'
               }`}
             >
               {tab}
             </button>
           ))}
         </div>
-        <Link href="/forum/new" className="w-9 h-9 bg-al-cobalt rounded-xl flex items-center justify-center flex-shrink-0 shadow-md shadow-al-cobalt/20">
-          <PenSquare size={15} className="text-al-shell" />
+        <Link href="/forum/new" className="w-9 h-9 bg-[#1A4B8C] rounded-[12px] shadow-sm active:scale-95 transition-transform flex items-center justify-center flex-shrink-0">
+          <PenSquare size={15} className="text-white" />
         </Link>
       </div>
 
       {/* 热门 tags */}
-      <div className="flex gap-2 py-1 overflow-x-auto scrollbar-hide">
+      <div className="flex gap-2 px-4 py-2 overflow-x-auto scrollbar-hide">
         {hotTags.map((tag) => (
           <button
             key={tag}
             onClick={() => setActiveTag(tag)}
-            className={`flex-shrink-0 text-[10px] px-2.5 py-1 rounded-full font-medium whitespace-nowrap transition-colors ${
-              activeTag === tag ? 'bg-al-cobalt text-al-shell' : 'bg-al-silver/50 text-al-ink/60'
+            className={`flex-shrink-0 text-[10px] px-3 py-1.5 rounded-full font-semibold whitespace-nowrap transition-colors ${
+              activeTag === tag ? 'bg-[#1A4B8C] text-white shadow-sm' : 'bg-[#e8e8e2] text-[#6b6b63]'
             }`}
           >
             {tag}
@@ -72,9 +72,9 @@ export function ForumClient({ posts }: { posts: Post[] }) {
       {filtered.length > 0 ? (
         filtered.map((post) => <PostCard key={post.id} post={post} />)
       ) : (
-        <div className="flex flex-col items-center justify-center py-16 text-al-ink/40">
+        <div className="flex flex-col items-center justify-center py-16 text-[#9b9b93]">
           <span className="text-3xl mb-2">💬</span>
-          <p className="text-sm">还没有内容，来发第一帖！</p>
+          <p className="text-sm font-medium">还没有内容，来发第一帖！</p>
         </div>
       )}
     </div>

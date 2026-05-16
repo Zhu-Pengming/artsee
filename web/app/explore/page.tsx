@@ -13,12 +13,23 @@ export default async function ExplorePage({
     .from('programs')
     .select(`
       *,
-      schools ( id, name_zh, name_en, country, city, logo_url, qs_art_rank ),
+      schools (
+        id,
+        name_zh,
+        name_en,
+        country:raw_country,
+        raw_country,
+        country_code,
+        region_tag,
+        city,
+        logo_url,
+        qs_art_rank:qs_art_design_rank
+      ),
       program_admissions ( ielts_overall, reference_count, regular_deadline, portfolio_requirements ),
       program_fees ( international_tuition_fee, currency_code )
     `)
     .eq('status', 'active')
-    .order('id')
+    .order('program_name')
 
   return <ExploreClient programs={programs ?? []} initialSchool={school} />
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/api/supabase-service";
+import { createPublicReadClient } from "@/lib/api/supabase-service";
 
 /** GET /api/v1/cases — 录取案例列表（与 App `cases` 表一致，供 Flutter 走 Next 聚合） */
 export async function GET(req: NextRequest) {
@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     const offset = parseInt(searchParams.get("offset") || "0", 10);
     const result = searchParams.get("result");
 
-    const supabase = createServiceClient();
+    const supabase = createPublicReadClient();
     let q = supabase
       .from("cases")
       .select("*, user_profiles(nickname)")

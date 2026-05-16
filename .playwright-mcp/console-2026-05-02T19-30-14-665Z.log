@@ -1,0 +1,683 @@
+[    8301ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/:0
+[    8521ms] Error: ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component]
+
+
+    at Object.getCompilationErrors (file://D:\files\artsee\web\node_modules\next\dist\server\dev\hot-reloader-turbopack.js:1189:59)
+    at DevBundlerService.getCompilationError (file://D:\files\artsee\web\node_modules\next\dist\server\lib\dev-bundler-service.js:44:55)
+    at DevServer.getCompilationError (file://D:\files\artsee\web\node_modules\next\dist\server\dev\next-dev-server.js:719:42)
+    at DevServer.findPageComponents (file://D:\files\artsee\web\node_modules\next\dist\server\dev\next-dev-server.js:689:43)
+    at async DevServer.renderErrorToResponseImpl (file://D:\files\artsee\web\node_modules\next\dist\server\base-server.js:1745:26)
+[    8588ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[    8645ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[    9462ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[   52443ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[   56165ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[   56305ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[   56352ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[   56655ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[   56718ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[   56857ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[   56967ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[   79710ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[   79756ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[   82351ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[   82518ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[   82771ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[   82919ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[   83041ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[  100689ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[  100735ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[  102748ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[  102902ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[  102979ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[  103134ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[ 3911336ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945
+[ 3911652ms] [ERROR] ./web/app/globals.css
+Error evaluating Node.js code
+Error: Cannot find module '../lightningcss.win32-x64-msvc.node'
+Require stack:
+- D:\files\artsee\web\node_modules\lightningcss\node\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\node\dist\index.js
+- D:\files\artsee\web\node_modules\@tailwindcss\postcss\dist\index.js
+- D:\files\artsee\web\.next\dev\build\chunks\[root-of-the-server]__0rvr7n_._.js
+- D:\files\artsee\web\.next\dev\build\chunks\[turbopack]_runtime.js
+- D:\files\artsee\web\.next\dev\build\postcss.js
+    [at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)]
+    [at Function._load (node:internal/modules/cjs/loader:1055:27)]
+    [at TracingChannel.traceSync (node:diagnostics_channel:322:14)]
+    [at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)]
+    [at Module.require (node:internal/modules/cjs/loader:1311:12)]
+    [at require (node:internal/modules/helpers:136:16)]
+    [at Object.<anonymous> (D:\files\artsee\web\node_modules\lightningcss\node\index.js:20:12)]
+    [at Module._compile (node:internal/modules/cjs/loader:1554:14)]
+    [at Object..js (node:internal/modules/cjs/loader:1706:10)]
+    [at Module.load (node:internal/modules/cjs/loader:1289:32)]
+
+Import trace:
+  Client Component Browser:
+    ./web/app/globals.css [Client Component Browser]
+    ./web/app/layout.tsx [Server Component] @ http://localhost:3001/_next/static/chunks/063q_next_dist_0pq-cyi._.js:1945

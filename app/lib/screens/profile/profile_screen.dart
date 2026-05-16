@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../config/dev_test_account.dart';
+import '../../services/backend_api_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/common.dart';
 import '../auth/login_screen.dart';
 import '../programs/program_detail_screen.dart';
 import '../schools/school_detail_screen.dart';
+import 'orders_screen.dart';
 import 'profile_edit_screen.dart';
 import 'package:artsee_app/theme/artsee_theme_controller.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
@@ -22,6 +24,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _profile;
+  List<Map<String, dynamic>> _orders = [];
   bool _loading = true;
 
   @override
@@ -36,11 +39,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return;
     }
     final p = await SupabaseService.fetchProfile();
+    List<Map<String, dynamic>> orders = [];
+    try {
+      orders = await BackendApiService.fetchMyOrders(limit: 20);
+    } catch (_) {
+      orders = [];
+    }
     if (mounted) {
       setState(() {
-      _profile = p;
-      _loading = false;
-    });
+        _profile = p;
+        _orders = orders;
+        _loading = false;
+      });
     }
   }
 
@@ -58,8 +68,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: Text('退出登录'),
         content: Text('确定要退出当前账号吗？'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('确定')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false), child: Text('取消')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true), child: Text('确定')),
         ],
       ),
     );
@@ -94,7 +106,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_loading) {
       return Scaffold(
         backgroundColor: context.artC.porcelain,
-        body: Center(child: CircularProgressIndicator(color: kCobalt, strokeWidth: 2.5)),
+        body: Center(
+            child: CircularProgressIndicator(color: kCobalt, strokeWidth: 2.5)),
       );
     }
     return _buildProfileView();
@@ -139,19 +152,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Center(
                         child: Text(
                           '艺',
-                          style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: kCobalt),
+                          style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w700,
+                              color: kCobalt),
                         ),
                       ),
                     ),
                     const SizedBox(height: 20),
                     Text(
                       '登录后解锁全部功能',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: context.artC.ink),
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: context.artC.ink),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       '申请追踪 · 案例分享 · 论坛互动',
-                      style: TextStyle(fontSize: 13, color: context.artC.ink.withOpacity(0.45)),
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: context.artC.ink.withOpacity(0.45)),
                     ),
                     const SizedBox(height: 24),
                     GestureDetector(
@@ -166,7 +187,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Center(
                           child: Text(
                             '登录 / 注册',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white),
                           ),
                         ),
                       ),
@@ -295,7 +319,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       if (refreshed == true) _load();
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
                       decoration: BoxDecoration(
                         color: kCobalt,
                         borderRadius: BorderRadius.circular(999),
@@ -335,7 +360,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              dark ? Icons.wb_sunny_outlined : Icons.nightlight_round,
+                              dark
+                                  ? Icons.wb_sunny_outlined
+                                  : Icons.nightlight_round,
                               size: 20,
                               color: context.artC.ink.withOpacity(0.55),
                             ),
@@ -352,7 +379,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: context.artC.silver.withOpacity(0.35),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.share_outlined, size: 20, color: context.artC.ink.withOpacity(0.5)),
+                    child: Icon(Icons.share_outlined,
+                        size: 20, color: context.artC.ink.withOpacity(0.5)),
                   ),
                 ],
               ),
@@ -368,105 +396,118 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Center(
       child: Text(
         ch,
-        style: TextStyle(fontSize: 40, fontWeight: FontWeight.w700, color: kCobalt),
+        style: TextStyle(
+            fontSize: 40, fontWeight: FontWeight.w700, color: kCobalt),
       ),
     );
   }
 
   Widget _buildStatsCards() {
     final exposure = (_profile?['exposure'] as String?) ?? '48.2k';
-    final activeInvitations = (_profile?['active_invitations'] ?? 12).toString();
-    final wallet = (_profile?['wallet_balance'] as String?) ?? '¥12,400';
+    final activeInvitations =
+        (_profile?['active_invitations'] ?? 12).toString();
+    final paidTotalCents = _orders
+        .where((order) => order['status'] == 'paid')
+        .fold<int>(
+            0,
+            (sum, order) =>
+                sum + ((order['amount_total'] as num?)?.toInt() ?? 0));
+    final paidText = paidTotalCents > 0
+        ? '¥${(paidTotalCents / 100).toStringAsFixed(2)}'
+        : '${_orders.length} 笔';
 
     return Row(
       children: [
         Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              color: context.artC.deepPanel,
-              borderRadius: BorderRadius.circular(32),
-              boxShadow: [
-                BoxShadow(
-                  color: kInk.withOpacity(0.15),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '数据看板 (Exposure)',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white.withOpacity(0.5),
-                    letterSpacing: 1.5,
+          child: GestureDetector(
+            onTap: _openOrders,
+            child: Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: context.artC.deepPanel,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(
+                    color: kInk.withOpacity(0.15),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
                   ),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            exposure,
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: kCobaltMuted,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '累计曝光',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white.withOpacity(0.35),
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '数据看板 (Exposure)',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white.withOpacity(0.5),
+                      letterSpacing: 1.5,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            activeInvitations,
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: kCobaltMuted,
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              exposure,
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: kCobaltMuted,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '活跃邀约',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white.withOpacity(0.35),
-                              letterSpacing: 0.5,
+                            const SizedBox(height: 4),
+                            Text(
+                              '累计曝光',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withOpacity(0.35),
+                                letterSpacing: 0.5,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              activeInvitations,
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: kCobaltMuted,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '活跃邀约',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withOpacity(0.35),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -483,7 +524,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '我的钱包 (Wallet)',
+                  '支付中心 (Orders)',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
@@ -500,7 +541,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          wallet,
+                          paidText,
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w700,
@@ -509,7 +550,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '待结算收益',
+                          paidTotalCents > 0 ? '已支付订单' : '近期订单',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
@@ -520,7 +561,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                     Text(
-                      '提现',
+                      '订单',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -541,57 +582,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildMenuList() {
     final items = [
-      ('作品管理', Icons.layers_outlined),
-      ('合作邀约管理', Icons.business_center_outlined),
-      ('展览报名记录', Icons.calendar_today_outlined),
-      ('版权备案', Icons.emoji_events_outlined),
-      ('认证中心', Icons.verified_outlined),
+      (label: '我的订单', icon: Icons.receipt_long_outlined, onTap: _openOrders),
+      (label: '作品管理', icon: Icons.layers_outlined, onTap: null),
+      (label: '合作邀约管理', icon: Icons.business_center_outlined, onTap: null),
+      (label: '展览报名记录', icon: Icons.calendar_today_outlined, onTap: null),
+      (label: '版权备案', icon: Icons.emoji_events_outlined, onTap: null),
+      (label: '认证中心', icon: Icons.verified_outlined, onTap: null),
     ];
 
     return Column(
       children: [
         ...items.map((item) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            decoration: BoxDecoration(
-              color: context.artC.silver.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.transparent),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: context.artC.cardIconBg,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: context.artC.ink.withOpacity(0.04),
-                            blurRadius: 8,
-                          ),
-                        ],
+          return GestureDetector(
+            onTap: item.onTap,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              decoration: BoxDecoration(
+                color: context.artC.silver.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.transparent),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: context.artC.cardIconBg,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: context.artC.ink.withOpacity(0.04),
+                              blurRadius: 8,
+                            ),
+                          ],
+                        ),
+                        child: Icon(item.icon,
+                            size: 20,
+                            color: context.artC.ink.withOpacity(0.35)),
                       ),
-                      child: Icon(item.$2, size: 20, color: context.artC.ink.withOpacity(0.35)),
-                    ),
-                    const SizedBox(width: 14),
-                    Text(
-                      item.$1,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: context.artC.ink.withOpacity(0.8),
+                      const SizedBox(width: 14),
+                      Text(
+                        item.label,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: context.artC.ink.withOpacity(0.8),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                Icon(Icons.chevron_right, size: 22, color: context.artC.ink.withOpacity(0.2)),
-              ],
+                    ],
+                  ),
+                  Icon(Icons.chevron_right,
+                      size: 22, color: context.artC.ink.withOpacity(0.2)),
+                ],
+              ),
             ),
           );
         }),
@@ -623,7 +671,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ],
                       ),
-                      child: Icon(Icons.logout, size: 20, color: Colors.red.withOpacity(0.5)),
+                      child: Icon(Icons.logout,
+                          size: 20, color: Colors.red.withOpacity(0.5)),
                     ),
                     const SizedBox(width: 14),
                     Text(
@@ -636,7 +685,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
-                Icon(Icons.chevron_right, size: 22, color: context.artC.ink.withOpacity(0.2)),
+                Icon(Icons.chevron_right,
+                    size: 22, color: context.artC.ink.withOpacity(0.2)),
               ],
             ),
           ),
@@ -669,7 +719,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         '学校详情页',
                         () => Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => const SchoolDetailScreen(id: '3485e258-d84b-4067-b093-62a3d468ac62'),
+                            builder: (_) => const SchoolDetailScreen(
+                                id: '3485e258-d84b-4067-b093-62a3d468ac62'),
                           ),
                         ),
                       ),
@@ -680,7 +731,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         '专业详情页',
                         () => Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => const ProgramDetailScreen(id: 1),
+                            builder: (_) => const ProgramDetailScreen(
+                                id: '001f9862-a2c5-4d37-9b7a-720ceeef163e'),
                           ),
                         ),
                       ),
@@ -715,6 +767,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _openOrders() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const OrdersScreen()),
     );
   }
 }

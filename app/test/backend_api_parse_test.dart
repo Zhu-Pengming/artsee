@@ -12,17 +12,35 @@ void main() {
       'like_count': 2,
       'comment_count': 1,
       'view_count': 10,
+      'liked_by_me': true,
       'created_at': '2026-01-01T00:00:00Z',
       'user_profiles': {'nickname': '小明', 'avatar_url': null},
     });
     expect(p.id, 'a1');
     expect(p.imageUrls.length, 1);
     expect(p.authorNickname, '小明');
+    expect(p.authorAvatarUrl, null);
+    expect(p.likedByMe, true);
+  });
+
+  test('AppCommunityComment.fromJson 解析评论作者资料', () {
+    final c = AppCommunityComment.fromJson({
+      'id': 'c1',
+      'body': '很有启发',
+      'like_count': 3,
+      'created_at': '2026-01-01T01:00:00Z',
+      'user_profiles': {'nickname': '小红', 'avatar_url': 'https://x/avatar.png'},
+    });
+    expect(c.id, 'c1');
+    expect(c.body, '很有启发');
+    expect(c.likeCount, 3);
+    expect(c.authorNickname, '小红');
+    expect(c.authorAvatarUrl, 'https://x/avatar.png');
   });
 
   test('AppProgram.fromJson 接受 Next / Supabase 嵌套 schools 与 admissions 数组', () {
     final json = {
-      'id': 1,
+      'id': '001f9862-a2c5-4d37-9b7a-720ceeef163e',
       'program_name': 'MA Fine Art',
       'degree_type': 'MA',
       'requires_portfolio': true,
@@ -36,6 +54,7 @@ void main() {
       ],
     };
     final prog = AppProgram.fromJson(json);
+    expect(prog.id, '001f9862-a2c5-4d37-9b7a-720ceeef163e');
     expect(prog.schoolNameZh, '某大学');
     expect(prog.ieltsOverall, 6.5);
     expect(prog.internationalTuitionFee, 25000);
@@ -47,7 +66,8 @@ void main() {
       'section_type': 'hero_banner',
       'title': '灵感碎片的万合\n青花新境',
       'subtitle': 'SPECIAL / 陶瓷重构专场',
-      'image_url': 'https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&q=80&w=2000',
+      'image_url':
+          'https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&q=80&w=2000',
       'link_url': null,
       'link_text': '立即观展 (Virtual Access)',
       'badge': null,
@@ -61,7 +81,8 @@ void main() {
     expect(c.sectionType, 'hero_banner');
     expect(c.title, '灵感碎片的万合\n青花新境');
     expect(c.subtitle, 'SPECIAL / 陶瓷重构专场');
-    expect(c.imageUrl, 'https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&q=80&w=2000');
+    expect(c.imageUrl,
+        'https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&q=80&w=2000');
     expect(c.linkText, '立即观展 (Virtual Access)');
     expect(c.badge, null);
     expect(c.displayOrder, 0);

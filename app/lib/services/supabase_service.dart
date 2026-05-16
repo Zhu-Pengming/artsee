@@ -12,7 +12,8 @@ class SupabaseService {
   static Future<AuthResponse> signIn(String email, String password) =>
       _client.auth.signInWithPassword(email: email, password: password);
 
-  static Future<AuthResponse> signUp(String email, String password, String nickname) async {
+  static Future<AuthResponse> signUp(
+      String email, String password, String nickname) async {
     final res = await _client.auth.signUp(email: email, password: password);
     if (res.user != null) {
       await _client.from('user_profiles').upsert({
@@ -93,7 +94,7 @@ class SupabaseService {
     return (data as List).map((e) => AppProgram.fromJson(e)).toList();
   }
 
-  static Future<AppProgram?> fetchProgram(int id) async {
+  static Future<AppProgram?> fetchProgram(String id) async {
     final data = await _client
         .from('programs')
         .select('*, schools(*), program_admissions(*), program_fees(*)')
@@ -136,20 +137,24 @@ class SupabaseService {
     List<String> tags = const [],
   }) async {
     if (!isLoggedIn) return null;
-    final res = await _client.from('cases').insert({
-      'author_id': currentUser!.id,
-      'title': title,
-      'target_school': targetSchool,
-      'target_program': targetProgram,
-      'result': result,
-      'content': content,
-      'undergrad': undergrad,
-      'gpa': gpa,
-      'excerpt': excerpt,
-      'year': year,
-      'is_anonymous': isAnonymous,
-      'tags': tags,
-    }).select('id').single();
+    final res = await _client
+        .from('cases')
+        .insert({
+          'author_id': currentUser!.id,
+          'title': title,
+          'target_school': targetSchool,
+          'target_program': targetProgram,
+          'result': result,
+          'content': content,
+          'undergrad': undergrad,
+          'gpa': gpa,
+          'excerpt': excerpt,
+          'year': year,
+          'is_anonymous': isAnonymous,
+          'tags': tags,
+        })
+        .select('id')
+        .single();
     return res['id'] as String;
   }
 
@@ -199,13 +204,17 @@ class SupabaseService {
     List<String> tags = const [],
   }) async {
     if (!isLoggedIn) return null;
-    final res = await _client.from('posts').insert({
-      'author_id': currentUser!.id,
-      'title': title,
-      'type': type,
-      'content': content,
-      'tags': tags,
-    }).select('id').single();
+    final res = await _client
+        .from('posts')
+        .insert({
+          'author_id': currentUser!.id,
+          'title': title,
+          'type': type,
+          'content': content,
+          'tags': tags,
+        })
+        .select('id')
+        .single();
     return res['id'] as String;
   }
 

@@ -4,7 +4,7 @@ import '../../widgets/common.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 class ProgramDetailScreen extends StatefulWidget {
-  final int id;
+  final String id;
 
   const ProgramDetailScreen({super.key, required this.id});
 
@@ -48,9 +48,13 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
       backgroundColor: context.artC.porcelain,
       body: SafeArea(
         child: _loading
-            ? Center(child: CircularProgressIndicator(color: kCobalt, strokeWidth: 2.5))
+            ? Center(
+                child:
+                    CircularProgressIndicator(color: kCobalt, strokeWidth: 2.5))
             : _error != null
-                ? Center(child: Text('加载失败: $_error', style: TextStyle(color: context.artC.ink)))
+                ? Center(
+                    child: Text('加载失败: $_error',
+                        style: TextStyle(color: context.artC.ink)))
                 : _buildContent(),
       ),
     );
@@ -103,7 +107,8 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                       color: context.artC.silver.withOpacity(0.35),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.arrow_back_ios, size: 18, color: context.artC.ink.withOpacity(0.6)),
+                    child: Icon(Icons.arrow_back_ios,
+                        size: 18, color: context.artC.ink.withOpacity(0.6)),
                   ),
                 ),
                 const Spacer(),
@@ -125,7 +130,8 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                       child: Image.network(coverImageUrl, fit: BoxFit.cover),
                     ),
                   ),
-                if (coverImageUrl != null && coverImageUrl.isNotEmpty) const SizedBox(height: 24),
+                if (coverImageUrl != null && coverImageUrl.isNotEmpty)
+                  const SizedBox(height: 24),
                 Row(
                   children: [
                     Container(
@@ -167,7 +173,8 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                               height: 1.2,
                             ),
                           ),
-                          if (degreeFullName != null && degreeFullName.isNotEmpty) ...[
+                          if (degreeFullName != null &&
+                              degreeFullName.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Text(
                               degreeFullName,
@@ -177,7 +184,8 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                          ] else if (degreeType != null && degreeType.isNotEmpty) ...[
+                          ] else if (degreeType != null &&
+                              degreeType.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Text(
                               degreeType,
@@ -257,8 +265,10 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                     children: [
                       _buildSectionTitle('录取与费用'),
                       const SizedBox(height: 16),
-                      if (ielts != null) _buildInfoRow('雅思要求', ielts.toString()),
-                      if (regularDeadline != null && regularDeadline.isNotEmpty) ...[
+                      if (ielts != null)
+                        _buildInfoRow('雅思要求', ielts.toString()),
+                      if (regularDeadline != null &&
+                          regularDeadline.isNotEmpty) ...[
                         if (ielts != null) const SizedBox(height: 12),
                         _buildInfoRow('常规截止', regularDeadline),
                       ],

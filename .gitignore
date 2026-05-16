@@ -30,11 +30,8 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# IDE / local tooling
+# IDE
 .idea/
-.cursor/
-.kimi/
-.venv/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
@@ -47,9 +44,6 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
-
-# 勿将临时/未引用素材提交到仓库根目录
-henrik-donnestad-t2Sai-AqIpI-unsplash.jpg
 
 # Flutter
 app/.dart_tool/
@@ -71,12 +65,5 @@ app/ios/Flutter/Flutter.podspec
 # Supabase
 supabase/.temp/
 
-*.zip
-
-# 艺术家参考稿解压目录（ZIP 保留在仓库外或本地）
-_artist_ref/
-.playwright-mcp/
-*.png
-
-# Keep app assets
-!app/assets/images/*.png
+# MCP config (contains access tokens)
+.mcp.json

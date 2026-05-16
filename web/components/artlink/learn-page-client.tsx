@@ -5,15 +5,85 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import {
   PlayCircle,
-  ArrowRight,
   ArrowUpRight,
   Plus,
+  ShoppingBag,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 type LearnSubTab = "courses" | "tools" | "schools";
 
 export function LearnPageClient() {
   const [subTab, setSubTab] = useState<LearnSubTab>("courses");
+  const [payingKey, setPayingKey] = useState<string | null>(null);
+
+  const courses = [
+    {
+      title: "作品集辅导：RCA/UAL 申请全攻略",
+      cat: "留学辅导",
+      price: "¥2,999",
+      amountTotal: 299900,
+      seed: "course0",
+    },
+    {
+      title: "当代油画技法：从构图到色彩表达",
+      cat: "技法课",
+      price: "¥1,200",
+      amountTotal: 120000,
+      seed: "course1",
+    },
+    {
+      title: "艺术家职业商业课：定价、版权与合同",
+      cat: "职业发展",
+      price: "¥800",
+      amountTotal: 80000,
+      seed: "course2",
+    },
+  ];
+
+  async function startCheckout(course: (typeof courses)[number]) {
+    setPayingKey(course.title);
+    try {
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const res = await fetch("/api/v1/payments/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          subject: course.title,
+          itemType: "course",
+          itemId: course.seed,
+          amountTotal: course.amountTotal,
+          currency: "cny",
+          metadata: { source: "learn_page", category: course.cat },
+        }),
+      });
+      const payload = await res.json();
+      if (!res.ok || payload.success !== true) {
+        throw new Error(payload.error || "创建支付订单失败");
+      }
+      if (!payload.data?.checkoutUrl) {
+        throw new Error("支付链接为空");
+      }
+      window.location.href = payload.data.checkoutUrl;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "创建支付订单失败";
+      alert(msg);
+    } finally {
+      setPayingKey(null);
+    }
+  }
 
   return (
     <div className="space-y-10 pb-10 px-6 md:px-12 lg:px-24 pt-6">
@@ -48,29 +118,9 @@ export function LearnPageClient() {
 
       {subTab === "courses" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-10">
-          {[
-            {
-              title: "作品集辅导：RCA/UAL 申请全攻略",
-              cat: "留学辅导",
-              price: "Premium",
-              seed: "course0",
-            },
-            {
-              title: "当代油画技法：从构图到色彩表达",
-              cat: "技法课",
-              price: "¥1,200",
-              seed: "course1",
-            },
-            {
-              title: "艺术家职业商业课：定价、版权与合同",
-              cat: "职业发展",
-              price: "¥800",
-              seed: "course2",
-            },
-          ].map((item, i) => (
-            <Link
+          {courses.map((item, i) => (
+            <article
               key={i}
-              href="/cases"
               className="bg-al-silver/40 rounded-3xl overflow-hidden border border-al-silver/60 group cursor-pointer hover:shadow-2xl hover:shadow-al-silver/40 transition-all block"
             >
               <div className="aspect-video bg-al-silver/50 overflow-hidden relative">
@@ -96,13 +146,18 @@ export function LearnPageClient() {
                   <span className="text-sm font-bold text-al-cobalt">
                     {item.price}
                   </span>
-                  <ArrowRight
-                    size={18}
-                    className="text-al-ink/20 group-hover:text-al-cobalt transition-all group-hover:translate-x-1"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => startCheckout(item)}
+                    disabled={payingKey === item.title}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-al-cobalt px-3 py-1.5 text-[11px] font-bold text-white transition-all hover:bg-al-cobalt/90 disabled:opacity-60"
+                  >
+                    <ShoppingBag size={14} />
+                    {payingKey === item.title ? "处理中" : "购买"}
+                  </button>
                 </div>
               </div>
-            </Link>
+            </article>
           ))}
         </div>
       )}

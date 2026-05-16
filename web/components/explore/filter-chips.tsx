@@ -22,30 +22,37 @@ export function FilterChips({ onFilter }: FilterChipsProps) {
   }
 
   return (
-    <div className="space-y-2 py-3 border-b border-al-silver/50">
+    <div className="space-y-2 px-4 py-3 border-b border-[#eeece8]">
+      {/* Row 1: Degree — solid primary when active */}
       <div className="flex gap-2 overflow-x-auto scrollbar-hide">
         {filters.degree.map((d) => (
           <button key={d} onClick={() => { setActiveDegree(d); update(d, activeMajor, activeIelts); }}
-            className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              activeDegree === d ? "bg-al-cobalt text-al-shell" : "bg-al-silver/50 text-al-ink/60"
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors ${
+              activeDegree === d
+                ? "bg-[#2c2018] text-[#f2ece4] shadow-sm"
+                : "bg-[#e8e4dc] text-[#6b6b63] hover:bg-[#dedad4]"
             }`}>{d}</button>
         ))}
       </div>
+      {/* Row 2: Major — warm tint when active */}
       <div className="flex gap-2 overflow-x-auto scrollbar-hide">
         {filters.major.map((m) => (
           <button key={m} onClick={() => { setActiveMajor(m); update(activeDegree, m, activeIelts); }}
-            className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors ${
               activeMajor === m
-                ? "bg-al-cobalt/10 text-al-cobalt border border-al-cobalt/30"
-                : "bg-al-silver/30 text-al-ink/55 border border-al-silver/60"
+                ? "bg-[#f5ead8] text-[#8c6230] border border-[#d4a96a]/35"
+                : "bg-white text-[#6b6b63] border border-[#e0ddd8] hover:border-[#c8c4be]"
             }`}>{m}</button>
         ))}
       </div>
+      {/* Row 3: IELTS */}
       <div className="flex gap-2 overflow-x-auto scrollbar-hide">
         {filters.ielts.map((i) => (
           <button key={i} onClick={() => { setActiveIelts(i); update(activeDegree, activeMajor, i); }}
-            className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              activeIelts === i ? "bg-al-cobalt/15 text-al-cobalt border border-al-cobalt/25" : "bg-al-silver/30 text-al-ink/55 border border-al-silver/60"
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-colors ${
+              activeIelts === i
+                ? "bg-[#eef0eb] text-[#4a5c3e] border border-[#6b7c5e]/25"
+                : "bg-white text-[#6b6b63] border border-[#e0ddd8] hover:border-[#c8c4be]"
             }`}>{i === "全部" ? "IELTS 全部" : `IELTS ${i}`}</button>
         ))}
       </div>

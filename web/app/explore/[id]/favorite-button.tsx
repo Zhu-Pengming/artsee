@@ -6,7 +6,7 @@ import { toggleFavorite } from '@/lib/actions'
 import { useRouter } from 'next/navigation'
 
 export function FavoriteButton({ programId, initialFavorited, isLoggedIn }: {
-  programId: number
+  programId: string
   initialFavorited: boolean
   isLoggedIn: boolean
 }) {

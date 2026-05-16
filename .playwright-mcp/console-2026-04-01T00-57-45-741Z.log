@@ -1,0 +1,51 @@
+[ 7714729ms] [WARNING] [Fast Refresh] performing full reload
+
+Fast Refresh will perform a full reload when you edit a file that's imported by modules outside of the React rendering tree.
+You might have a file which exports a React component but also exports a value that is imported by a non-React component file.
+Consider migrating the non-React component export to a separate file and importing it into both files.
+
+It is also possible the parent component of the component you edited is a class component, which disables Fast Refresh.
+Fast Refresh requires at least one parent function component in your React tree. @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:138
+[ 7718234ms] [ERROR] Failed to fetch RSC payload for http://localhost:3333/. Falling back to browser navigation. TypeError: Failed to fetch
+    at createFetch (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/client/components/router-reducer/fetch-server-response.js:154:12)
+    at fetchServerResponse (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/client/components/router-reducer/fetch-server-response.js:82:27)
+    at hmrRefreshReducerImpl (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/client/components/router-reducer/reducers/hmr-refresh-reducer.js:33:67)
+    at clientReducer (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/client/components/router-reducer/router-reducer.js:41:65)
+    at Object.action (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/shared/lib/router/action-queue.js:130:55)
+    at runAction (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/shared/lib/router/action-queue.js:42:38)
+    at dispatchAction (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/shared/lib/router/action-queue.js:96:9)
+    at Object.dispatch (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/shared/lib/router/action-queue.js:128:40)
+    at eval (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/client/components/use-reducer.js:37:21)
+    at eval (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/client/components/app-router.js:246:25)
+    at exports.startTransition (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/compiled/react/cjs/react.development.js:1427:27)
+    at Object.hmrRefresh (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/client/components/app-router.js:245:48)
+    at eval (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:335:28)
+    at exports.startTransition (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/compiled/react/cjs/react.development.js:1427:27)
+    at processMessage (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:334:44)
+    at WebSocket.handler (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:508:17) @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/client/components/globals/intercept-console-error.js:50
+[ 7718247ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3333/:0
+[ 7719611ms] [ERROR] %o
+
+%s Error: Your project's URL and Key are required to create a Supabase client!
+
+Check your Supabase project's API settings to find these values
+
+https://supabase.com/dashboard/project/_/settings/api
+    at createClient (rsc://React/Server/webpack-internal:///(rsc)/./lib/supabase/server.ts?0:11:77)
+    at async HomePage (rsc://React/Server/webpack-internal:///(rsc)/./app/page.tsx?1:22:22)
+    at resolveErrorDev (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/compiled/react-server-dom-webpack/cjs/react-server-dom-webpack-client.browser.development.js:1792:63)
+    at processFullStringRow (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/compiled/react-server-dom-webpack/cjs/react-server-dom-webpack-client.browser.development.js:2071:17)
+    at processFullBinaryRow (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/compiled/react-server-dom-webpack/cjs/react-server-dom-webpack-client.browser.development.js:2059:7)
+    at progress (webpack-internal:///(app-pages-browser)/../node_modules/next/dist/compiled/react-server-dom-webpack/cjs/react-server-dom-webpack-client.browser.development.js:2262:17) The above error occurred in the <HomePage> component. It was handled by the <ReactDevOverlay> error boundary. @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/client/react-client-callbacks/app-router.js:52
+[ 7723056ms] [WARNING] The resource http://localhost:3333/_next/static/css/app/layout.css?v=1775012783688 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3333/:0
+[ 7757159ms] [WARNING] [Fast Refresh] performing full reload because your application had an unrecoverable error @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:140
+[ 7760162ms] [WARNING] The resource http://localhost:3333/_next/static/css/app/layout.css?v=1775012783688 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3333/:0
+[ 7760190ms] [WARNING] [Fast Refresh] performing full reload
+
+Fast Refresh will perform a full reload when you edit a file that's imported by modules outside of the React rendering tree.
+You might have a file which exports a React component but also exports a value that is imported by a non-React component file.
+Consider migrating the non-React component export to a separate file and importing it into both files.
+
+It is also possible the parent component of the component you edited is a class component, which disables Fast Refresh.
+Fast Refresh requires at least one parent function component in your React tree. @ webpack-internal:///(app-pages-browser)/../node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:138
+[ 7763253ms] [WARNING] The resource http://localhost:3333/_next/static/css/app/layout.css?v=1775012783688 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3333/:0

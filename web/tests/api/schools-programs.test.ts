@@ -96,6 +96,7 @@ vi.mock("@/lib/api/require-admin", () => ({
 }));
 
 vi.mock("@/lib/api/supabase-service", () => ({
+  createPublicReadClient: () => mocked.createServiceClient(),
   createServiceClient: () => mocked.createServiceClient(),
 }));
 
@@ -135,12 +136,12 @@ describe("schools routes", () => {
     expect(query.operations).toEqual(
       expect.arrayContaining([
         { method: "eq", args: ["status", "active"] },
-        { method: "eq", args: ["country", "英国"] },
+        { method: "eq", args: ["raw_country", "英国"] },
         { method: "eq", args: ["city", "伦敦"] },
         { method: "eq", args: ["school_type", "艺术学院"] },
         { method: "or", args: ["name_zh.ilike.%皇家%,name_en.ilike.%皇家%"] },
-        { method: "gte", args: ["qs_art_rank", 1] },
-        { method: "lte", args: ["qs_art_rank", 20] },
+        { method: "gte", args: ["qs_art_design_rank", 1] },
+        { method: "lte", args: ["qs_art_design_rank", 20] },
         { method: "range", args: [20, 29] },
       ])
     );
@@ -207,7 +208,7 @@ describe("programs routes", () => {
     mocked.createServiceClient.mockReturnValue(buildClient({ programs: query }));
 
     const req = new NextRequest(
-      "http://localhost/api/v1/programs?school_id=1&category_id=3&degree_type=MA&requires_portfolio=true&keyword=动画&limit=5&offset=10"
+      "http://localhost/api/v1/programs?school_id=11111111-1111-4111-8111-111111111111&category_id=3&degree_type=MA&requires_portfolio=true&keyword=动画&limit=5&offset=10"
     );
     const res = await getPrograms(req);
     const body = await res.json();
@@ -217,8 +218,8 @@ describe("programs routes", () => {
     expect(query.operations).toEqual(
       expect.arrayContaining([
         { method: "eq", args: ["status", "active"] },
-        { method: "eq", args: ["school_id", 1] },
-        { method: "eq", args: ["degree_type", "MA"] },
+        { method: "eq", args: ["school_id", "11111111-1111-4111-8111-111111111111"] },
+        { method: "or", args: ["normalized_degree_type.ilike.MA%,raw_degree_type.ilike.MA%"] },
         { method: "ilike", args: ["program_name", "%动画%"] },
         { method: "eq", args: ["requires_portfolio", true] },
         { method: "eq", args: ["program_art_categories.category_id", 3] },
@@ -268,8 +269,9 @@ describe("programs routes", () => {
     query.maybeSingleResult = { data: null, error: null };
     mocked.createServiceClient.mockReturnValue(buildClient({ programs: query }));
 
-    const req = new NextRequest("http://localhost/api/v1/programs/999");
-    const res = await getProgramById(req, { params: Promise.resolve({ id: "999" }) });
+    const id = "11111111-1111-4111-8111-111111111111";
+    const req = new NextRequest(`http://localhost/api/v1/programs/${id}`);
+    const res = await getProgramById(req, { params: Promise.resolve({ id }) });
     expect(res.status).toBe(404);
   });
 
@@ -278,8 +280,9 @@ describe("programs routes", () => {
     query.result = { data: null, error: null };
     mocked.createServiceClient.mockReturnValue(buildClient({ programs: query }));
 
-    const req = new NextRequest("http://localhost/api/v1/programs/2", { method: "DELETE" });
-    const res = await deleteProgramById(req, { params: Promise.resolve({ id: "2" }) });
+    const id = "11111111-1111-4111-8111-111111111111";
+    const req = new NextRequest(`http://localhost/api/v1/programs/${id}`, { method: "DELETE" });
+    const res = await deleteProgramById(req, { params: Promise.resolve({ id }) });
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -287,7 +290,7 @@ describe("programs routes", () => {
     expect(query.operations).toEqual(
       expect.arrayContaining([
         { method: "delete", args: [] },
-        { method: "eq", args: ["id", 2] },
+        { method: "eq", args: ["id", id] },
       ])
     );
   });

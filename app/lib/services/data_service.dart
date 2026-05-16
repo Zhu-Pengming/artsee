@@ -45,7 +45,7 @@ class DataService {
   }
 
   // 获取项目详情
-  Future<Map<String, dynamic>?> getProgramDetail(int id) async {
+  Future<Map<String, dynamic>?> getProgramDetail(String id) async {
     try {
       final response = await http.get(
         Uri.parse('$apiBaseUrl/programs/$id'),
@@ -63,7 +63,7 @@ class DataService {
   }
 
   // 收藏项目
-  Future<bool> favoriteProgram(int programId) async {
+  Future<bool> favoriteProgram(String programId) async {
     try {
       final response = await http.post(
         Uri.parse('$apiBaseUrl/user/favorites'),

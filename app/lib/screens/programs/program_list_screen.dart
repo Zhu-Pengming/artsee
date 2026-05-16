@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../services/backend_api_service.dart';
 import '../../widgets/common.dart';
+import 'program_detail_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 /// 专业列表 — 分页查询
@@ -91,7 +92,8 @@ class _ProgramListScreenState extends State<ProgramListScreen> {
     }
 
     if (_items.isEmpty) {
-      return Center(child: Text('暂无专业数据', style: TextStyle(color: context.artC.ink)));
+      return Center(
+          child: Text('暂无专业数据', style: TextStyle(color: context.artC.ink)));
     }
 
     return RefreshIndicator(
@@ -110,7 +112,8 @@ class _ProgramListScreenState extends State<ProgramListScreen> {
                 child: SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(color: kCobalt, strokeWidth: 2),
+                  child:
+                      CircularProgressIndicator(color: kCobalt, strokeWidth: 2),
                 ),
               ),
             );
@@ -119,8 +122,11 @@ class _ProgramListScreenState extends State<ProgramListScreen> {
           return _ProgramCard(
             program: item,
             onTap: () {
-              // TODO: 跳转到专业详情页
-              // Navigator.of(context).push(...)
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ProgramDetailScreen(id: item.id),
+                ),
+              );
             },
           );
         },
@@ -165,14 +171,16 @@ class _ProgramCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Icon(Icons.chevron_right, size: 20, color: context.artC.ink.withOpacity(0.25)),
+                Icon(Icons.chevron_right,
+                    size: 20, color: context.artC.ink.withOpacity(0.25)),
               ],
             ),
             const SizedBox(height: 8),
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: context.artC.silver.withOpacity(0.4),
                     borderRadius: BorderRadius.circular(6),
@@ -188,10 +196,12 @@ class _ProgramCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (program.degreeType != null && program.degreeType!.isNotEmpty) ...[
+                if (program.degreeType != null &&
+                    program.degreeType!.isNotEmpty) ...[
                   const SizedBox(width: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: kCobalt.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(6),
@@ -208,13 +218,15 @@ class _ProgramCard extends StatelessWidget {
                 ],
               ],
             ),
-            if (program.durationText != null || program.ieltsOverall != null) ...[
+            if (program.durationText != null ||
+                program.ieltsOverall != null) ...[
               const SizedBox(height: 10),
               Row(
                 children: [
                   if (program.durationText != null)
                     _MetaText('学制: ${program.durationText}'),
-                  if (program.durationText != null && program.ieltsOverall != null)
+                  if (program.durationText != null &&
+                      program.ieltsOverall != null)
                     const SizedBox(width: 12),
                   if (program.ieltsOverall != null)
                     _MetaText('雅思: ${program.ieltsOverall}'),

@@ -91,7 +91,8 @@ class _SchoolListScreenState extends State<SchoolListScreen> {
     }
 
     if (_items.isEmpty) {
-      return Center(child: Text('暂无院校数据', style: TextStyle(color: context.artC.ink)));
+      return Center(
+          child: Text('暂无院校数据', style: TextStyle(color: context.artC.ink)));
     }
 
     return RefreshIndicator(
@@ -110,7 +111,8 @@ class _SchoolListScreenState extends State<SchoolListScreen> {
                 child: SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(color: kCobalt, strokeWidth: 2),
+                  child:
+                      CircularProgressIndicator(color: kCobalt, strokeWidth: 2),
                 ),
               ),
             );
@@ -119,7 +121,7 @@ class _SchoolListScreenState extends State<SchoolListScreen> {
           return _SchoolCard(
             data: item,
             onTap: () {
-              final id = item['id'] as String?;
+              final id = item['id']?.toString();
               if (id != null && id.isNotEmpty) {
                 Navigator.of(context).push(
                   MaterialPageRoute(
@@ -215,8 +217,7 @@ class _SchoolCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      if (country != null)
-                        _MetaChip(country),
+                      if (country != null) _MetaChip(country),
                       if (city != null) ...[
                         const SizedBox(width: 6),
                         _MetaChip(city),
@@ -230,7 +231,8 @@ class _SchoolCard extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, size: 20, color: context.artC.ink.withOpacity(0.25)),
+            Icon(Icons.chevron_right,
+                size: 20, color: context.artC.ink.withOpacity(0.25)),
           ],
         ),
       ),
@@ -249,7 +251,9 @@ class _MetaChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: highlighted ? kCobalt.withOpacity(0.08) : context.artC.silver.withOpacity(0.4),
+        color: highlighted
+            ? kCobalt.withOpacity(0.08)
+            : context.artC.silver.withOpacity(0.4),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -257,7 +261,9 @@ class _MetaChip extends StatelessWidget {
         style: TextStyle(
           fontSize: 10,
           fontWeight: highlighted ? FontWeight.w700 : FontWeight.w500,
-          color: highlighted ? kCobalt.withOpacity(0.9) : context.artC.ink.withOpacity(0.55),
+          color: highlighted
+              ? kCobalt.withOpacity(0.9)
+              : context.artC.ink.withOpacity(0.55),
         ),
       ),
     );

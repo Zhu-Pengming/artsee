@@ -1,23 +1,30 @@
 // Supabase 数据库类型定义
 
 export type School = {
-  id: number
+  id: string
   name_zh: string
   name_en: string | null
   country: string | null
+  raw_country?: string | null
+  country_code?: string | null
+  region_tag?: string | null
   city: string | null
   school_type: string | null
   qs_art_rank: number | null
+  qs_art_design_rank?: number | null
+  qs_overall_rank?: number | null
   official_website: string | null
   logo_url: string | null
   status: string | null
 }
 
 export type Program = {
-  id: number
-  school_id: number
+  id: string
+  school_id: string
   program_name: string
   degree_type: string | null
+  normalized_degree_type?: string | null
+  raw_degree_type?: string | null
   degree_full_name: string | null
   program_category: string | null
   duration_text: string | null
@@ -46,7 +53,7 @@ export type Program = {
 
 export type ProgramAdmission = {
   id: number
-  program_id: number
+  program_id: string
   portfolio_requirements: string | null
   portfolio_format: Record<string, unknown> | null
   ielts_overall: number | null
@@ -63,7 +70,7 @@ export type ProgramAdmission = {
 
 export type ProgramFee = {
   id: number
-  program_id: number
+  program_id: string
   international_tuition_fee: number | null
   domestic_tuition_fee: number | null
   currency_code: string | null
@@ -113,6 +120,21 @@ export type Post = {
   user_profiles?: UserProfile
 }
 
+export type CommunityPost = {
+  id: string
+  author_id: string
+  title: string
+  body: string | null
+  image_urls: string[]
+  status: 'draft' | 'published' | 'hidden' | string
+  like_count: number
+  comment_count: number
+  view_count: number
+  created_at: string
+  updated_at: string
+  user_profiles?: Pick<UserProfile, 'nickname' | 'avatar_url'> | null
+}
+
 export type PostReply = {
   id: string
   post_id: string
@@ -128,7 +150,7 @@ export type ApplicationTracker = {
   user_id: string
   school_name: string
   program_name: string
-  program_id: number | null
+  program_id: string | null
   tier: 'reach' | 'match' | 'safety'
   status: 'planning' | 'preparing' | 'submitted' | 'interview' | 'admitted' | 'rejected' | 'waitlisted'
   deadline: string | null
@@ -157,7 +179,28 @@ export type UserProfile = {
 export type UserFavorite = {
   id: number
   user_id: string
-  program_id: number
+  program_id: string
   note: string | null
   created_at: string
+}
+
+export type Order = {
+  id: string
+  user_id: string
+  order_no: string
+  subject: string
+  item_type: string
+  item_id: string | null
+  amount_total: number
+  currency: string
+  status: 'pending' | 'checkout_created' | 'paid' | 'canceled' | 'expired' | 'failed' | 'refunded'
+  provider: 'stripe' | string
+  provider_checkout_session_id: string | null
+  provider_payment_intent_id: string | null
+  provider_customer_id: string | null
+  metadata: Record<string, unknown>
+  paid_at: string | null
+  canceled_at: string | null
+  created_at: string
+  updated_at: string
 }

@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/api/supabase-service";
+import { checkRateLimit } from "@/lib/api/rate-limit";
+import { createPublicReadClient } from "@/lib/api/supabase-service";
 
 /**
  * POST /api/v1/ai/schools/search
@@ -9,6 +10,15 @@ import { createServiceClient } from "@/lib/api/supabase-service";
  */
 export async function POST(req: NextRequest) {
   try {
+    const limited = checkRateLimit(req, {
+      keyPrefix: "ai-schools-search",
+      windowMs: 60_000,
+      max: 20,
+    });
+    if (!limited.ok) {
+      return NextResponse.json({ success: false, error: "请求过于频繁，请稍后再试" }, { status: 429 });
+    }
+
     const { query, limitSchools = 20 } = (await req.json()) as {
       query?: string;
       limitSchools?: number;
@@ -17,38 +27,6 @@ export async function POST(req: NextRequest) {
     if (!q) {
       return NextResponse.json({ success: false, error: "query 不能为空" }, { status: 400 });
     }
-
-    const supabase = createServiceClient();
-    const { data: schools, error: se } = await supabase
-      .from("schools")
-      .select("*")
-      .eq("status", "active")
-      .order("qs_art_design_rank", { ascending: true })
-      .limit(Math.min(limitSchools, 80));
-
-    if (se) {
-      return NextResponse.json({ success: false, error: se.message }, { status: 500 });
-    }
-
-    const compact = (schools ?? []).map((s: Record<string, unknown>) => ({
-      id: s.id,
-      name_zh: s.name_zh,
-      name_en: s.name_en,
-      country: s.country,
-      city: s.city,
-      qs_art_design_rank: s.qs_art_design_rank,
-      qs_overall_rank: s.qs_overall_rank,
-      school_tier: s.school_tier,
-      school_type: s.school_type,
-      founded_year: s.founded_year,
-      description: (s.description as string)?.slice(0, 300) ?? "",
-      feature_tags: s.feature_tags,
-      strength_disciplines: s.strength_disciplines,
-      entry_score_requirements: s.entry_score_requirements,
-      application_deadline: s.application_deadline,
-      annual_intake: s.annual_intake,
-      notable_alumni: (s.notable_alumni as string)?.slice(0, 200) ?? "",
-    }));
 
     const apiKey = process.env.OPENAI_API_KEY || process.env.MOONSHOT_API_KEY;
     const baseURL =
@@ -66,6 +44,40 @@ export async function POST(req: NextRequest) {
         { status: 503 }
       );
     }
+
+    const supabase = createPublicReadClient();
+    const { data: schools, error: se } = await supabase
+      .from("schools")
+      .select("*")
+      .eq("status", "active")
+      .order("qs_art_design_rank", { ascending: true, nullsFirst: false })
+      .limit(Math.min(limitSchools, 80));
+
+    if (se) {
+      return NextResponse.json({ success: false, error: se.message }, { status: 500 });
+    }
+
+    const compact = (schools ?? []).map((s: Record<string, unknown>) => ({
+      id: s.id,
+      name_zh: s.name_zh,
+      name_en: s.name_en,
+      country: s.raw_country,
+      country_code: s.country_code,
+      region_tag: s.region_tag,
+      city: s.city,
+      qs_art_rank: s.qs_art_design_rank,
+      qs_overall_rank: s.qs_overall_rank,
+      school_tier: s.school_tier,
+      school_type: s.school_type,
+      founded_year: s.founded_year,
+      description: (s.description as string)?.slice(0, 300) ?? "",
+      feature_tags: s.feature_tags,
+      strength_disciplines: s.strength_disciplines,
+      entry_score_requirements: s.entry_score_requirements,
+      application_deadline: s.application_deadline,
+      annual_intake: s.annual_intake,
+      notable_alumni: (s.notable_alumni as string)?.slice(0, 200) ?? "",
+    }));
 
     const client = new OpenAI({ apiKey, baseURL });
 

@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Globe, BookOpen, Clock, Calendar, Users, FileText, Video, Heart } from 'lucide-react'
-import { getSchoolGradient, getSchoolInitial } from '@/lib/utils'
+import { getSchoolGradient, getSchoolInitial, resolveSchoolDisplayName } from '@/lib/utils'
 import { FavoriteButton } from './favorite-button'
 
 export default async function ProgramDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -17,7 +17,7 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
       program_admissions ( * ),
       program_fees ( * )
     `)
-    .eq('id', parseInt(id))
+    .eq('id', id)
     .single()
 
   if (!program) notFound()
@@ -43,13 +43,9 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
     ? program.program_fees[0]
     : program.program_fees
 
-  // 占位学校名降级显示英文名
-  const isPlaceholder = !school?.name_zh || school.name_zh === '综合艺术院校'
-  const schoolDisplayName = isPlaceholder
-    ? (school?.name_en ?? '未知院校')
-    : school!.name_zh
+  const schoolDisplayName = resolveSchoolDisplayName(school)
   const cityDisplay = school?.city === 'Various' ? '' : (school?.city ?? '')
-  const countryDisplay = school?.country === 'Various' ? '英国' : (school?.country ?? '')
+  const countryDisplay = school?.raw_country === 'Various' ? '英国' : (school?.raw_country ?? school?.country ?? '')
 
   const gradient = school ? getSchoolGradient(schoolDisplayName) : 'from-gray-500 to-slate-600'
   const initial = school ? getSchoolInitial(schoolDisplayName) : '?'
@@ -100,7 +96,9 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
 
       {/* 标签 */}
       <div className="flex gap-2 px-4 mt-3 flex-wrap">
-        {program.degree_type && <Tag color="blue">{program.degree_type}</Tag>}
+        {(program.normalized_degree_type ?? program.raw_degree_type) && (
+          <Tag color="blue">{program.normalized_degree_type ?? program.raw_degree_type}</Tag>
+        )}
         {program.requires_interview && <Tag color="amber">需要面试</Tag>}
         {program.requires_portfolio && <Tag color="purple">需作品集</Tag>}
         {program.requires_personal_statement && <Tag color="green">需文书</Tag>}

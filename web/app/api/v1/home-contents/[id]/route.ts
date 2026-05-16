@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api/require-admin";
-import { createServiceClient } from "@/lib/api/supabase-service";
+import { createPublicReadClient, createServiceClient } from "@/lib/api/supabase-service";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -11,7 +11,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     if (!id || typeof id !== "string") {
       return NextResponse.json({ success: false, error: "无效 id" }, { status: 400 });
     }
-    const supabase = createServiceClient();
+    const supabase = createPublicReadClient();
     const { data, error } = await supabase.from("home_contents").select("*").eq("id", id).maybeSingle();
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });

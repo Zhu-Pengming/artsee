@@ -13,6 +13,7 @@ const profileTabs: { key: string; label: string; href?: string }[] = [
   { key: '申请追踪', label: '申请追踪' },
   { key: '我的案例', label: '我的案例' },
   { key: '收藏', label: '收藏' },
+  { key: '订单', label: '订单', href: '/orders' },
   { key: '选校', label: '选校', href: '/explore' },
 ]
 

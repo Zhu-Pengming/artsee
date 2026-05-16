@@ -69,7 +69,7 @@ export async function createReply(postId: string, content: string) {
 }
 
 // ─── 收藏相关 ─────────────────────────────────────────────
-export async function toggleFavorite(programId: number) {
+export async function toggleFavorite(programId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: '请先登录' }
