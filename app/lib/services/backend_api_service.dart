@@ -208,7 +208,9 @@ class BackendApiService {
     int offset = 0,
     String? keyword,
     String? country,
+    String? regionTag,
     String? schoolType,
+    String? advantageSubject,
   }) async {
     final params = <String, String>{
       'limit': '$limit',
@@ -216,8 +218,14 @@ class BackendApiService {
     };
     if (keyword != null && keyword.isNotEmpty) params['keyword'] = keyword;
     if (country != null && country.isNotEmpty) params['country'] = country;
+    if (regionTag != null && regionTag.isNotEmpty) {
+      params['region_tag'] = regionTag;
+    }
     if (schoolType != null && schoolType.isNotEmpty) {
       params['school_type'] = schoolType;
+    }
+    if (advantageSubject != null && advantageSubject.isNotEmpty) {
+      params['advantage_subject'] = advantageSubject;
     }
 
     final r = await http.get(

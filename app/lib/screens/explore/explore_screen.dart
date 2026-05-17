@@ -3,8 +3,8 @@ import '../../models/models.dart';
 import '../../services/backend_api_service.dart';
 import '../../widgets/common.dart';
 import '../community/community_post_detail_screen.dart';
-import 'institutions_archive_screen.dart';
 import '../programs/program_list_screen.dart';
+import '../schools/school_list_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 /// ═══════════════════════════════════════════════════════════════
@@ -86,7 +86,7 @@ class ExploreScreenState extends State<ExploreScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  const InstitutionsArchiveScreen(),
+                  const SchoolListScreen(),
                   const ProgramListScreen(),
                   CommunityFeedTab(key: _communityKey),
                   const _QaTab(),

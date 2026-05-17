@@ -44,7 +44,9 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const country = searchParams.get("country");
     const city = searchParams.get("city");
+    const regionTag = searchParams.get("region_tag");
     const schoolType = searchParams.get("school_type");
+    const advantageSubject = searchParams.get("advantage_subject")?.trim();
     const keyword = searchParams.get("keyword")?.trim();
     const status = searchParams.get("status");
     const includeInactive = searchParams.get("include_inactive") === "true";
@@ -116,8 +118,14 @@ export async function GET(req: NextRequest) {
     if (city) {
       query = query.eq("city", city);
     }
+    if (regionTag) {
+      query = query.eq("region_tag", regionTag);
+    }
     if (schoolType) {
       query = query.eq("school_type", schoolType);
+    }
+    if (advantageSubject) {
+      query = query.contains("strength_disciplines", [advantageSubject]);
     }
     if (keyword) {
       query = query.or(`name_zh.ilike.%${keyword}%,name_en.ilike.%${keyword}%`);
