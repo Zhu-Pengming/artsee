@@ -165,6 +165,7 @@ class BackendApiService {
     String? keyword,
     String? degreeType,
     String? schoolId,
+    bool? requiresPortfolio,
   }) async {
     final params = <String, String>{
       'limit': '$limit',
@@ -175,6 +176,9 @@ class BackendApiService {
       params['degree_type'] = degreeType;
     }
     if (schoolId != null) params['school_id'] = schoolId;
+    if (requiresPortfolio != null) {
+      params['requires_portfolio'] = requiresPortfolio ? 'true' : 'false';
+    }
 
     final r = await http.get(
       _api('/api/v1/programs', params),

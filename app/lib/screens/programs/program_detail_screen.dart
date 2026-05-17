@@ -68,10 +68,13 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
     final durationText = d['duration_text'] as String?;
     final requiresPortfolio = d['requires_portfolio'] as bool? ?? false;
     final requiresInterview = d['requires_interview'] as bool? ?? false;
+    final requiresPersonalStatement =
+        d['requires_personal_statement'] as bool? ?? false;
     final overview = d['program_overview'] as String?;
     final highlights = d['program_highlights'] as String?;
     final coreCourses = d['core_courses'] as String?;
     final careerPaths = d['career_paths'] as String?;
+    final admissionSummary = _asText(d['admission_summary']);
     final coverImageUrl = d['cover_image_url'] as String?;
 
     final school = d['schools'] as Map<String, dynamic>?;
@@ -80,16 +83,26 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
     final schoolLogo = school?['logo_url'] as String?;
     final qsRank = school?['qs_art_rank'] as int?;
 
-    final admissions = _firstOrNull(d['program_admissions'] as List<dynamic>?);
-    final fees = _firstOrNull(d['program_fees'] as List<dynamic>?);
+    final admissions = _firstOrSingle(d['program_admissions']);
+    final fees = _firstOrSingle(d['program_fees']);
 
     final ielts = admissions?['ielts_overall'] as num?;
+    final ieltsSubscores = _asText(admissions?['ielts_subscores']);
+    final toefl = admissions?['toefl_ibt'] as num?;
+    final otherLanguageTests = admissions?['other_language_tests'] as String?;
     final regularDeadline = admissions?['regular_deadline'] as String?;
+    final priorityDeadline = admissions?['priority_deadline'] as String?;
+    final deadlineNotes = admissions?['deadline_notes'] as String?;
     final portfolioReq = admissions?['portfolio_requirements'] as String?;
+    final portfolioFormat = _asText(admissions?['portfolio_format']);
+    final interviewFormat = _asText(admissions?['interview_format']);
     final academicReq = admissions?['academic_requirements'] as String?;
+    final referenceCount = admissions?['reference_count'] as num?;
 
-    final tuitionFee = fees?['international_tuition_fee'] as int?;
+    final tuitionFee = (fees?['international_tuition_fee'] as num?)?.round();
+    final domesticTuition = (fees?['domestic_tuition_fee'] as num?)?.round();
     final currency = fees?['currency_code'] as String?;
+    final additionalFeesNote = fees?['additional_fees_note'] as String?;
 
     return CustomScrollView(
       slivers: [
@@ -216,9 +229,43 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                 _buildTagsRow(
                   requiresPortfolio: requiresPortfolio,
                   requiresInterview: requiresInterview,
+                  requiresPersonalStatement: requiresPersonalStatement,
                   duration: durationText,
                 ),
                 const SizedBox(height: 24),
+                _buildCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionTitle('关键信息'),
+                      const SizedBox(height: 16),
+                      _buildInfoRow('院校', schoolName ?? '—'),
+                      if (schoolCountry != null &&
+                          schoolCountry.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow('国家 / 地区', schoolCountry),
+                      ],
+                      if (qsRank != null) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow('QS 艺术排名', '#$qsRank'),
+                      ],
+                      if (degreeFullName != null &&
+                          degreeFullName.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow('学位', degreeFullName),
+                      ] else if (degreeType != null &&
+                          degreeType.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow('学位', degreeType),
+                      ],
+                      if (durationText != null && durationText.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow('学制', durationText),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
                 if (overview != null && overview.isNotEmpty) ...[
                   _buildCard(
                     child: Column(
@@ -267,25 +314,83 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                       const SizedBox(height: 16),
                       if (ielts != null)
                         _buildInfoRow('雅思要求', ielts.toString()),
+                      if (ieltsSubscores != null &&
+                          ieltsSubscores.isNotEmpty) ...[
+                        if (ielts != null) const SizedBox(height: 12),
+                        _buildInfoRow('雅思小分', ieltsSubscores),
+                      ],
+                      if (toefl != null) ...[
+                        if (ielts != null || ieltsSubscores != null)
+                          const SizedBox(height: 12),
+                        _buildInfoRow('TOEFL iBT', toefl.toString()),
+                      ],
+                      if (otherLanguageTests != null &&
+                          otherLanguageTests.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow('其他语言', otherLanguageTests),
+                      ],
                       if (regularDeadline != null &&
                           regularDeadline.isNotEmpty) ...[
-                        if (ielts != null) const SizedBox(height: 12),
+                        if (ielts != null ||
+                            ieltsSubscores != null ||
+                            toefl != null ||
+                            otherLanguageTests != null)
+                          const SizedBox(height: 12),
                         _buildInfoRow('常规截止', regularDeadline),
+                      ],
+                      if (priorityDeadline != null &&
+                          priorityDeadline.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow('优先截止', priorityDeadline),
+                      ],
+                      if (deadlineNotes != null &&
+                          deadlineNotes.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow('截止说明', deadlineNotes),
                       ],
                       if (portfolioReq != null && portfolioReq.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         _buildInfoRow('作品集要求', portfolioReq),
                       ],
+                      if (portfolioFormat != null &&
+                          portfolioFormat.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow('作品集格式', portfolioFormat),
+                      ],
+                      if (interviewFormat != null &&
+                          interviewFormat.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow('面试形式', interviewFormat),
+                      ],
+                      if (referenceCount != null) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow('推荐信', '${referenceCount.round()} 封'),
+                      ],
                       if (academicReq != null && academicReq.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         _buildInfoRow('学术要求', academicReq),
+                      ],
+                      if (admissionSummary != null &&
+                          admissionSummary.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow('申请摘要', admissionSummary),
                       ],
                       if (tuitionFee != null) ...[
                         const SizedBox(height: 12),
                         _buildInfoRow(
                           '国际学费',
-                          '${currency ?? '¥'} ${tuitionFee.toString()}',
+                          _formatMoney(tuitionFee, currency),
                         ),
+                      ],
+                      if (domesticTuition != null) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow(
+                            '本地学费', _formatMoney(domesticTuition, currency)),
+                      ],
+                      if (additionalFeesNote != null &&
+                          additionalFeesNote.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow('费用说明', additionalFeesNote),
                       ],
                     ],
                   ),
@@ -339,14 +444,10 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
     );
   }
 
-  Map<String, dynamic>? _firstOrNull(List<dynamic>? list) {
-    if (list == null || list.isEmpty) return null;
-    return list.first as Map<String, dynamic>?;
-  }
-
   Widget _buildTagsRow({
     required bool requiresPortfolio,
     required bool requiresInterview,
+    required bool requiresPersonalStatement,
     String? duration,
   }) {
     final tags = <Widget>[];
@@ -358,6 +459,9 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
     }
     if (requiresInterview) {
       tags.add(_buildTag('需面试'));
+    }
+    if (requiresPersonalStatement) {
+      tags.add(_buildTag('需个人陈述'));
     }
     if (tags.isEmpty) return const SizedBox.shrink();
     return Wrap(
@@ -437,4 +541,31 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
       ],
     );
   }
+}
+
+Map<String, dynamic>? _firstOrSingle(dynamic value) {
+  if (value == null) return null;
+  if (value is Map<String, dynamic>) return value;
+  if (value is List && value.isNotEmpty) {
+    return value.first as Map<String, dynamic>?;
+  }
+  return null;
+}
+
+String? _asText(dynamic value) {
+  if (value == null) return null;
+  if (value is String) return value.trim().isEmpty ? null : value.trim();
+  if (value is Map || value is List) return value.toString();
+  return value.toString();
+}
+
+String _formatMoney(int value, String? currency) {
+  final symbol = switch ((currency ?? '').toUpperCase()) {
+    'GBP' => '£',
+    'USD' => '\$',
+    'EUR' => '€',
+    'CNY' => '¥',
+    _ => currency ?? '',
+  };
+  return '$symbol$value';
 }
