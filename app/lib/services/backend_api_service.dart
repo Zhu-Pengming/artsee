@@ -27,8 +27,17 @@ class BackendApiService {
     return h;
   }
 
-  static Future<List<AppCase>> fetchCases({int limit = 20}) async {
-    final r = await http.get(_api('/api/v1/cases', {'limit': '$limit'}),
+  static Future<List<AppCase>> fetchCases({
+    int limit = 20,
+    int offset = 0,
+    String? result,
+  }) async {
+    final params = <String, String>{
+      'limit': '$limit',
+      'offset': '$offset',
+    };
+    if (result != null && result.isNotEmpty) params['result'] = result;
+    final r = await http.get(_api('/api/v1/cases', params),
         headers: await _headers());
     final body = jsonDecode(r.body) as Map<String, dynamic>;
     if (r.statusCode != 200 || body['success'] != true) {
@@ -38,6 +47,19 @@ class BackendApiService {
     return list
         .map((e) => AppCase.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  static Future<AppCase?> fetchCaseDetail(String id) async {
+    final r = await http.get(
+      _api('/api/v1/cases/$id'),
+      headers: await _headers(),
+    );
+    final body = jsonDecode(r.body) as Map<String, dynamic>;
+    if (r.statusCode == 404) return null;
+    if (r.statusCode != 200 || body['success'] != true) {
+      throw Exception(body['error'] ?? 'case ${r.statusCode}');
+    }
+    return AppCase.fromJson(body['data'] as Map<String, dynamic>);
   }
 
   static Future<List<AppCommunityPost>> fetchCommunityPosts(
