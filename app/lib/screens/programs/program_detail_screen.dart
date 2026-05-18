@@ -302,7 +302,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                       children: [
                         _buildSectionTitle('项目亮点'),
                         const SizedBox(height: 12),
-                        Text(
+                        _buildFormattedText(
                           highlights,
                           style: TextStyle(
                             fontSize: 14,
@@ -708,7 +708,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
           ),
         ),
         Expanded(
-          child: Text(
+          child: _buildFormattedText(
             value,
             style: TextStyle(
               fontSize: 14,
@@ -718,6 +718,25 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildFormattedText(String value, {required TextStyle style}) {
+    final items = _splitSemicolonItems(value);
+    if (items.length <= 1) {
+      return Text(value, style: style);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: items
+          .map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(item, style: style),
+            ),
+          )
+          .toList(),
     );
   }
 }
@@ -736,6 +755,20 @@ String? _asText(dynamic value) {
   if (value is String) return value.trim().isEmpty ? null : value.trim();
   if (value is Map || value is List) return value.toString();
   return value.toString();
+}
+
+List<String> _splitSemicolonItems(String value) {
+  final normalized = value.trim();
+  if (normalized.isEmpty) return const [];
+  if (!normalized.contains(';') && !normalized.contains('；')) {
+    return [normalized];
+  }
+  return normalized
+      .split(RegExp(r'[;；]'))
+      .map((item) => item.trim())
+      .where((item) => item.isNotEmpty)
+      .map((item) => item.endsWith('.') ? item : '$item.')
+      .toList();
 }
 
 String _formatMoney(int value, String? currency) {
