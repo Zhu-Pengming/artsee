@@ -670,7 +670,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
           _buildSectionTitle('职业路径'),
           const SizedBox(height: 6),
           Text(
-            'Career journey timeline',
+            'Career journey options',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
