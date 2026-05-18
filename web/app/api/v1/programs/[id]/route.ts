@@ -45,7 +45,8 @@ const PROGRAM_SELECT = `
     official_website
   ),
   program_admissions ( * ),
-  program_fees ( * )
+  program_fees ( * ),
+  program_evaluations ( * )
 `;
 
 function isUuid(value: string) {

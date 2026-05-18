@@ -85,6 +85,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
 
     final admissions = _firstOrSingle(d['program_admissions']);
     final fees = _firstOrSingle(d['program_fees']);
+    final evaluation = _firstOrSingle(d['program_evaluations']);
 
     final ielts = admissions?['ielts_overall'] as num?;
     final ieltsSubscores = _asText(admissions?['ielts_subscores']);
@@ -103,6 +104,14 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
     final domesticTuition = (fees?['domestic_tuition_fee'] as num?)?.round();
     final currency = fees?['currency_code'] as String?;
     final additionalFeesNote = fees?['additional_fees_note'] as String?;
+
+    final difficultyScore =
+        (evaluation?['application_difficulty_score'] as num?)?.round();
+    final competitionLevel = _asText(evaluation?['competition_level']);
+    final acceptanceRate = evaluation?['acceptance_rate'] as num?;
+    final evidenceNote = _asText(evaluation?['evidence_note']);
+    final dataSource = _asText(evaluation?['data_source']);
+    final sourceUrl = _asText(evaluation?['source_url']);
 
     return CustomScrollView(
       slivers: [
@@ -395,6 +404,17 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                     ],
                   ),
                 ),
+                if (evaluation != null) ...[
+                  const SizedBox(height: 16),
+                  _buildEvaluationCard(
+                    difficultyScore: difficultyScore,
+                    competitionLevel: competitionLevel,
+                    acceptanceRate: acceptanceRate,
+                    evidenceNote: evidenceNote,
+                    dataSource: dataSource,
+                    sourceUrl: sourceUrl,
+                  ),
+                ],
                 if (coreCourses != null && coreCourses.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   _buildCard(
@@ -513,6 +533,165 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
     );
   }
 
+  Widget _buildEvaluationCard({
+    required int? difficultyScore,
+    required String? competitionLevel,
+    required num? acceptanceRate,
+    required String? evidenceNote,
+    required String? dataSource,
+    required String? sourceUrl,
+  }) {
+    final normalizedScore =
+        difficultyScore == null ? null : difficultyScore.clamp(1, 5).toInt();
+    final hasSummary = competitionLevel != null && competitionLevel.isNotEmpty;
+    final hasEvidence = evidenceNote != null && evidenceNote.isNotEmpty;
+    final hasSource = dataSource != null && dataSource.isNotEmpty;
+    final hasSourceUrl = sourceUrl != null && sourceUrl.isNotEmpty;
+
+    if (normalizedScore == null &&
+        acceptanceRate == null &&
+        !hasSummary &&
+        !hasEvidence &&
+        !hasSource &&
+        !hasSourceUrl) {
+      return const SizedBox.shrink();
+    }
+
+    return _buildCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _buildSectionTitle('申请评估'),
+              const Spacer(),
+              if (normalizedScore != null)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: _difficultyColor(normalizedScore).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    _difficultyLabel(normalizedScore),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: _difficultyColor(normalizedScore),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (normalizedScore != null) ...[
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '$normalizedScore',
+                  style: TextStyle(
+                    fontSize: 34,
+                    height: 1,
+                    fontWeight: FontWeight.w800,
+                    color: _difficultyColor(normalizedScore),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 3),
+                  child: Text(
+                    '/ 5',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: context.artC.ink.withOpacity(0.38),
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                if (acceptanceRate != null)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        _formatAcceptanceRate(acceptanceRate),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: context.artC.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '参考录取率',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: context.artC.ink.withOpacity(0.4),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: normalizedScore / 5,
+                minHeight: 8,
+                backgroundColor: context.artC.silver.withOpacity(0.45),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  _difficultyColor(normalizedScore),
+                ),
+              ),
+            ),
+          ] else if (acceptanceRate != null) ...[
+            const SizedBox(height: 14),
+            _buildInfoRow('参考录取率', _formatAcceptanceRate(acceptanceRate)),
+          ],
+          if (hasSummary) ...[
+            const SizedBox(height: 16),
+            Text(
+              competitionLevel,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.6,
+                color: context.artC.ink.withOpacity(0.72),
+              ),
+            ),
+          ],
+          if (hasEvidence) ...[
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: context.artC.silver.withOpacity(0.22),
+                borderRadius: BorderRadius.circular(kRadiusSmall),
+              ),
+              child: Text(
+                evidenceNote,
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.55,
+                  color: context.artC.ink.withOpacity(0.58),
+                ),
+              ),
+            ),
+          ],
+          if (hasSource || hasSourceUrl) ...[
+            const SizedBox(height: 12),
+            _buildInfoRow(
+              '数据来源',
+              dataSource ?? sourceUrl ?? '',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildInfoRow(String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -568,4 +747,32 @@ String _formatMoney(int value, String? currency) {
     _ => currency ?? '',
   };
   return '$symbol$value';
+}
+
+String _formatAcceptanceRate(num value) {
+  final percentage = value <= 1 ? value * 100 : value;
+  final fixed = percentage >= 10
+      ? percentage.toStringAsFixed(0)
+      : percentage.toStringAsFixed(1);
+  return '${fixed.replaceAll('.0', '')}%';
+}
+
+String _difficultyLabel(int score) {
+  return switch (score) {
+    1 => '较易申请',
+    2 => '相对友好',
+    3 => '中等竞争',
+    4 => '竞争较强',
+    _ => '高度竞争',
+  };
+}
+
+Color _difficultyColor(int score) {
+  return switch (score) {
+    1 => const Color(0xFF16A34A),
+    2 => const Color(0xFF22C55E),
+    3 => const Color(0xFFCA8A04),
+    4 => const Color(0xFFEA580C),
+    _ => const Color(0xFFDC2626),
+  };
 }
