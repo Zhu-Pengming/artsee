@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import '../../services/backend_api_service.dart';
 import '../../widgets/common.dart';
@@ -72,8 +74,8 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
         d['requires_personal_statement'] as bool? ?? false;
     final overview = d['program_overview'] as String?;
     final highlights = d['program_highlights'] as String?;
-    final coreCourses = d['core_courses'] as String?;
-    final careerPaths = d['career_paths'] as String?;
+    final coreCourses = _asStringList(d['core_courses']);
+    final careerPaths = _asStringList(d['career_paths']);
     final admissionSummary = _asText(d['admission_summary']);
     final coverImageUrl = d['cover_image_url'] as String?;
 
@@ -415,45 +417,13 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                     sourceUrl: sourceUrl,
                   ),
                 ],
-                if (coreCourses != null && coreCourses.isNotEmpty) ...[
+                if (coreCourses.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  _buildCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSectionTitle('核心课程'),
-                        const SizedBox(height: 12),
-                        Text(
-                          coreCourses,
-                          style: TextStyle(
-                            fontSize: 14,
-                            height: 1.6,
-                            color: context.artC.ink.withOpacity(0.75),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  _buildListCard(title: '核心课程', items: coreCourses),
                 ],
-                if (careerPaths != null && careerPaths.isNotEmpty) ...[
+                if (careerPaths.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  _buildCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildSectionTitle('职业路径'),
-                        const SizedBox(height: 12),
-                        Text(
-                          careerPaths,
-                          style: TextStyle(
-                            fontSize: 14,
-                            height: 1.6,
-                            color: context.artC.ink.withOpacity(0.75),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  _buildCareerPathCard(careerPaths),
                 ],
                 const SizedBox(height: 120),
               ],
@@ -692,6 +662,82 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
     );
   }
 
+  Widget _buildCareerPathCard(List<String> paths) {
+    return _buildCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle('职业路径'),
+          const SizedBox(height: 6),
+          Text(
+            'Career journey timeline',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+              color: context.artC.ink.withOpacity(0.32),
+            ),
+          ),
+          const SizedBox(height: 18),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: List.generate(paths.length, (index) {
+                return _CareerPathNode(
+                  label: paths[index],
+                  index: index,
+                  isFirst: index == 0,
+                  isLast: index == paths.length - 1,
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListCard({required String title, required List<String> items}) {
+    return _buildCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle(title),
+          const SizedBox(height: 12),
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    margin: const EdgeInsets.only(top: 8, right: 10),
+                    decoration: BoxDecoration(
+                      color: kCobalt.withOpacity(0.55),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.55,
+                        color: context.artC.ink.withOpacity(0.75),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInfoRow(String label, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -741,6 +787,121 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
   }
 }
 
+class _CareerPathNode extends StatelessWidget {
+  final String label;
+  final int index;
+  final bool isFirst;
+  final bool isLast;
+
+  const _CareerPathNode({
+    required this.label,
+    required this.index,
+    required this.isFirst,
+    required this.isLast,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const width = 176.0;
+    const centerX = width / 2;
+    final activeColor = index == 0 ? kCobalt : kCobaltMuted;
+
+    return SizedBox(
+      width: width,
+      height: 132,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            top: 92,
+            left: isFirst ? centerX : 0,
+            right: isLast ? centerX : 0,
+            child: Container(
+              height: 2,
+              color: context.artC.silver.withOpacity(0.85),
+            ),
+          ),
+          Positioned(
+            top: 67,
+            left: centerX - 1,
+            child: Container(
+              width: 2,
+              height: 25,
+              color: activeColor.withOpacity(0.55),
+            ),
+          ),
+          Positioned(
+            top: 85,
+            left: centerX - 8,
+            child: Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: activeColor, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: activeColor.withOpacity(0.14),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            left: 10,
+            right: 10,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 58),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: index == 0
+                    ? kCobalt.withOpacity(0.08)
+                    : context.artC.silver.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(kRadiusSmall),
+                border: Border.all(
+                  color: index == 0
+                      ? kCobalt.withOpacity(0.18)
+                      : context.artC.silver.withOpacity(0.55),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${index + 1}'.padLeft(2, '0'),
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                      color: activeColor.withOpacity(0.72),
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.25,
+                      fontWeight: FontWeight.w800,
+                      color: context.artC.ink.withOpacity(0.78),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 Map<String, dynamic>? _firstOrSingle(dynamic value) {
   if (value == null) return null;
   if (value is Map<String, dynamic>) return value;
@@ -755,6 +916,38 @@ String? _asText(dynamic value) {
   if (value is String) return value.trim().isEmpty ? null : value.trim();
   if (value is Map || value is List) return value.toString();
   return value.toString();
+}
+
+List<String> _asStringList(dynamic value) {
+  if (value == null) return const [];
+  if (value is List) {
+    return value
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+  if (value is! String) return [value.toString()];
+
+  final text = value.trim();
+  if (text.isEmpty) return const [];
+
+  try {
+    final decoded = jsonDecode(text);
+    if (decoded is List) {
+      return decoded
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+  } catch (_) {
+    // Fallback below handles plain text values from older rows.
+  }
+
+  return _splitSemicolonItems(text)
+      .expand((item) => item.split(','))
+      .map((item) => item.replaceAll(RegExp(r'^[\\["\\s]+|[\\]"\\s.]+$'), ''))
+      .where((item) => item.isNotEmpty)
+      .toList();
 }
 
 List<String> _splitSemicolonItems(String value) {
