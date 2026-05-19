@@ -220,6 +220,8 @@ class AppProgram {
   final String? regularDeadline;
   final int? internationalTuitionFee;
   final String? currencyCode;
+  final String? coverImageUrl;
+  final List<String> coverImageUrls;
 
   const AppProgram({
     required this.id,
@@ -235,12 +237,20 @@ class AppProgram {
     this.regularDeadline,
     this.internationalTuitionFee,
     this.currencyCode,
+    this.coverImageUrl,
+    this.coverImageUrls = const [],
   });
 
   factory AppProgram.fromJson(Map<String, dynamic> json) {
     final school = json['schools'] as Map<String, dynamic>?;
     final admission = _firstOrSingle(json['program_admissions']);
     final fee = _firstOrSingle(json['program_fees']);
+    final coverImageUrl = json['cover_image_url'] as String?;
+    final coverImageUrls = <String>[
+      ..._stringList(json['cover_image_urls']),
+      if (coverImageUrl != null && coverImageUrl.isNotEmpty) coverImageUrl,
+      ..._stringList(school?['campus_image_urls']),
+    ].toSet().toList();
 
     return AppProgram(
       id: json['id'].toString(),
@@ -260,8 +270,21 @@ class AppProgram {
       internationalTuitionFee:
           (fee?['international_tuition_fee'] as num?)?.round(),
       currencyCode: fee?['currency_code'] as String?,
+      coverImageUrl: coverImageUrl ??
+          (coverImageUrls.isNotEmpty ? coverImageUrls.first : null),
+      coverImageUrls: coverImageUrls,
     );
   }
+}
+
+List<String> _stringList(dynamic value) {
+  if (value is List) {
+    return value
+        .whereType<String>()
+        .where((item) => item.trim().isNotEmpty)
+        .toList();
+  }
+  return const [];
 }
 
 class AppReply {

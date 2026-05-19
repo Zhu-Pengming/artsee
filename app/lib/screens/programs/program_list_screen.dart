@@ -497,6 +497,27 @@ class _ProgramCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (program.coverImageUrl != null &&
+                program.coverImageUrl!.isNotEmpty) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: AspectRatio(
+                  aspectRatio: 16 / 8,
+                  child: Image.network(
+                    program.coverImageUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: context.artC.silver.withOpacity(0.22),
+                      child: Icon(
+                        Icons.image_not_supported_outlined,
+                        color: context.artC.ink.withOpacity(0.26),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+            ],
             Row(
               children: [
                 Expanded(

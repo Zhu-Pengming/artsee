@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -80,6 +81,11 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
     final coverImageUrl = d['cover_image_url'] as String?;
 
     final school = d['schools'] as Map<String, dynamic>?;
+    final coverImageUrls = <String>[
+      ..._asStringList(d['cover_image_urls']),
+      if (coverImageUrl != null && coverImageUrl.isNotEmpty) coverImageUrl,
+      ..._asStringList(school?['campus_image_urls']),
+    ].toSet().toList();
     final schoolName = school?['name_zh'] as String?;
     final schoolCountry = school?['country'] as String?;
     final schoolLogo = school?['logo_url'] as String?;
@@ -146,16 +152,9 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (coverImageUrl != null && coverImageUrl.isNotEmpty)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(kRadiusLarge),
-                    child: AspectRatio(
-                      aspectRatio: 16 / 9,
-                      child: Image.network(coverImageUrl, fit: BoxFit.cover),
-                    ),
-                  ),
-                if (coverImageUrl != null && coverImageUrl.isNotEmpty)
-                  const SizedBox(height: 24),
+                if (coverImageUrls.isNotEmpty)
+                  _ImageCarousel(imageUrls: coverImageUrls),
+                if (coverImageUrls.isNotEmpty) const SizedBox(height: 24),
                 Row(
                   children: [
                     Container(
@@ -169,7 +168,12 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(20),
                         child: schoolLogo != null && schoolLogo.isNotEmpty
-                            ? Image.network(schoolLogo, fit: BoxFit.cover)
+                            ? Image.network(
+                                schoolLogo,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    _LogoFallback(text: schoolName ?? '艺'),
+                              )
                             : Center(
                                 child: Text(
                                   (schoolName ?? '艺').substring(0, 1),
@@ -897,6 +901,121 @@ class _CareerPathNode extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ImageCarousel extends StatefulWidget {
+  final List<String> imageUrls;
+
+  const _ImageCarousel({required this.imageUrls});
+
+  @override
+  State<_ImageCarousel> createState() => _ImageCarouselState();
+}
+
+class _ImageCarouselState extends State<_ImageCarousel> {
+  late final PageController _controller;
+  Timer? _timer;
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController();
+    if (widget.imageUrls.length > 1) {
+      _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+        if (!mounted || !_controller.hasClients) return;
+        final next = (_index + 1) % widget.imageUrls.length;
+        _controller.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOutCubic,
+        );
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(kRadiusLarge),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            PageView.builder(
+              controller: _controller,
+              itemCount: widget.imageUrls.length,
+              onPageChanged: (value) => setState(() => _index = value),
+              itemBuilder: (context, index) {
+                return Image.network(
+                  widget.imageUrls[index],
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: context.artC.silver.withOpacity(0.26),
+                    child: Icon(
+                      Icons.image_not_supported_outlined,
+                      color: context.artC.ink.withOpacity(0.28),
+                    ),
+                  ),
+                );
+              },
+            ),
+            if (widget.imageUrls.length > 1)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 12,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (var i = 0; i < widget.imageUrls.length; i++)
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: i == _index ? 18 : 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: Colors.white
+                              .withOpacity(i == _index ? 0.95 : 0.58),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LogoFallback extends StatelessWidget {
+  final String text;
+
+  const _LogoFallback({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        text.substring(0, 1),
+        style: const TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          color: kCobalt,
+        ),
       ),
     );
   }

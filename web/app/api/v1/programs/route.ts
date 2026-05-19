@@ -41,6 +41,7 @@ const PROGRAM_SELECT = `
     region_tag,
     city,
     logo_url,
+    campus_image_urls,
     qs_art_rank:qs_art_design_rank,
     qs_art_design_rank,
     official_website
@@ -69,6 +70,27 @@ function normalizeDegreeFilter(value: string) {
   if (/^bachelor$/i.test(v)) return "B";
   if (/^(phd|doctor|doctorate)$/i.test(v)) return "D";
   return v;
+}
+
+function asStringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.length > 0)
+    : [];
+}
+
+function enrichProgramAssets<T extends Record<string, unknown>>(program: T) {
+  const school = program.schools as Record<string, unknown> | null | undefined;
+  const campusImages = asStringArray(school?.campus_image_urls);
+  const coverImage = typeof program.cover_image_url === "string" ? program.cover_image_url : null;
+  const coverImages = [
+    ...(coverImage ? [coverImage] : []),
+    ...campusImages.filter((url) => url !== coverImage),
+  ];
+  return {
+    ...program,
+    cover_image_url: coverImage ?? coverImages[0] ?? null,
+    cover_image_urls: coverImages,
+  };
 }
 
 // GET /api/v1/programs - 获取项目列表
@@ -169,7 +191,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data,
+      data: data?.map((item) => enrichProgramAssets(item as Record<string, unknown>)),
       count,
       pagination: {
         limit,

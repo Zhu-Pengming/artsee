@@ -710,7 +710,12 @@ class _SchoolCard extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
                 child: logoUrl != null && logoUrl.isNotEmpty
-                    ? Image.network(logoUrl, fit: BoxFit.cover)
+                    ? Image.network(
+                        logoUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            _SchoolCardLogoFallback(nameZh),
+                      )
                     : Center(
                         child: Text(
                           nameZh.substring(0, 1),
@@ -773,6 +778,27 @@ class _SchoolCard extends StatelessWidget {
               color: context.artC.ink.withOpacity(0.25),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SchoolCardLogoFallback extends StatelessWidget {
+  final String name;
+
+  const _SchoolCardLogoFallback(this.name);
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        name.substring(0, 1),
+        style: const TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w700,
+          color: kCobalt,
+          letterSpacing: 2,
         ),
       ),
     );
