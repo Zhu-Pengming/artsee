@@ -247,6 +247,41 @@ npm run dev:app
 | `/api/v1/user/favorites` | GET/POST | 用户收藏 |
 | `/api/v1/user/profile` | GET/PUT | 用户资料 |
 
+## 近期完成：院校与专业媒体接入
+
+本轮完成了 Supabase Storage 中学校媒体资源到 APP 前端的接入。
+
+### 数据来源
+
+| 类型 | Supabase 位置 | 前端用途 |
+|------|---------------|----------|
+| 学校 logo / 校徽 | `schools.logo_url` | 院校列表、院校详情、专业详情学校头像 |
+| 学校图片组 | `schools.campus_image_urls` | 院校详情大图、专业列表封面、专业详情顶部轮播 |
+| 专业封面兜底 | `programs.cover_image_url` 或学校 `campus_image_urls[0]` | 专业列表卡片、专业详情首屏图片 |
+
+Storage bucket 使用 `school-media`，对象路径约定为：
+
+```text
+school-media/schools/{school_id}/...
+```
+
+### API 行为
+
+`/api/v1/programs` 和 `/api/v1/programs/:id` 会返回学校媒体字段，并在专业自身 `cover_image_url` 为空时自动使用学校图片作为封面：
+
+```json
+{
+  "cover_image_url": "https://.../school-media/schools/{school_id}/campus-1.jpg",
+  "cover_image_urls": ["https://.../campus-1.jpg", "https://.../campus-2.jpg"]
+}
+```
+
+### APP 呈现
+
+- 院校列表和详情继续使用 `logo_url` 展示学校 logo，并增加图片加载失败占位。
+- 专业列表卡片展示专业封面图。
+- 专业详情顶部展示学校图片轮播，优先使用 `cover_image_urls`。
+
 ## 青花瓷主题
 
 项目采用中国传统青花瓷作为设计主题：
