@@ -12,15 +12,16 @@ class SupabaseService {
   static Future<AuthResponse> signIn(String email, String password) =>
       _client.auth.signInWithPassword(email: email, password: password);
 
+  /// 注册方法已废弃，请使用 BackendApiService.signup()
+  /// 该方法通过 Next.js API 统一处理 Auth 和 user_profiles 创建
+  @Deprecated('Use BackendApiService.signup() instead')
   static Future<AuthResponse> signUp(
       String email, String password, String nickname) async {
-    final res = await _client.auth.signUp(email: email, password: password);
-    if (res.user != null) {
-      await _client.from('user_profiles').upsert({
-        'id': res.user!.id,
-        'nickname': nickname,
-      }, onConflict: 'id');
-    }
+    final res = await _client.auth.signUp(
+      email: email,
+      password: password,
+      data: {'nickname': nickname},
+    );
     return res;
   }
 

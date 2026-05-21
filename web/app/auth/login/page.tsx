@@ -46,21 +46,21 @@ function LoginForm() {
         router.push(redirect)
         router.refresh()
       } else {
-        const { data, error } = await supabase.auth.signUp({
-          email, password,
-          options: { data: { nickname } }
-        })
-        if (error) throw error
-        if (data.user) {
-          await supabase.from('user_profiles').upsert({
-            id: data.user.id,
+        const res = await fetch('/api/v1/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            password,
             nickname: nickname || email.split('@')[0],
-            user_type: 'student',
-            role: 'user',
-          })
-          setSuccess('注册成功！请检查邮箱完成验证，然后登录。')
-          setMode('login')
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || '注册失败')
         }
+        setSuccess('注册成功！请检查邮箱完成验证，然后登录。')
+        setMode('login')
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : '操作失败'
