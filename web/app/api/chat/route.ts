@@ -1,17 +1,31 @@
-import OpenAI from 'openai'
-import { NextRequest } from 'next/server'
+/**
+ * Chat API - Streaming conversation endpoint
+ * 
+ * Phase 1: Unified with consult pipeline
+ * Grayscale flag: USE_UNIFIED_CONSULT (default: true)
+ */
 
+import OpenAI from 'openai';
+import { NextRequest } from 'next/server';
+import { loadUserProfile, formatFullProfile, fireRecordFromTurn } from '@/lib/memory';
+import { getUserFromBearer } from '@/lib/api/auth-user';
+import { logChatInteraction } from '@/lib/logging/chat-logger';
+import { runConsultStages, streamGenerate } from '@/lib/pipelines/consult-pipeline';
+import { loadPersona } from '@/lib/knowledge/persona-loader';
+
+// Grayscale flag
+const USE_UNIFIED_CONSULT = process.env.USE_UNIFIED_CONSULT !== 'false';
+
+// Legacy Moonshot client (for old path)
 function getClient() {
-  const apiKey = process.env.OPENAI_API_KEY || process.env.MOONSHOT_API_KEY || 'dummy-key-for-build'
-  const baseURL = process.env.OPENAI_BASE_URL || process.env.AI_BASE_URL || 'https://api.openai.com/v1'
-
   return new OpenAI({
-    apiKey,
-    baseURL,
-  })
+    apiKey: process.env.MOONSHOT_API_KEY || 'dummy-key-for-build',
+    baseURL: 'https://api.moonshot.cn/v1',
+  });
 }
 
-const SYSTEM_PROMPT = `你是「瓷言」，艺见心平台的 AI 艺术留学顾问助手。
+// Legacy hardcoded prompt (Phase 1 will remove this)
+const LEGACY_SYSTEM_PROMPT = `你是「瓷言」，艺见心平台的 AI 艺术留学顾问助手。
 
 【你的人设】
 - 名字：瓷言（小名：小瓷）
@@ -49,67 +63,227 @@ const SYSTEM_PROMPT = `你是「瓷言」，艺见心平台的 AI 艺术留学�
 - 保持友好，不要给出过于悲观的评价，而是给出建设性的改进建议
 - 如果遇到无法确认的具体数据（如某校今年的录取率），请坦诚说明并建议用户官网核实
 
-记住：你的目标是帮助每一位有艺术梦想的同学找到最适合自己的留学路径 🎨`
+记住：你的目标是帮助每一位有艺术梦想的同学找到最适合自己的留学路径 🎨`;
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
-    const { messages, context } = await request.json()
+    const { messages, context } = await request.json();
 
-    // Build system prompt with optional context
-    let systemPrompt = SYSTEM_PROMPT
-    if (context?.trackerItems?.length > 0) {
-      systemPrompt += `\n\n【用户当前申请清单】\n`
-      context.trackerItems.forEach((item: { school_name: string; program_name: string; tier: string; status: string }) => {
-        systemPrompt += `- ${item.school_name} | ${item.program_name} | ${item.tier === 'reach' ? '冲刺' : item.tier === 'match' ? '匹配' : '保底'} | ${item.status}\n`
-      })
+    // Get user
+    const user = await getUserFromBearer(request);
+    const userProfile = user ? await loadUserProfile(user.id) : null;
+
+    // Extract last user message
+    const lastUserMessage = messages[messages.length - 1]?.content || '';
+
+    // Grayscale: Use unified pipeline or legacy path
+    if (USE_UNIFIED_CONSULT) {
+      return await handleUnifiedPath(request, user, userProfile, messages, lastUserMessage, context, startTime);
+    } else {
+      return await handleLegacyPath(user, userProfile, messages, lastUserMessage, context);
     }
-
-    // Create streaming response
-    const stream = await getClient().chat.completions.create({
-      model: process.env.AI_MODEL || 'gpt-4o-mini',
-      max_tokens: 2048,
-      stream: true,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages.map((msg: { role: string; content: string }) => ({
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content,
-        })),
-      ],
-    })
-
-    // Return a ReadableStream for SSE
-    const readableStream = new ReadableStream({
-      async start(controller) {
-        const encoder = new TextEncoder()
-        try {
-          for await (const chunk of stream) {
-            const text = chunk.choices[0]?.delta?.content ?? ''
-            if (text) {
-              const data = JSON.stringify({ text })
-              controller.enqueue(encoder.encode(`data: ${data}\n\n`))
-            }
-          }
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-          controller.close()
-        } catch (err) {
-          controller.error(err)
-        }
-      },
-    })
-
-    return new Response(readableStream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-      },
-    })
   } catch (error) {
-    console.error('Chat API error:', error)
+    console.error('Chat API error:', error);
     return new Response(
       JSON.stringify({ error: '瓷言暂时出了点问题，请稍后再试 🙏' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
-    )
+    );
   }
+}
+
+/**
+ * Unified path: Use consult pipeline + streaming
+ */
+async function handleUnifiedPath(
+  request: NextRequest,
+  user: any,
+  userProfile: any,
+  messages: any[],
+  lastUserMessage: string,
+  context: any,
+  startTime: number
+) {
+  console.log('[chat] Using unified pipeline');
+
+  // Convert messages to history format
+  const history = messages.slice(0, -1).map((msg: any) => ({
+    role: msg.role as 'user' | 'assistant' | 'system',
+    content: msg.content,
+  }));
+
+  // Run unified consult pipeline
+  const stages = await runConsultStages({
+    query: lastUserMessage,
+    userId: user?.id,
+    mode: 'chat',
+    history,
+    userProfile,
+  });
+
+  // Load persona and inject into system prompt
+  const persona = loadPersona('artsee', 'v1');
+  let systemPrompt = persona + '\n\n' + stages.systemPrompt;
+
+  // Inject tracker context if provided
+  if (context?.trackerItems?.length > 0) {
+    systemPrompt += `\n\n【用户当前申请清单】\n`;
+    context.trackerItems.forEach((item: { school_name: string; program_name: string; tier: string; status: string }) => {
+      systemPrompt += `- ${item.school_name} | ${item.program_name} | ${item.tier === 'reach' ? '冲刺' : item.tier === 'match' ? '匹配' : '保底'} | ${item.status}\n`;
+    });
+  }
+
+  // Update stages with persona-enhanced prompt
+  stages.systemPrompt = systemPrompt;
+
+  // Stream generate
+  let fullAssistantMessage = '';
+  const encoder = new TextEncoder();
+
+  const readableStream = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const chunk of streamGenerate(stages)) {
+          if (chunk.done) {
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            controller.close();
+
+            const latencyMs = Date.now() - startTime;
+
+            // Fire-and-forget: Record to memory
+            if (user && lastUserMessage && fullAssistantMessage) {
+              fireRecordFromTurn({
+                userId: user.id,
+                userMessage: lastUserMessage,
+                assistantMessage: fullAssistantMessage,
+                sourceRoute: 'chat',
+              });
+            }
+
+            // Fire-and-forget: Log to chat_logs
+            logChatInteraction({
+              userId: user?.id,
+              route: 'chat',
+              query: lastUserMessage,
+              rewrittenQuery: stages.rewrittenQuery,
+              intent: stages.intent,
+              retrievedChunkIds: stages.retrievedChunkIds,
+              answer: fullAssistantMessage,
+              lowConfidence: stages.lowConfidence,
+              latencyMs,
+            });
+            break;
+          }
+
+          if (chunk.text) {
+            fullAssistantMessage += chunk.text;
+            const data = JSON.stringify({ text: chunk.text });
+            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+          }
+        }
+      } catch (err) {
+        controller.error(err);
+      }
+    },
+  });
+
+  return new Response(readableStream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  });
+}
+
+/**
+ * Legacy path: Old hardcoded prompt + Moonshot
+ */
+async function handleLegacyPath(
+  user: any,
+  userProfile: any,
+  messages: any[],
+  lastUserMessage: string,
+  context: any
+) {
+  console.log('[chat] Using legacy path');
+
+  // Build system prompt with optional context
+  let systemPrompt = LEGACY_SYSTEM_PROMPT;
+
+  // Inject user profile
+  if (userProfile) {
+    const profileText = formatFullProfile(userProfile, {
+      identity: true,
+      constraints: true,
+      preferences: 'full',
+    });
+    if (profileText) {
+      systemPrompt += `\n\n${profileText}`;
+    }
+  }
+
+  // Inject tracker context
+  if (context?.trackerItems?.length > 0) {
+    systemPrompt += `\n\n【用户当前申请清单】\n`;
+    context.trackerItems.forEach((item: { school_name: string; program_name: string; tier: string; status: string }) => {
+      systemPrompt += `- ${item.school_name} | ${item.program_name} | ${item.tier === 'reach' ? '冲刺' : item.tier === 'match' ? '匹配' : '保底'} | ${item.status}\n`;
+    });
+  }
+
+  // Create streaming response
+  const stream = await getClient().chat.completions.create({
+    model: 'moonshot-v1-32k',
+    max_tokens: 2048,
+    stream: true,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...messages.map((msg: { role: string; content: string }) => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      })),
+    ],
+  });
+
+  // Return a ReadableStream for SSE
+  let fullAssistantMessage = '';
+  const encoder = new TextEncoder();
+
+  const readableStream = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const chunk of stream) {
+          const text = chunk.choices[0]?.delta?.content ?? '';
+          if (text) {
+            fullAssistantMessage += text;
+            const data = JSON.stringify({ text });
+            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+          }
+        }
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+        controller.close();
+
+        // Fire-and-forget: Record to memory
+        if (user && lastUserMessage && fullAssistantMessage) {
+          fireRecordFromTurn({
+            userId: user.id,
+            userMessage: lastUserMessage,
+            assistantMessage: fullAssistantMessage,
+            sourceRoute: 'chat',
+          });
+        }
+      } catch (err) {
+        controller.error(err);
+      }
+    },
+  });
+
+  return new Response(readableStream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  });
 }

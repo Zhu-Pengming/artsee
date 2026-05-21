@@ -1,0 +1,15 @@
+# Eval results (auto-generated)
+results/
+
+# Question candidates (AI-generated, for manual selection)
+question-candidates.jsonl
+
+# Pre-browsed chunk candidates
+candidates/
+
+# Temporary annotation backups
+*.backup.jsonl
+
+# Evaluation results
+recall-results.json
+faithfulness-results.json

@@ -4,9 +4,6 @@ import { POST as postCommunity } from "@/app/api/v1/community/posts/route";
 import { POST as postAiSearch } from "@/app/api/v1/ai/schools/search/route";
 
 vi.mock("@/lib/api/supabase-service", () => ({
-  createPublicReadClient: () => ({
-    from: () => ({ select: () => ({}) }),
-  }),
   createServiceClient: () => ({
     from: (table: string) => {
       if (table === "programs") {

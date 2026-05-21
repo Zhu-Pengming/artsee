@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromBearer } from "@/lib/api/auth-user";
-import { createPublicReadClient, createServiceClient } from "@/lib/api/supabase-service";
+import { createServiceClient } from "@/lib/api/supabase-service";
 
 /** GET /api/v1/community/posts — 图文社区列表（数据库 community_posts） */
 export async function GET(req: NextRequest) {
@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get("limit") || "20", 10), 50);
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
-    const supabase = createPublicReadClient();
+    const supabase = createServiceClient();
     const { data: rows, error } = await supabase
       .from("community_posts")
       .select("*")
@@ -18,33 +18,22 @@ export async function GET(req: NextRequest) {
       .range(offset, offset + limit - 1);
 
     if (error) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 500 },
-      );
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
     const posts = rows ?? [];
-    const authorIds = [
-      ...new Set(posts.map((p: { author_id: string }) => p.author_id)),
-    ];
-    let profileMap: Record<
-      string,
-      { nickname: string | null; avatar_url: string | null }
-    > = {};
+    const authorIds = [...new Set(posts.map((p: { author_id: string }) => p.author_id))];
+    let profileMap: Record<string, { nickname: string | null; avatar_url: string | null }> = {};
     if (authorIds.length > 0) {
       const { data: profiles } = await supabase
         .from("user_profiles")
         .select("id, nickname, avatar_url")
         .in("id", authorIds);
       profileMap = Object.fromEntries(
-        (profiles ?? []).map(
-          (p: {
-            id: string;
-            nickname: string | null;
-            avatar_url: string | null;
-          }) => [p.id, { nickname: p.nickname, avatar_url: p.avatar_url }],
-        ),
+        (profiles ?? []).map((p: { id: string; nickname: string | null; avatar_url: string | null }) => [
+          p.id,
+          { nickname: p.nickname, avatar_url: p.avatar_url },
+        ])
       );
     }
 
@@ -53,11 +42,7 @@ export async function GET(req: NextRequest) {
       user_profiles: profileMap[String(p.author_id)] ?? null,
     }));
 
-    return NextResponse.json({
-      success: true,
-      data,
-      pagination: { limit, offset },
-    });
+    return NextResponse.json({ success: true, data, pagination: { limit, offset } });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
@@ -69,24 +54,16 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getUserFromBearer(req);
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: "未授权" },
-        { status: 401 },
-      );
+      return NextResponse.json({ success: false, error: "未授权" }, { status: 401 });
     }
 
     const body = await req.json();
     const title = (body.title as string)?.trim() ?? "";
     const text = (body.body as string)?.trim() ?? "";
-    const imageUrls = Array.isArray(body.image_urls)
-      ? body.image_urls.map(String)
-      : [];
+    const imageUrls = Array.isArray(body.image_urls) ? body.image_urls.map(String) : [];
 
     if (!title && !text && imageUrls.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "请至少填写标题、正文或上传一张图片" },
-        { status: 400 },
-      );
+      return NextResponse.json({ success: false, error: "请至少填写标题、正文或上传一张图片" }, { status: 400 });
     }
 
     const supabase = createServiceClient();
@@ -103,10 +80,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) {
-      return NextResponse.json(
-        { success: false, error: error.message },
-        { status: 500 },
-      );
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, data });

@@ -1,55 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api/require-admin";
-import { createPublicReadClient, createServiceClient } from "@/lib/api/supabase-service";
+import { createServiceClient } from "@/lib/api/supabase-service";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
-const PROGRAM_SELECT = `
-  id,
-  school_id,
-  program_name,
-  degree_type:normalized_degree_type,
-  normalized_degree_type,
-  raw_degree_type,
-  degree_full_name,
-  program_category,
-  duration_text,
-  duration_months,
-  study_mode,
-  intake_months,
-  requires_portfolio,
-  requires_interview,
-  requires_personal_statement,
-  minimum_education,
-  program_overview,
-  program_highlights,
-  core_courses,
-  career_paths,
-  admission_summary,
-  cover_image_url,
-  status,
-  is_recommended,
-  created_at,
-  updated_at,
-  schools (
-    id,
-    name_zh,
-    name_en,
-    country:raw_country,
-    raw_country,
-    country_code,
-    region_tag,
-    city,
-    logo_url,
-    campus_image_urls,
-    qs_art_rank:qs_art_design_rank,
-    qs_art_design_rank,
-    official_website
-  ),
-  program_admissions ( * ),
-  program_fees ( * ),
-  program_art_categories ( category_id )
-`;
 
 function parseIntParam(raw: string | null, defaultValue: number, min: number, max: number) {
   if (raw === null) return { value: defaultValue };
@@ -58,39 +12,6 @@ function parseIntParam(raw: string | null, defaultValue: number, min: number, ma
     return { error: `参数必须是 ${min}-${max} 之间的整数` };
   }
   return { value: parsed };
-}
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
-function normalizeDegreeFilter(value: string) {
-  const v = value.trim();
-  if (/^master$/i.test(v)) return "M";
-  if (/^bachelor$/i.test(v)) return "B";
-  if (/^(phd|doctor|doctorate)$/i.test(v)) return "D";
-  return v;
-}
-
-function asStringArray(value: unknown) {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string" && item.length > 0)
-    : [];
-}
-
-function enrichProgramAssets<T extends Record<string, unknown>>(program: T) {
-  const school = program.schools as Record<string, unknown> | null | undefined;
-  const campusImages = asStringArray(school?.campus_image_urls);
-  const coverImage = typeof program.cover_image_url === "string" ? program.cover_image_url : null;
-  const coverImages = [
-    ...(coverImage ? [coverImage] : []),
-    ...campusImages.filter((url) => url !== coverImage),
-  ];
-  return {
-    ...program,
-    cover_image_url: coverImage ?? coverImages[0] ?? null,
-    cover_image_urls: coverImages,
-  };
 }
 
 // GET /api/v1/programs - 获取项目列表
@@ -120,8 +41,12 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    if (schoolId && !isUuid(schoolId)) {
-      return NextResponse.json({ success: false, error: "school_id 必须是有效 UUID" }, { status: 400 });
+    const schoolIdCheck = parseIntParam(schoolId, 0, 1, 1000000000);
+    if (schoolId && schoolIdCheck.error) {
+      return NextResponse.json(
+        { success: false, error: `school_id ${schoolIdCheck.error}` },
+        { status: 400 }
+      );
     }
     const categoryIdCheck = parseIntParam(categoryId, 0, 1, 1000000000);
     if (categoryId && categoryIdCheck.error) {
@@ -144,10 +69,10 @@ export async function GET(req: NextRequest) {
 
     const limit = limitCheck.value!;
     const offset = offsetCheck.value!;
-    const supabase = includeInactive || status ? createServiceClient() : createPublicReadClient();
+    const supabase = createServiceClient();
     let query = supabase
       .from("programs")
-      .select(PROGRAM_SELECT, { count: "exact" })
+      .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -158,14 +83,11 @@ export async function GET(req: NextRequest) {
     }
 
     if (schoolId) {
-      query = query.eq("school_id", schoolId);
+      query = query.eq("school_id", schoolIdCheck.value!);
     }
 
     if (degreeType) {
-      const degree = normalizeDegreeFilter(degreeType);
-      query = query.or(
-        `normalized_degree_type.ilike.${degree}%,raw_degree_type.ilike.${degree}%`
-      );
+      query = query.eq("degree_type", degreeType);
     }
 
     if (keyword) {
@@ -191,7 +113,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: data?.map((item) => enrichProgramAssets(item as Record<string, unknown>)),
+      data,
       count,
       pagination: {
         limit,
