@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../services/backend_api_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/common.dart';
@@ -88,9 +89,19 @@ class _ArtInterestOnboardingScreenState extends State<ArtInterestOnboardingScree
       _error = null;
     });
     try {
-      await SupabaseService.completeInterestOnboarding(_selected.toList());
+      final userId = SupabaseService.currentUser?.id;
+      if (userId == null) {
+        throw Exception('用户未登录');
+      }
+      print('[ArtInterestOnboardingScreen] Submitting onboarding with userId: $userId, categories: ${_selected.toList()}');
+      await BackendApiService.completeOnboarding(
+        userId: userId,
+        interestedCategories: _selected.toList(),
+      );
+      print('[ArtInterestOnboardingScreen] Onboarding completed successfully');
       widget.onCompleted();
     } catch (e) {
+      print('[ArtInterestOnboardingScreen] Error: $e');
       setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _saving = false);

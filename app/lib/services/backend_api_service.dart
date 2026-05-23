@@ -413,4 +413,54 @@ class BackendApiService {
     }
     return decoded;
   }
+
+  /// 注册新用户（通过 Next.js API）
+  static Future<Map<String, dynamic>> signup({
+    required String email,
+    required String password,
+    required String nickname,
+  }) async {
+    final r = await http.post(
+      _api('/api/v1/auth/signup'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'nickname': nickname,
+      }),
+    );
+    final decoded = jsonDecode(r.body) as Map<String, dynamic>;
+    if (r.statusCode != 200 || decoded['success'] != true) {
+      throw Exception(decoded['error'] ?? '注册失败 ${r.statusCode}');
+    }
+    return decoded;
+  }
+
+  /// 完成 onboarding（通过 Next.js API）
+  static Future<Map<String, dynamic>> completeOnboarding({
+    required String userId,
+    List<String>? interestedCategories,
+  }) async {
+    final url = _api('/api/v1/auth/complete-onboarding');
+    final body = jsonEncode({
+      'userId': userId,
+      'interestedCategories': interestedCategories,
+    });
+    final headers = await _headers(withAuth: true);
+    
+    print('[BackendApiService] completeOnboarding: POST $url');
+    print('[BackendApiService] headers: $headers');
+    print('[BackendApiService] body: $body');
+    
+    final r = await http.post(url, headers: headers, body: body);
+    
+    print('[BackendApiService] response status: ${r.statusCode}');
+    print('[BackendApiService] response body: ${r.body}');
+    
+    final decoded = jsonDecode(r.body) as Map<String, dynamic>;
+    if (r.statusCode != 200 || decoded['success'] != true) {
+      throw Exception(decoded['error'] ?? 'onboarding 失败 ${r.statusCode}');
+    }
+    return decoded;
+  }
 }

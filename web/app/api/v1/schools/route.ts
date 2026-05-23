@@ -1,33 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api/require-admin";
-import { createPublicReadClient, createServiceClient } from "@/lib/api/supabase-service";
+import { createServiceClient } from "@/lib/api/supabase-service";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
-const SCHOOL_PUBLIC_SELECT = `
-  id,
-  name_zh,
-  name_en,
-  country:raw_country,
-  raw_country,
-  country_code,
-  region_tag,
-  city,
-  school_type,
-  qs_art_rank:qs_art_design_rank,
-  qs_art_design_rank,
-  qs_overall_rank,
-  official_website,
-  logo_url,
-  status,
-  description,
-  feature_tags,
-  strength_disciplines,
-  notable_alumni,
-  campus_image_urls,
-  created_at,
-  updated_at
-`;
 
 function parseIntParam(raw: string | null, defaultValue: number, min: number, max: number) {
   if (raw === null) return { value: defaultValue };
@@ -44,9 +20,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const country = searchParams.get("country");
     const city = searchParams.get("city");
-    const regionTag = searchParams.get("region_tag");
     const schoolType = searchParams.get("school_type");
-    const advantageSubject = searchParams.get("advantage_subject")?.trim();
     const keyword = searchParams.get("keyword")?.trim();
     const status = searchParams.get("status");
     const includeInactive = searchParams.get("include_inactive") === "true";
@@ -97,11 +71,11 @@ export async function GET(req: NextRequest) {
     const minRank = minRankCheck.value!;
     const maxRank = maxRankCheck.value!;
 
-    const supabase = includeInactive || status ? createServiceClient() : createPublicReadClient();
+    const supabase = createServiceClient();
     let query = supabase
       .from("schools")
-      .select(SCHOOL_PUBLIC_SELECT, { count: "exact" })
-      .order("qs_art_design_rank", { ascending: true, nullsFirst: false })
+      .select("*", { count: "exact" })
+      .order("qs_art_design_rank", { ascending: true })
       .range(offset, offset + limit - 1);
 
     if (status) {
@@ -111,30 +85,22 @@ export async function GET(req: NextRequest) {
     }
 
     if (country) {
-      query = /^[A-Z]{2}$/.test(country)
-        ? query.eq("country_code", country)
-        : query.eq("raw_country", country);
+      query = query.eq("country", country);
     }
     if (city) {
       query = query.eq("city", city);
     }
-    if (regionTag) {
-      query = query.eq("region_tag", regionTag);
-    }
     if (schoolType) {
       query = query.eq("school_type", schoolType);
-    }
-    if (advantageSubject) {
-      query = query.contains("strength_disciplines", [advantageSubject]);
     }
     if (keyword) {
       query = query.or(`name_zh.ilike.%${keyword}%,name_en.ilike.%${keyword}%`);
     }
     if (minRank > 0) {
-      query = query.gte("qs_art_design_rank", minRank);
+      query = query.gte("qs_art_rank", minRank);
     }
     if (maxRank < 99999) {
-      query = query.lte("qs_art_design_rank", maxRank);
+      query = query.lte("qs_art_rank", maxRank);
     }
 
     const { data, error, count } = await query;

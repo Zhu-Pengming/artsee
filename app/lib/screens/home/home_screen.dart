@@ -112,15 +112,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: context.artC.porcelain,
       body: SafeArea(
+        top: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeroBanner(),
-              const SizedBox(height: 28),
+              const SizedBox(height: 6),
               _buildHotHallHeader(),
-              const SizedBox(height: 14),
+              const SizedBox(height: 20),
               SizedBox(
                 height: 200,
                 child: PageView.builder(
@@ -129,16 +129,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     _carouselPage = i;
                   }),
                   itemCount: _hotHalls.length,
+                  padEnds: false,
                   itemBuilder: (context, i) {
                     final item = _hotHalls[i];
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
                       child: _HotHallCard(item: item),
                     );
                   },
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(_hotHalls.length, (i) {
@@ -149,13 +150,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: on ? 18 : 6,
                     height: 6,
                     decoration: BoxDecoration(
-                      color: on ? kCobalt : context.artC.silver.withOpacity(0.7),
+                      color: on ? kCobalt : context.artC.silver.withOpacity(0.35),
                       borderRadius: BorderRadius.circular(999),
                     ),
                   );
                 }),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 44),
+              _buildHeroBanner(),
+              const SizedBox(height: 12),
               _buildRecentSection(),
               SizedBox(height: bottom),
             ],
@@ -169,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final banner = _heroBanner;
     final imageUrl = banner.imageUrl ?? 'https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&q=80&w=2000';
     return AspectRatio(
-      aspectRatio: 21 / 9,
+      aspectRatio: 16 / 7,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(kRadiusLarge),
         child: Stack(
@@ -216,14 +219,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   if (banner.subtitle != null && banner.subtitle!.isNotEmpty)
                     const SizedBox(height: 8),
-                  Text(
-                    banner.title,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w300,
-                      height: 1.15,
-                      color: Colors.white,
-                      fontFamily: 'Noto Serif SC',
+                  Flexible(
+                    child: Text(
+                      banner.title,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w300,
+                        height: 1.15,
+                        color: Colors.white,
+                        fontFamily: 'Noto Serif SC',
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -262,38 +269,15 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '热门展厅 (Discovery)',
+                '热门展厅',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  fontStyle: FontStyle.italic,
                   color: context.artC.ink,
                   fontFamily: 'Noto Serif SC',
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Virtual Exhibition Halls • Exploring Multi-dimensions',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 1.2,
-                  color: context.artC.ink.withOpacity(0.38),
-                ),
-              ),
             ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          'Virtual Realms',
-          style: TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 3,
-            color: context.artC.ink.withOpacity(0.18),
           ),
         ),
       ],
@@ -319,23 +303,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontFamily: 'Noto Serif SC',
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'Upcoming & Ongoing',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 1.4,
-                    color: context.artC.ink.withOpacity(0.35),
-                  ),
-                ),
               ],
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         ..._recentExhibitions.map((e) => Padding(
-              padding: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.only(bottom: 20),
               child: _RecentExhibitionTile(item: e),
             )),
       ],

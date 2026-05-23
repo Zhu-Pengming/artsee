@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../config/dev_test_account.dart';
 import '../../services/supabase_service.dart';
+import '../../services/backend_api_service.dart';
 import '../../widgets/common.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
@@ -94,16 +95,30 @@ class _LoginScreenState extends State<LoginScreen> {
           _passwordCtrl.text,
         );
         if (res.user == null) throw Exception('登录失败，请检查邮箱和密码');
+        if (mounted) Navigator.pop(context);
       } else {
         if (_nicknameCtrl.text.trim().isEmpty) throw Exception('请填写昵称');
-        final res = await SupabaseService.signUp(
+        
+        // 通过 API 注册（统一处理 Auth 和 user_profiles）
+        final result = await BackendApiService.signup(
+          email: _emailCtrl.text.trim(),
+          password: _passwordCtrl.text,
+          nickname: _nicknameCtrl.text.trim(),
+        );
+        
+        if (result['success'] != true) {
+          throw Exception(result['error'] ?? '注册失败');
+        }
+        
+        // 注册成功后自动登录
+        final res = await SupabaseService.signIn(
           _emailCtrl.text.trim(),
           _passwordCtrl.text,
-          _nicknameCtrl.text.trim(),
         );
-        if (res.user == null) throw Exception('注册失败');
+        if (res.user == null) throw Exception('注册成功，但登录失败，请手动登录');
+        
+        if (mounted) Navigator.pop(context);
       }
-      if (mounted) Navigator.pop(context);
     } on AuthException catch (e) {
       setState(() => _error = e.message);
     } catch (e) {

@@ -198,7 +198,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   @override
   Widget build(BuildContext context) {
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    const headerHeight = 56.0;
+    const headerHeight = 35.0;
 
     return Scaffold(
       backgroundColor: context.artC.porcelain,
@@ -280,39 +280,35 @@ class _MainScaffoldState extends State<MainScaffold> {
   Widget _buildFloatingNav() {
     return Container(
       constraints: const BoxConstraints(maxWidth: 520),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: context.artC.ink.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: context.artC.porcelain.withOpacity(0.12)),
+        color: Colors.white.withOpacity(0.88),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: context.artC.silver.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
-            color: context.artC.ink.withOpacity(0.35),
-            blurRadius: 28,
-            offset: const Offset(0, 12),
+            color: context.artC.ink.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_navItems.length, (index) {
-            final item = _navItems[index];
-            return _NavButton(
-              item: item,
-              isSelected: _currentIndex == index,
-              onTap: () {
-                if (index == 4 && !SupabaseService.isLoggedIn) {
-                  _openLoginOrProfile();
-                  return;
-                }
-                setState(() => _currentIndex = index);
-              },
-            );
-          }),
-        ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: List.generate(_navItems.length, (index) {
+          final item = _navItems[index];
+          return _NavButton(
+            item: item,
+            isSelected: _currentIndex == index,
+            onTap: () {
+              if (index == 4 && !SupabaseService.isLoggedIn) {
+                _openLoginOrProfile();
+                return;
+              }
+              setState(() => _currentIndex = index);
+            },
+          );
+        }),
       ),
     );
   }
@@ -366,9 +362,9 @@ class _HeaderState extends State<_Header> {
     return Container(
       height: widget.height,
       decoration: BoxDecoration(
-        color: context.artC.porcelain.withOpacity(0.92),
+        color: context.artC.porcelain.withOpacity(0.95),
         border: Border(
-          bottom: BorderSide(color: context.artC.silver.withOpacity(0.35)),
+          bottom: BorderSide(color: context.artC.silver.withOpacity(0.15)),
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -400,7 +396,7 @@ class _HeaderState extends State<_Header> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '搜索艺术家、作品、机构、课程...',
+                      '搜索',
                       style: TextStyle(
                         fontSize: 12,
                         color: context.artC.ink.withOpacity(0.35),
@@ -413,90 +409,6 @@ class _HeaderState extends State<_Header> {
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          // Location
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.location_on,
-                  size: 14, color: context.artC.ink.withOpacity(0.45)),
-              const SizedBox(width: 2),
-              Text(
-                '上海',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: context.artC.ink.withOpacity(0.6),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 10),
-          // Notification
-          Stack(
-            children: [
-              Icon(Icons.notifications_none,
-                  size: 22, color: context.artC.ink.withOpacity(0.55)),
-              Positioned(
-                top: 2,
-                right: 2,
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                    border: Border.fromBorderSide(
-                        BorderSide(color: context.artC.porcelain, width: 1.5)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 10),
-          // User / Login
-          _user == null
-              ? GestureDetector(
-                  onTap: widget.onLoginTap,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: kCobalt,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '登录',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                )
-              : GestureDetector(
-                  onTap: widget.onLoginTap,
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: context.artC.silver.withOpacity(0.4),
-                      shape: BoxShape.circle,
-                      border:
-                          Border.all(color: context.artC.porcelain, width: 2),
-                    ),
-                    child: ClipOval(
-                      child: _avatarUrl != null
-                          ? Image.network(
-                              _avatarUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _avatarFallback(),
-                            )
-                          : _avatarFallback(),
-                    ),
-                  ),
-                ),
         ],
       ),
     );
@@ -541,39 +453,27 @@ class _AiConsultFab extends StatelessWidget {
         onTap: onPressed,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          constraints: const BoxConstraints(minHeight: 52),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
+            shape: BoxShape.circle,
             gradient: const LinearGradient(
               colors: [kCobalt, Color(0xFF1E3A5F)],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
             boxShadow: [
               BoxShadow(
-                color: kCobalt.withOpacity(0.42),
-                blurRadius: 22,
-                offset: const Offset(0, 8),
+                color: kCobalt.withOpacity(0.25),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.auto_awesome,
-                  color: Colors.white.withOpacity(0.95), size: 22),
-              const SizedBox(width: 8),
-              Text(
-                'AI 助手',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ],
+          child: Icon(
+            Icons.auto_awesome,
+            color: Colors.white,
+            size: 22,
           ),
         ),
       ),
@@ -635,65 +535,38 @@ class _NavButtonState extends State<_NavButton> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
-      child: GestureDetector(
-        onTapDown: (_) => setState(() => _pressed = true),
-        onTapUp: (_) => setState(() => _pressed = false),
-        onTapCancel: () => setState(() => _pressed = false),
-        onTap: widget.onTap,
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedScale(
-          scale: _pressed ? 0.88 : 1.0,
-          duration: const Duration(milliseconds: 120),
-          curve: Curves.easeOutCubic,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 320),
-            curve: Curves.easeOutCubic,
-            padding: EdgeInsets.symmetric(
-              horizontal: widget.isSelected ? 14 : 10,
-              vertical: 8,
-            ),
-            decoration: BoxDecoration(
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedScale(
+        scale: _pressed ? 0.85 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutCubic,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              widget.isSelected ? widget.item.activeIcon : widget.item.icon,
+              size: 24,
               color: widget.isSelected
-                  ? context.artC.porcelain
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(999),
-              boxShadow: widget.isSelected
-                  ? [
-                      BoxShadow(
-                        color: context.artC.ink.withOpacity(0.12),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : null,
+                  ? kCobalt
+                  : context.artC.ink.withOpacity(0.32),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  widget.isSelected ? widget.item.activeIcon : widget.item.icon,
-                  size: 20,
-                  color: widget.isSelected
-                      ? kCobalt
-                      : context.artC.porcelain.withOpacity(0.42),
-                ),
-                if (widget.isSelected) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    widget.item.label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.8,
-                      color: context.artC.ink,
-                    ),
-                  ),
-                ],
-              ],
+            const SizedBox(height: 6),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
+              width: widget.isSelected ? 5 : 0,
+              height: widget.isSelected ? 5 : 0,
+              decoration: BoxDecoration(
+                color: kCobalt,
+                shape: BoxShape.circle,
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

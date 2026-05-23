@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api/require-admin";
-import { createPublicReadClient, createServiceClient } from "@/lib/api/supabase-service";
+import { createServiceClient } from "@/lib/api/supabase-service";
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     );
     const offset = Math.max(Number.parseInt(searchParams.get("offset") || "0", 10) || 0, 0);
 
-    const supabase = createPublicReadClient();
+    const supabase = createServiceClient();
     let query = supabase
       .from("home_contents")
       .select("*", { count: "exact" })
