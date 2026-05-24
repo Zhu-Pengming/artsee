@@ -285,6 +285,50 @@ class BackendApiService {
     return AppProgram.fromJson(body['data'] as Map<String, dynamic>);
   }
 
+  /// 获取专业列表（含院校信息）
+  static Future<({List<ProgramWithSchool> data, int? count, int limit, int offset})>
+      fetchProgramsWithSchool({
+    int limit = 20,
+    int offset = 0,
+    String? keyword,
+    String? degreeType,
+    String? schoolId,
+    bool? requiresPortfolio,
+  }) async {
+    final params = <String, String>{
+      'limit': '$limit',
+      'offset': '$offset',
+    };
+    if (keyword != null && keyword.isNotEmpty) params['keyword'] = keyword;
+    if (degreeType != null && degreeType.isNotEmpty) {
+      params['degree_type'] = degreeType;
+    }
+    if (schoolId != null) params['school_id'] = schoolId;
+    if (requiresPortfolio != null) {
+      params['requires_portfolio'] = requiresPortfolio ? 'true' : 'false';
+    }
+
+    final r = await http.get(
+      _api('/api/v1/programs', params),
+      headers: await _headers(),
+    );
+    final body = jsonDecode(r.body) as Map<String, dynamic>;
+    if (r.statusCode != 200 || body['success'] != true) {
+      throw Exception(body['error'] ?? 'programs ${r.statusCode}');
+    }
+    final list = body['data'] as List<dynamic>? ?? [];
+    final count = body['count'] as int?;
+    final pagination = body['pagination'] as Map<String, dynamic>?;
+    return (
+      data: list
+          .map((e) => ProgramWithSchool.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      count: count,
+      limit: pagination?['limit'] as int? ?? limit,
+      offset: pagination?['offset'] as int? ?? offset,
+    );
+  }
+
   static Future<Map<String, dynamic>> fetchProgramDetail(String id) async {
     final r =
         await http.get(_api('/api/v1/programs/$id'), headers: await _headers());
@@ -414,6 +458,25 @@ class BackendApiService {
     return decoded;
   }
 
+  /// AI 总咨询：走 Next 统一 consult pipeline（画像 + 记忆 + 知识检索）。
+  static Future<Map<String, dynamic>> aiConsult(String query,
+      {String mode = 'chat'}) async {
+    final r = await http.post(
+      _api('/api/v1/ai/consult'),
+      headers: await _headers(withAuth: true),
+      body: jsonEncode({
+        'query': query,
+        'mode': mode,
+      }),
+    );
+    final decoded = jsonDecode(r.body) as Map<String, dynamic>;
+    if (r.statusCode != 200) {
+      throw Exception(
+          decoded['error'] ?? decoded['message'] ?? 'AI 咨询失败 ${r.statusCode}');
+    }
+    return decoded;
+  }
+
   /// 注册新用户（通过 Next.js API）
   static Future<Map<String, dynamic>> signup({
     required String email,
@@ -421,45 +484,35 @@ class BackendApiService {
     required String nickname,
   }) async {
     final r = await http.post(
-      _api('/api/v1/auth/signup'),
+      _api('/api/v1/auth/register'),
       headers: await _headers(),
       body: jsonEncode({
         'email': email,
         'password': password,
-        'nickname': nickname,
+        'username': nickname,
       }),
     );
     final decoded = jsonDecode(r.body) as Map<String, dynamic>;
-    if (r.statusCode != 200 || decoded['success'] != true) {
-      throw Exception(decoded['error'] ?? '注册失败 ${r.statusCode}');
+    if (r.statusCode != 200) {
+      throw Exception(
+          decoded['error'] ?? decoded['message'] ?? '注册失败 ${r.statusCode}');
     }
+    decoded['success'] = true;
     return decoded;
   }
 
-  /// 完成 onboarding（通过 Next.js API）
-  static Future<Map<String, dynamic>> completeOnboarding({
-    required String userId,
-    List<String>? interestedCategories,
-  }) async {
-    final url = _api('/api/v1/auth/complete-onboarding');
-    final body = jsonEncode({
-      'userId': userId,
-      'interestedCategories': interestedCategories,
-    });
-    final headers = await _headers(withAuth: true);
-    
-    print('[BackendApiService] completeOnboarding: POST $url');
-    print('[BackendApiService] headers: $headers');
-    print('[BackendApiService] body: $body');
-    
-    final r = await http.post(url, headers: headers, body: body);
-    
-    print('[BackendApiService] response status: ${r.statusCode}');
-    print('[BackendApiService] response body: ${r.body}');
-    
+  /// 更新用户画像（通过 Next.js API）
+  static Future<Map<String, dynamic>> updateUserProfile(
+      Map<String, dynamic> updates) async {
+    final r = await http.post(
+      _api('/api/v1/auth/update-profile'),
+      headers: await _headers(withAuth: true),
+      body: jsonEncode(updates),
+    );
     final decoded = jsonDecode(r.body) as Map<String, dynamic>;
-    if (r.statusCode != 200 || decoded['success'] != true) {
-      throw Exception(decoded['error'] ?? 'onboarding 失败 ${r.statusCode}');
+    if (r.statusCode != 200) {
+      throw Exception(
+          decoded['error'] ?? decoded['message'] ?? '画像保存失败 ${r.statusCode}');
     }
     return decoded;
   }

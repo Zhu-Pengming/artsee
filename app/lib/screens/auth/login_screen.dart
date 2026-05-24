@@ -15,10 +15,26 @@ class LoginScreen extends StatefulWidget {
 }
 
 const _greyscale = ColorFilter.matrix([
-  0.2126, 0.7152, 0.0722, 0, 0,
-  0.2126, 0.7152, 0.0722, 0, 0,
-  0.2126, 0.7152, 0.0722, 0, 0,
-  0,      0,      0,      1, 0,
+  0.2126,
+  0.7152,
+  0.0722,
+  0,
+  0,
+  0.2126,
+  0.7152,
+  0.0722,
+  0,
+  0,
+  0.2126,
+  0.7152,
+  0.0722,
+  0,
+  0,
+  0,
+  0,
+  0,
+  1,
+  0,
 ]);
 
 class _LoginScreenState extends State<LoginScreen> {
@@ -98,25 +114,25 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) Navigator.pop(context);
       } else {
         if (_nicknameCtrl.text.trim().isEmpty) throw Exception('请填写昵称');
-        
+
         // 通过 API 注册（统一处理 Auth 和 user_profiles）
         final result = await BackendApiService.signup(
           email: _emailCtrl.text.trim(),
           password: _passwordCtrl.text,
           nickname: _nicknameCtrl.text.trim(),
         );
-        
+
         if (result['success'] != true) {
           throw Exception(result['error'] ?? '注册失败');
         }
-        
+
         // 注册成功后自动登录
         final res = await SupabaseService.signIn(
           _emailCtrl.text.trim(),
           _passwordCtrl.text,
         );
         if (res.user == null) throw Exception('注册成功，但登录失败，请手动登录');
-        
+
         if (mounted) Navigator.pop(context);
       }
     } on AuthException catch (e) {
@@ -175,8 +191,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     Image.asset(
                       'assets/images/login_hero.png',
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          Container(color: context.artC.silver.withOpacity(0.35)),
+                      errorBuilder: (_, __, ___) => Container(
+                          color: context.artC.silver.withValues(alpha: 0.35)),
                     ),
                     AnimatedOpacity(
                       opacity: _isColorful ? 0.0 : 1.0,
@@ -187,8 +203,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Image.asset(
                           'assets/images/login_hero.png',
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              Container(color: context.artC.silver.withOpacity(0.35)),
+                          errorBuilder: (_, __, ___) => Container(
+                              color:
+                                  context.artC.silver.withValues(alpha: 0.35)),
                         ),
                       ),
                     ),
@@ -196,8 +213,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            context.artC.ink.withOpacity(0.45),
-                            context.artC.ink.withOpacity(0.1),
+                            context.artC.ink.withValues(alpha: 0.45),
+                            context.artC.ink.withValues(alpha: 0.1),
                             Colors.transparent,
                           ],
                           begin: Alignment.topCenter,
@@ -222,13 +239,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                     width: 36,
                                     height: 36,
                                     decoration: BoxDecoration(
-                                      color: context.artC.porcelain.withOpacity(0.12),
+                                      color: context.artC.porcelain
+                                          .withValues(alpha: 0.12),
                                       shape: BoxShape.circle,
                                     ),
                                     child: Icon(
                                       Icons.close,
                                       size: 20,
-                                      color: context.artC.porcelain.withOpacity(0.9),
+                                      color: context.artC.porcelain
+                                          .withValues(alpha: 0.9),
                                     ),
                                   ),
                                 ),
@@ -245,7 +264,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 height: 1.1,
                                 shadows: [
                                   Shadow(
-                                    color: context.artC.ink.withOpacity(0.25),
+                                    color: context.artC.ink
+                                        .withValues(alpha: 0.25),
                                     blurRadius: 12,
                                     offset: const Offset(0, 2),
                                   ),
@@ -262,7 +282,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 height: 1.4,
                                 shadows: [
                                   Shadow(
-                                    color: context.artC.ink.withOpacity(0.35),
+                                    color: context.artC.ink
+                                        .withValues(alpha: 0.35),
                                     blurRadius: 10,
                                     offset: const Offset(0, 2),
                                   ),
@@ -287,7 +308,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Container(
               decoration: BoxDecoration(
                 color: context.artC.porcelain,
-                borderRadius: BorderRadius.vertical(
+                borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(32),
                 ),
               ),
@@ -309,7 +330,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 child: Icon(
                                   Icons.arrow_back_ios,
                                   size: 18,
-                                  color: context.artC.ink.withOpacity(0.45),
+                                  color:
+                                      context.artC.ink.withValues(alpha: 0.45),
                                 ),
                               ),
                             ),
@@ -353,8 +375,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 focusNode: _nicknameFocus,
                                 hint: '昵称',
                                 icon: Icons.person_outline,
-                                validator: (v) =>
-                                    v!.isEmpty ? '请填写昵称' : null,
+                                validator: (v) => v!.isEmpty ? '请填写昵称' : null,
                               ),
                               const SizedBox(height: 16),
                             ],
@@ -366,9 +387,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               keyboardType: TextInputType.emailAddress,
                               validator: (v) => v!.isEmpty
                                   ? '请填写邮箱'
-                                  : (!v.contains('@')
-                                      ? '邮箱格式不正确'
-                                      : null),
+                                  : (!v.contains('@') ? '邮箱格式不正确' : null),
                             ),
                             const SizedBox(height: 16),
                             _buildInput(
@@ -377,14 +396,13 @@ class _LoginScreenState extends State<LoginScreen> {
                               hint: '密码',
                               icon: Icons.lock_outline,
                               obscureText: true,
-                              validator: (v) =>
-                                  v!.length < 6 ? '密码至少6位' : null,
+                              validator: (v) => v!.length < 6 ? '密码至少6位' : null,
                             ),
                             if (_error != null) ...[
                               const SizedBox(height: 16),
                               Text(
                                 _error!,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 12,
                                   color: Color(0xFFC62828),
                                   height: 1.5,
@@ -416,7 +434,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       )
                                     : Text(
                                         _isLogin ? '登录' : '注册',
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
                                         ),
@@ -440,7 +458,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                     '或使用以下方式登录',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: context.artC.ink.withOpacity(0.35),
+                                      color: context.artC.ink
+                                          .withValues(alpha: 0.35),
                                     ),
                                   ),
                                 ),
@@ -467,15 +486,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 16),
                             GestureDetector(
-                              onTap: () =>
-                                  setState(() => _isLogin = !_isLogin),
+                              onTap: () => setState(() => _isLogin = !_isLogin),
                               child: Text(
-                                _isLogin
-                                    ? '还没有账号？去注册'
-                                    : '已有账号？去登录',
+                                _isLogin ? '还没有账号？去注册' : '已有账号？去登录',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: context.artC.ink.withOpacity(0.5),
+                                  color:
+                                      context.artC.ink.withValues(alpha: 0.5),
                                   fontWeight: FontWeight.w500,
                                 ),
                                 textAlign: TextAlign.center,
@@ -503,13 +520,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: 52,
                     height: 52,
                     decoration: BoxDecoration(
-                      color: context.artC.silver.withOpacity(0.35),
+                      color: context.artC.silver.withValues(alpha: 0.35),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       Icons.login,
                       size: 22,
-                      color: context.artC.ink.withOpacity(0.6),
+                      color: context.artC.ink.withValues(alpha: 0.6),
                     ),
                   ),
                 ),
@@ -539,11 +556,12 @@ class _LoginScreenState extends State<LoginScreen> {
         hintText: hint,
         hintStyle: TextStyle(
           fontSize: 14,
-          color: context.artC.ink.withOpacity(0.35),
+          color: context.artC.ink.withValues(alpha: 0.35),
         ),
         filled: true,
-        fillColor: context.artC.silver.withOpacity(0.35),
-        prefixIcon: Icon(icon, size: 20, color: context.artC.ink.withOpacity(0.35)),
+        fillColor: context.artC.silver.withValues(alpha: 0.35),
+        prefixIcon: Icon(icon,
+            size: 20, color: context.artC.ink.withValues(alpha: 0.35)),
         contentPadding: const EdgeInsets.symmetric(vertical: 18),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -585,10 +603,11 @@ class _SocialButton extends StatelessWidget {
         width: 52,
         height: 52,
         decoration: BoxDecoration(
-          color: context.artC.silver.withOpacity(0.35),
+          color: context.artC.silver.withValues(alpha: 0.35),
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, size: 22, color: context.artC.ink.withOpacity(0.6)),
+        child: Icon(icon,
+            size: 22, color: context.artC.ink.withValues(alpha: 0.6)),
       ),
     );
   }

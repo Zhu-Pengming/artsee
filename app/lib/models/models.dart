@@ -1,5 +1,8 @@
 // Data models matching Supabase schema
 
+export 'school_detail.dart';
+export 'program_with_school.dart';
+
 class AppCase {
   final String id;
   final String title;
@@ -246,11 +249,11 @@ class AppProgram {
     final admission = _firstOrSingle(json['program_admissions']);
     final fee = _firstOrSingle(json['program_fees']);
     final coverImageUrl = json['cover_image_url'] as String?;
-    final coverImageUrls = <String>[
+    final coverImageUrls = <String>{
       ..._stringList(json['cover_image_urls']),
       if (coverImageUrl != null && coverImageUrl.isNotEmpty) coverImageUrl,
       ..._stringList(school?['campus_image_urls']),
-    ].toSet().toList();
+    }.toList();
 
     return AppProgram(
       id: json['id'].toString(),

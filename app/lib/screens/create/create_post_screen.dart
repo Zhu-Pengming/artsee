@@ -140,7 +140,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     child: CircularProgressIndicator(
                         strokeWidth: 2, color: kCobalt),
                   )
-                : Text(
+                : const Text(
                     '发布',
                     style: TextStyle(
                       fontSize: 14,
@@ -226,12 +226,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         width: 110,
         height: 110,
         decoration: BoxDecoration(
-          color: context.artC.silver.withOpacity(0.25),
+          color: context.artC.silver.withValues(alpha: 0.25),
           borderRadius: BorderRadius.circular(kRadiusMedium),
-          border:
-              Border.all(color: context.artC.silver.withOpacity(0.6), width: 1),
+          border: Border.all(
+              color: context.artC.silver.withValues(alpha: 0.6), width: 1),
         ),
-        child: Icon(Icons.add_photo_alternate_outlined,
+        child: const Icon(Icons.add_photo_alternate_outlined,
             color: kCobaltMuted, size: 32),
       ),
     );
@@ -260,7 +260,7 @@ class _ImageThumb extends StatelessWidget {
                 return Container(
                   width: 110,
                   height: 110,
-                  color: context.artC.silver.withOpacity(0.25),
+                  color: context.artC.silver.withValues(alpha: 0.25),
                   child: const Center(
                     child: SizedBox(
                       width: 18,
@@ -278,7 +278,7 @@ class _ImageThumb extends StatelessWidget {
                 errorBuilder: (_, __, ___) => Container(
                   width: 110,
                   height: 110,
-                  color: context.artC.silver.withOpacity(0.35),
+                  color: context.artC.silver.withValues(alpha: 0.35),
                   child: Icon(Icons.broken_image_outlined,
                       color: context.artC.silver),
                 ),
