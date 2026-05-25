@@ -36,6 +36,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   bool _communitySearchActive = false;
   bool _aiNavigationRevealed = true;
   int _aiSidebarRequestToken = 0;
+  int _homeScreenRefreshToken = 0;
   final TextEditingController _messageSearchController =
       TextEditingController();
 
@@ -69,7 +70,10 @@ class _MainScaffoldState extends State<MainScaffold> {
       MaterialPageRoute(builder: (_) => const CreatePostScreen()),
     );
     if (!mounted || created != true) return;
-    setState(() => _currentIndex = 2);
+    setState(() {
+      _currentIndex = 2;
+      _homeScreenRefreshToken++;
+    });
   }
 
   void _showCreateSheet() {
@@ -245,7 +249,8 @@ class _MainScaffoldState extends State<MainScaffold> {
     return switch (tabIndex) {
       0 => SchoolListScreen.schoolListKey.currentState?.searchToolsVisible ??
           false,
-      1 => ProgramListEnhancedScreen.programListKey.currentState?.searchToolsVisible ??
+      1 => ProgramListEnhancedScreen
+              .programListKey.currentState?.searchToolsVisible ??
           false,
       _ => false,
     };
@@ -309,6 +314,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                   },
                 ),
                 HomeScreen(
+                  key: ValueKey('home_$_homeScreenRefreshToken'),
                   role: _communityTabIndex == 0
                       ? CommunityRole.student
                       : CommunityRole.artist,
@@ -331,6 +337,7 @@ class _MainScaffoldState extends State<MainScaffold> {
               onLeadingTap: _currentIndex == 0
                   ? () => setState(() => _aiSidebarRequestToken++)
                   : () => _openLoginOrProfile(),
+              showLeading: _currentIndex != 1,
               applicationTabIndex:
                   _currentIndex == 1 ? _applicationTabIndex : null,
               communityTabIndex: _currentIndex == 2 ? _communityTabIndex : null,
@@ -351,7 +358,8 @@ class _MainScaffoldState extends State<MainScaffold> {
                     setState(() => _applicationSearchActive = visible);
                   }
                 } else if (_currentIndex == 1 && _applicationTabIndex == 1) {
-                  final visible = ProgramListEnhancedScreen.programListKey.currentState
+                  final visible = ProgramListEnhancedScreen
+                      .programListKey.currentState
                       ?.toggleSearchTools();
                   if (visible != null) {
                     setState(() => _applicationSearchActive = visible);
@@ -472,6 +480,7 @@ class _Header extends StatefulWidget {
   final IconData leadingIcon;
   final String leadingTooltip;
   final VoidCallback? onLeadingTap;
+  final bool showLeading;
   final int? applicationTabIndex;
   final int? communityTabIndex;
   final ValueChanged<int>? onApplicationTabChanged;
@@ -488,6 +497,7 @@ class _Header extends StatefulWidget {
     required this.leadingIcon,
     required this.leadingTooltip,
     this.onLeadingTap,
+    this.showLeading = true,
     this.applicationTabIndex,
     this.communityTabIndex,
     this.onApplicationTabChanged,
@@ -523,43 +533,45 @@ class _HeaderState extends State<_Header> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: widget.onLeadingTap,
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              width: topControlSize,
-              height: topControlSize,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(
-                    color: context.artC.silver.withValues(alpha: 0.65)),
-              ),
-              alignment: Alignment.center,
-              child: Tooltip(
-                message: widget.leadingTooltip,
-                child: Icon(
-                  widget.leadingIcon,
-                  size: 22,
-                  color: context.artC.ink,
+          if (widget.showLeading) ...[
+            GestureDetector(
+              onTap: widget.onLeadingTap,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                width: topControlSize,
+                height: topControlSize,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: context.artC.silver.withValues(alpha: 0.65)),
+                ),
+                alignment: Alignment.center,
+                child: Tooltip(
+                  message: widget.leadingTooltip,
+                  child: Icon(
+                    widget.leadingIcon,
+                    size: 22,
+                    color: context.artC.ink,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
+            const SizedBox(width: 12),
+          ],
           if (applicationTabIndex != null) ...[
             Expanded(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(3, (index) {
-                  final labels = ['院校', '专业', '案例'];
+                children: List.generate(4, (index) {
+                  final labels = ['院校', '专业', '案例', '我的'];
                   final active = applicationTabIndex == index;
                   return GestureDetector(
                     onTap: () => widget.onApplicationTabChanged?.call(index),
                     behavior: HitTestBehavior.opaque,
                     child: SizedBox(
                       height: topControlSize,
-                      width: 64,
+                      width: 52,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -592,31 +604,34 @@ class _HeaderState extends State<_Header> {
                 }),
               ),
             ),
-            SizedBox(
-              width: topControlSize,
-              height: topControlSize,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                decoration: BoxDecoration(
-                  color: widget.searchActive
-                      ? kCobalt.withValues(alpha: 0.08)
-                      : Colors.transparent,
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  onPressed: widget.onSearchTap,
-                  icon: Icon(
-                    widget.searchActive
-                        ? Icons.close_rounded
-                        : Icons.search_rounded,
+            if (applicationTabIndex < 2)
+              SizedBox(
+                width: topControlSize,
+                height: topControlSize,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  decoration: BoxDecoration(
+                    color: widget.searchActive
+                        ? kCobalt.withValues(alpha: 0.08)
+                        : Colors.transparent,
+                    shape: BoxShape.circle,
                   ),
-                  color: widget.searchActive ? kCobalt : context.artC.ink,
-                  iconSize: widget.searchActive ? 26 : 28,
-                  padding: EdgeInsets.zero,
-                  tooltip: widget.searchActive ? '收起搜索' : '搜索',
+                  child: IconButton(
+                    onPressed: widget.onSearchTap,
+                    icon: Icon(
+                      widget.searchActive
+                          ? Icons.close_rounded
+                          : Icons.search_rounded,
+                    ),
+                    color: widget.searchActive ? kCobalt : context.artC.ink,
+                    iconSize: widget.searchActive ? 26 : 28,
+                    padding: EdgeInsets.zero,
+                    tooltip: widget.searchActive ? '收起搜索' : '搜索',
+                  ),
                 ),
-              ),
-            ),
+              )
+            else
+              const SizedBox(width: topControlSize, height: topControlSize),
           ] else if (communityTabIndex != null) ...[
             Expanded(
               child: Row(

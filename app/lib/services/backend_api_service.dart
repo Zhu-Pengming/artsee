@@ -6,6 +6,18 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/api_config.dart';
 import '../models/models.dart';
 
+class AiChatStreamEvent {
+  final String? text;
+  final Map<String, dynamic>? meta;
+  final bool done;
+
+  const AiChatStreamEvent({
+    this.text,
+    this.meta,
+    this.done = false,
+  });
+}
+
 /// 通过 Next.js（`web/`）访问 Supabase 中的业务数据，与 Flutter 直连并存时可逐步迁移。
 class BackendApiService {
   BackendApiService._();
@@ -60,6 +72,104 @@ class BackendApiService {
       throw Exception(body['error'] ?? 'case ${r.statusCode}');
     }
     return AppCase.fromJson(body['data'] as Map<String, dynamic>);
+  }
+
+  static Future<List<ApplicationTrackerItem>> fetchMyTracker() async {
+    final r = await http.get(
+      _api('/api/v1/tracker'),
+      headers: await _headers(withAuth: true),
+    );
+    final body = jsonDecode(r.body) as Map<String, dynamic>;
+    if (r.statusCode != 200 || body['success'] != true) {
+      throw Exception(body['error'] ?? 'tracker ${r.statusCode}');
+    }
+    final list = body['data'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => ApplicationTrackerItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<ApplicationTrackerItem> addToTracker({
+    String? schoolId,
+    String? programId,
+    required String schoolName,
+    String? programName,
+    String tier = 'match',
+    String status = 'planning',
+    String? deadline,
+    String? notes,
+  }) async {
+    final r = await http.post(
+      _api('/api/v1/tracker'),
+      headers: await _headers(withAuth: true),
+      body: jsonEncode({
+        if (schoolId != null) 'school_id': schoolId,
+        if (programId != null) 'program_id': programId,
+        'school_name': schoolName,
+        if (programName != null) 'program_name': programName,
+        'tier': tier,
+        'status': status,
+        if (deadline != null) 'deadline': deadline,
+        if (notes != null) 'notes': notes,
+      }),
+    );
+    final body = jsonDecode(r.body) as Map<String, dynamic>;
+    if (r.statusCode != 201 || body['success'] != true) {
+      throw Exception(body['error'] ?? '添加申请项失败 ${r.statusCode}');
+    }
+    return ApplicationTrackerItem.fromJson(
+        body['data'] as Map<String, dynamic>);
+  }
+
+  static Future<ApplicationTrackerItem> updateTrackerItem(
+    String id, {
+    String? tier,
+    String? status,
+    String? notes,
+    String? deadline,
+  }) async {
+    final r = await http.patch(
+      _api('/api/v1/tracker/$id'),
+      headers: await _headers(withAuth: true),
+      body: jsonEncode({
+        if (tier != null) 'tier': tier,
+        if (status != null) 'status': status,
+        if (notes != null) 'notes': notes,
+        if (deadline != null) 'deadline': deadline,
+      }),
+    );
+    final body = jsonDecode(r.body) as Map<String, dynamic>;
+    if (r.statusCode != 200 || body['success'] != true) {
+      throw Exception(body['error'] ?? '更新申请项失败 ${r.statusCode}');
+    }
+    return ApplicationTrackerItem.fromJson(
+        body['data'] as Map<String, dynamic>);
+  }
+
+  static Future<void> deleteTrackerItem(String id) async {
+    final r = await http.delete(
+      _api('/api/v1/tracker/$id'),
+      headers: await _headers(withAuth: true),
+    );
+    final body = jsonDecode(r.body) as Map<String, dynamic>;
+    if (r.statusCode != 200 || body['success'] != true) {
+      throw Exception(body['error'] ?? '删除申请项失败 ${r.statusCode}');
+    }
+  }
+
+  static Future<List<ApplicationTimelineTask>> fetchTrackerTimeline() async {
+    final r = await http.get(
+      _api('/api/v1/tracker/timeline'),
+      headers: await _headers(withAuth: true),
+    );
+    final body = jsonDecode(r.body) as Map<String, dynamic>;
+    if (r.statusCode != 200 || body['success'] != true) {
+      throw Exception(body['error'] ?? '时间线生成失败 ${r.statusCode}');
+    }
+    final list = body['timeline'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => ApplicationTimelineTask.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   static Future<List<AppCommunityPost>> fetchCommunityPosts(
@@ -286,7 +396,8 @@ class BackendApiService {
   }
 
   /// 获取专业列表（含院校信息）
-  static Future<({List<ProgramWithSchool> data, int? count, int limit, int offset})>
+  static Future<
+          ({List<ProgramWithSchool> data, int? count, int limit, int offset})>
       fetchProgramsWithSchool({
     int limit = 20,
     int offset = 0,
@@ -475,6 +586,72 @@ class BackendApiService {
           decoded['error'] ?? decoded['message'] ?? 'AI 咨询失败 ${r.statusCode}');
     }
     return decoded;
+  }
+
+  static Stream<AiChatStreamEvent> aiChatStream(
+    List<Map<String, String>> messages, {
+    Map<String, dynamic>? context,
+  }) async* {
+    final client = http.Client();
+    final request = http.Request('POST', _api('/api/chat'));
+    request.headers.addAll(await _headers(withAuth: true));
+    request.body = jsonEncode({
+      'messages': messages,
+      if (context != null) 'context': context,
+    });
+
+    try {
+      final response = await client.send(request);
+      if (response.statusCode != 200) {
+        final body = await response.stream.bytesToString();
+        throw Exception('AI 流式对话失败 ${response.statusCode}: $body');
+      }
+
+      final buffer = StringBuffer();
+      await for (final chunk in response.stream.transform(utf8.decoder)) {
+        buffer.write(chunk);
+        var text = buffer.toString();
+        var splitIndex = text.indexOf('\n\n');
+        while (splitIndex != -1) {
+          final event = text.substring(0, splitIndex).trim();
+          text = text.substring(splitIndex + 2);
+          if (event.startsWith('data:')) {
+            final payload = event.substring(5).trim();
+            if (payload == '[DONE]') {
+              yield const AiChatStreamEvent(done: true);
+            } else if (payload.isNotEmpty) {
+              final decoded = jsonDecode(payload) as Map<String, dynamic>;
+              if (decoded['type'] == 'meta') {
+                yield AiChatStreamEvent(meta: decoded);
+              } else {
+                yield AiChatStreamEvent(text: decoded['text']?.toString());
+              }
+            }
+          }
+          splitIndex = text.indexOf('\n\n');
+        }
+        buffer
+          ..clear()
+          ..write(text);
+      }
+    } finally {
+      client.close();
+    }
+  }
+
+  static Future<Map<String, dynamic>> aiAnalyzeSchools(
+    List<String> institutionIds,
+  ) async {
+    final r = await http.post(
+      _api('/api/v1/ai/analyze'),
+      headers: await _headers(withAuth: true),
+      body: jsonEncode({'institutionIds': institutionIds}),
+    );
+    final decoded = jsonDecode(r.body) as Map<String, dynamic>;
+    if (r.statusCode != 200 || decoded['success'] != true) {
+      throw Exception(decoded['error'] ?? '院校分析失败 ${r.statusCode}');
+    }
+    return decoded['result'] as Map<String, dynamic>? ?? {};
   }
 
   /// 注册新用户（通过 Next.js API）

@@ -237,7 +237,7 @@ class _ChatRealtimeScreenState extends State<ChatRealtimeScreen> {
         setState(() => _sending = true);
 
         // 计算录音时长（简化版，实际应该在录音时计时）
-        final duration = 5; // 秒
+        const duration = 5; // 秒
 
         final audioFile = File(path);
         await _messageService.sendVoiceMessage(
@@ -285,7 +285,7 @@ class _ChatRealtimeScreenState extends State<ChatRealtimeScreen> {
                     ),
                   ),
                   if (_typingUsers.isNotEmpty)
-                    Text(
+                    const Text(
                       '正在输入...',
                       style: TextStyle(
                         fontSize: 12,
@@ -311,8 +311,7 @@ class _ChatRealtimeScreenState extends State<ChatRealtimeScreen> {
         children: [
           Expanded(
             child: _loading
-                ? const Center(
-                    child: CircularProgressIndicator(color: kCobalt))
+                ? const Center(child: CircularProgressIndicator(color: kCobalt))
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(16),
@@ -427,9 +426,7 @@ class _ChatRealtimeScreenState extends State<ChatRealtimeScreen> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: _sending
-                        ? context.artC.ink.withAlpha(50)
-                        : kCobalt,
+                    color: _sending ? context.artC.ink.withAlpha(50) : kCobalt,
                     shape: BoxShape.circle,
                   ),
                   child: _sending

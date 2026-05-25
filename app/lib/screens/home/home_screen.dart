@@ -939,7 +939,7 @@ class _RecentExhibitionTile extends StatelessWidget {
   }
 }
 
-class _CommunityFeedCard extends StatelessWidget {
+class _CommunityFeedCard extends StatefulWidget {
   final AppCommunityPost post;
   final String category;
 
@@ -949,18 +949,69 @@ class _CommunityFeedCard extends StatelessWidget {
   });
 
   @override
+  State<_CommunityFeedCard> createState() => _CommunityFeedCardState();
+}
+
+class _CommunityFeedCardState extends State<_CommunityFeedCard> {
+  late bool _liked;
+  late int _likeCount;
+  bool _likeBusy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _liked = widget.post.likedByMe;
+    _likeCount = widget.post.likeCount;
+  }
+
+  Future<void> _toggleLike() async {
+    if (_likeBusy || widget.post.id.startsWith('fallback_')) return;
+    
+    final previousLiked = _liked;
+    final previousCount = _likeCount;
+    
+    setState(() {
+      _liked = !_liked;
+      _likeCount = _liked ? _likeCount + 1 : _likeCount - 1;
+      _likeBusy = true;
+    });
+    
+    try {
+      final result = previousLiked
+          ? await BackendApiService.unlikeCommunityPost(widget.post.id)
+          : await BackendApiService.likeCommunityPost(widget.post.id);
+      if (!mounted) return;
+      setState(() {
+        _liked = result.liked;
+        _likeCount = result.likeCount;
+        _likeBusy = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _liked = previousLiked;
+        _likeCount = previousCount;
+        _likeBusy = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('操作失败：$e'), duration: const Duration(seconds: 1)),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final body = (post.body ?? '').trim();
-    final firstImage = post.imageUrls.isNotEmpty ? post.imageUrls.first : null;
+    final body = (widget.post.body ?? '').trim();
+    final firstImage = widget.post.imageUrls.isNotEmpty ? widget.post.imageUrls.first : null;
     return GestureDetector(
-      onTap: post.id.startsWith('fallback_')
+      onTap: widget.post.id.startsWith('fallback_')
           ? null
           : () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => CommunityPostDetailScreen(
-                    postId: post.id,
-                    initialPost: post,
+                    postId: widget.post.id,
+                    initialPost: widget.post,
                   ),
                 ),
               );
@@ -984,11 +1035,11 @@ class _CommunityFeedCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                _CommunityAvatarBubble(post: post),
+                _CommunityAvatarBubble(post: widget.post),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    post.authorNickname ?? 'Artsee 用户',
+                    widget.post.authorNickname ?? 'Artsee 用户',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -999,7 +1050,7 @@ class _CommunityFeedCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  timeAgo(post.createdAt),
+                  timeAgo(widget.post.createdAt),
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -1016,7 +1067,7 @@ class _CommunityFeedCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
-                category,
+                widget.category,
                 style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
@@ -1026,7 +1077,7 @@ class _CommunityFeedCard extends StatelessWidget {
             ),
             const SizedBox(height: 9),
             Text(
-              post.title.isNotEmpty ? post.title : '社区动态',
+              widget.post.title.isNotEmpty ? widget.post.title : '社区动态',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -1073,16 +1124,29 @@ class _CommunityFeedCard extends StatelessWidget {
                     size: 15, color: context.artC.ink.withValues(alpha: 0.36)),
                 const SizedBox(width: 4),
                 Text(
-                  '${_formatCount(post.commentCount)} 回复',
+                  '${_formatCount(widget.post.commentCount)} 回复',
                   style: _communityMetaStyle(context),
                 ),
                 const SizedBox(width: 14),
-                Icon(Icons.favorite_border_rounded,
-                    size: 15, color: context.artC.ink.withValues(alpha: 0.36)),
-                const SizedBox(width: 4),
-                Text(
-                  '${_formatCount(post.likeCount)} 赞',
-                  style: _communityMetaStyle(context),
+                GestureDetector(
+                  onTap: _likeBusy ? null : _toggleLike,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _liked ? Icons.favorite : Icons.favorite_border_rounded,
+                        size: 15,
+                        color: _liked ? Colors.red : context.artC.ink.withValues(alpha: 0.36),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${_formatCount(_likeCount)} 赞',
+                        style: _communityMetaStyle(context).copyWith(
+                          color: _liked ? Colors.red : null,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const Spacer(),
                 Icon(

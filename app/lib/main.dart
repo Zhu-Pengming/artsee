@@ -96,6 +96,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
   bool _localOnboardingDone = false;
   StreamSubscription<AuthState>? _authSub;
 
+  String _onboardingKey(String userId) => 'artsee_onboarding_done_$userId';
+
   @override
   void initState() {
     super.initState();
@@ -105,8 +107,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _init() async {
-    final prefs = await SharedPreferences.getInstance();
-    _localOnboardingDone = prefs.getBool('artsee_onboarding_done') ?? false;
     await _reload();
   }
 
@@ -121,16 +121,21 @@ class _AuthWrapperState extends State<AuthWrapper> {
       if (mounted) {
         setState(() {
           _profile = null;
+          _localOnboardingDone = false;
           _loadingProfile = false;
         });
       }
       return;
     }
     if (mounted) setState(() => _loadingProfile = true);
+    final userId = SupabaseService.currentUser!.id;
+    final prefs = await SharedPreferences.getInstance();
+    final localDone = prefs.getBool(_onboardingKey(userId)) ?? false;
     final p = await SupabaseService.fetchProfile();
     if (!mounted) return;
     setState(() {
       _profile = p;
+      _localOnboardingDone = localDone;
       _loadingProfile = false;
     });
     final dbDone = p != null && p['has_completed_onboarding'] == true;
@@ -145,7 +150,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Future<void> _onOnboardingCompleted() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('artsee_onboarding_done', true);
+    final userId = SupabaseService.currentUser?.id;
+    if (userId != null) {
+      await prefs.setBool(_onboardingKey(userId), true);
+    }
     if (mounted) setState(() => _localOnboardingDone = true);
   }
 

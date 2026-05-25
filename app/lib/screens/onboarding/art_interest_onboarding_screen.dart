@@ -48,6 +48,8 @@ class _ArtInterestOnboardingScreenState
   String? _avatarUrl;
   String? _error;
   bool _saving = false;
+  bool _started = false;
+  int _currentStep = 0;
 
   static const _userRoles = [
     _ProfileOption('student', '申请学生', Icons.school_outlined),
@@ -149,15 +151,6 @@ class _ArtInterestOnboardingScreenState
         description: '更关注教学和氛围'),
   ];
 
-  static const _cityPreferences = [
-    _ProfileOption('big_city', '大城市', Icons.apartment_outlined,
-        description: '纽约、伦敦、巴黎等'),
-    _ProfileOption('small_town', '小城镇', Icons.holiday_village_outlined,
-        description: '安静的学院城'),
-    _ProfileOption('doesnt_matter', '无所谓', Icons.public_outlined,
-        description: '地点不是主要考虑'),
-  ];
-
   static const _portfolioStatuses = [
     _ProfileOption('not_started', '还没开始', Icons.lightbulb_outline,
         description: '正在收集灵感'),
@@ -171,22 +164,6 @@ class _ArtInterestOnboardingScreenState
         description: '优化排版和细节'),
   ];
 
-  static const _portfolioStyles = [
-    _ProfileOption('conceptual', '概念性', Icons.bubble_chart_outlined),
-    _ProfileOption('commercial', '商业性', Icons.storefront_outlined),
-    _ProfileOption('craft_based', '工艺性', Icons.handyman_outlined),
-    _ProfileOption('experimental', '实验性', Icons.science_outlined),
-    _ProfileOption('narrative', '叙事性', Icons.menu_book_outlined),
-  ];
-
-  static const _englishTypes = [
-    _ProfileOption('toefl', '托福 TOEFL', Icons.language_outlined),
-    _ProfileOption('ielts', '雅思 IELTS', Icons.language_outlined),
-    _ProfileOption('duolingo', 'Duolingo', Icons.language_outlined),
-    _ProfileOption('not_taken', '还没考', Icons.schedule_outlined),
-    _ProfileOption('not_planned', '不打算考', Icons.do_not_disturb_alt_outlined),
-  ];
-
   static const _budgetRanges = [
     _ProfileOption('under_30', '30万以下/年', Icons.savings_outlined,
         description: '适合欧洲部分国家'),
@@ -196,18 +173,6 @@ class _ArtInterestOnboardingScreenState
         description: '英美私立学校'),
     _ProfileOption('80_plus', '80万以上/年', Icons.diamond_outlined,
         description: '顶尖私立学校'),
-  ];
-
-  static const _scholarshipNeeds = [
-    _ProfileOption('must_have', '必须有', Icons.priority_high_outlined),
-    _ProfileOption('preferred', '最好有', Icons.star_border_outlined),
-    _ProfileOption('not_needed', '不需要', Icons.check_circle_outline),
-  ];
-
-  static const _familySupportLevels = [
-    _ProfileOption('fully', '全额支持', Icons.groups_outlined),
-    _ProfileOption('partially', '部分支持', Icons.group_outlined),
-    _ProfileOption('self_funded', '自费', Icons.person_outline),
   ];
 
   static const _targetIntakes = [
@@ -343,6 +308,41 @@ class _ArtInterestOnboardingScreenState
     return missing;
   }
 
+  bool get _stepCanContinue {
+    return switch (_currentStep) {
+      0 =>
+        _userRole != null && _targetDegree != null && _educationStage != null,
+      1 => _targetMajors.isNotEmpty && _targetCountries.isNotEmpty,
+      2 => _portfolioStatus != null && _targetIntake != null,
+      _ => true,
+    };
+  }
+
+  double get _stepProgress => (_currentStep + 1) / 4;
+
+  String get _primaryActionLabel {
+    if (_currentStep == 3) return '生成我的艺术画像';
+    return _stepCanContinue ? '下一步' : '完成当前步骤';
+  }
+
+  void _goNext() {
+    if (!_stepCanContinue || _saving) return;
+    if (_currentStep < 3) {
+      setState(() => _currentStep += 1);
+      return;
+    }
+    _submit();
+  }
+
+  void _goBack() {
+    if (_saving) return;
+    if (_currentStep > 0) {
+      setState(() => _currentStep -= 1);
+    } else {
+      setState(() => _started = false);
+    }
+  }
+
   Future<void> _submit() async {
     final missing = _missingRequiredLabels();
     if (missing.isNotEmpty) {
@@ -413,523 +413,735 @@ class _ArtInterestOnboardingScreenState
 
   @override
   Widget build(BuildContext context) {
-    final missing = _missingRequiredLabels();
-    final canSubmit = missing.isEmpty;
-
     return Scaffold(
       backgroundColor: context.artC.porcelain,
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-          decoration: BoxDecoration(
-            color: context.artC.porcelain.withValues(alpha: 0.97),
-            border: Border(
-              top: BorderSide(
-                  color: context.artC.silver.withValues(alpha: 0.55)),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        minHeight: 6,
-                        value: _completionScore / 100,
-                        backgroundColor:
-                            context.artC.silver.withValues(alpha: 0.7),
-                        color: kCobalt,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    '$_completionScore%',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: context.artC.ink.withValues(alpha: 0.55),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _saving ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: canSubmit ? kCobalt : kCobaltMuted,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(kRadiusMedium),
-                    ),
-                  ),
-                  child: _saving
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(
-                          canSubmit ? '完成画像' : '补充必填项',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      bottomNavigationBar: _started ? _buildStepNavigation() : null,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 140),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '完善你的艺术画像',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            color: context.artC.ink,
-                            height: 1.15,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '让 Artiqore 根据你的身份、目标和现实条件推荐更合适的院校与内容。',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: context.artC.ink.withValues(alpha: 0.55),
-                            height: 1.45,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  GestureDetector(
-                    onTap: _uploading.contains('avatar')
-                        ? null
-                        : _pickAndUploadAvatar,
-                    child: Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border:
-                            Border.all(color: context.artC.silver, width: 2),
-                        boxShadow: [kShadowCard],
-                      ),
-                      child: _uploading.contains('avatar')
-                          ? const Padding(
-                              padding: EdgeInsets.all(18),
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: kCobalt,
-                              ),
-                            )
-                          : _avatarUrl != null
-                              ? ClipOval(
-                                  child: Image.network(
-                                    _avatarUrl!,
-                                    width: 64,
-                                    height: 64,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(
-                                      Icons.add_a_photo_outlined,
-                                      color: kCobalt,
-                                      size: 24,
-                                    ),
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.add_a_photo_outlined,
-                                  color: kCobalt,
-                                  size: 24,
-                                ),
-                    ),
-                  ),
-                ],
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 14),
-                Text(
-                  _error!,
-                  style: const TextStyle(fontSize: 12, color: Colors.red),
-                ),
-              ],
-              const SizedBox(height: 24),
-              _Section(
-                index: '01',
-                title: '身份角色',
-                subtitle: '先确定你是谁，以及准备申请什么层级。',
-                child: Column(
-                  children: [
-                    _ChoiceGrid(
-                      options: _userRoles,
-                      selectedValue: _userRole,
-                      onSelected: (v) => _setSingle(
-                        v,
-                        _userRole,
-                        (next) => _userRole = next,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _ChoiceGrid(
-                      options: _targetDegrees,
-                      selectedValue: _targetDegree,
-                      onSelected: (v) => _setSingle(
-                        v,
-                        _targetDegree,
-                        (next) => _targetDegree = next,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _ChoiceGrid(
-                      options: _educationStages,
-                      selectedValue: _educationStage,
-                      compact: true,
-                      onSelected: (v) => _setSingle(
-                        v,
-                        _educationStage,
-                        (next) => _educationStage = next,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _Section(
-                index: '02',
-                title: '学术背景',
-                subtitle: '这些信息用于判断申请档位和课程匹配。',
-                child: Column(
-                  children: [
-                    _ProfileTextField(
-                      controller: _currentSchoolCtrl,
-                      label: '当前学校',
-                      hint: '例如：中央美术学院 / 某国际高中',
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    const SizedBox(height: 10),
-                    _ProfileTextField(
-                      controller: _currentMajorCtrl,
-                      label: '当前专业',
-                      hint: '例如：视觉传达 / A-Level Art',
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    const SizedBox(height: 10),
-                    _ProfileTextField(
-                      controller: _gpaCtrl,
-                      label: 'GPA 或成绩',
-                      hint: '例如：3.6/4.0、85/100、AAB',
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ],
-                ),
-              ),
-              _Section(
-                index: '03',
-                title: '目标方向',
-                subtitle: '可多选方向、专业和国家。',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _ChoiceGrid(
-                      options: _directions,
-                      selectedValues: _targetDirections,
-                      onSelected: (v) {
-                        setState(() {
-                          if (_targetDirections.contains(v)) {
-                            _targetDirections.remove(v);
-                          } else {
-                            _targetDirections.add(v);
-                          }
-                          _targetMajors.removeWhere((major) {
-                            final item =
-                                _majors.firstWhere((m) => m.value == major);
-                            return _targetDirections.isNotEmpty &&
-                                !_targetDirections.contains(item.category);
-                          });
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    _ChipWrap(
-                      options: _visibleMajors
-                          .map((m) => _ProfileOption(
-                              m.value, m.label, Icons.sell_outlined))
-                          .toList(),
-                      selectedValues: _targetMajors,
-                      onSelected: (v) => _toggle(_targetMajors, v, max: 6),
-                    ),
-                    const SizedBox(height: 14),
-                    _ChipWrap(
-                      options: _countries,
-                      selectedValues: _targetCountries,
-                      onSelected: (v) => _toggle(_targetCountries, v, max: 5),
-                    ),
-                  ],
-                ),
-              ),
-              _Section(
-                index: '04',
-                title: '学校偏好',
-                subtitle: '帮助系统过滤学校类型、排名和城市氛围。',
-                child: Column(
-                  children: [
-                    _ChoiceGrid(
-                      options: _schoolTypes,
-                      selectedValues: _selectedSchoolTypes,
-                      onSelected: (v) => _toggle(_selectedSchoolTypes, v),
-                    ),
-                    const SizedBox(height: 14),
-                    _ChoiceGrid(
-                      options: _rankingSensitivityOptions,
-                      selectedValue: _rankingSensitivity,
-                      onSelected: (v) => _setSingle(
-                        v,
-                        _rankingSensitivity,
-                        (next) => _rankingSensitivity = next,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _ChoiceGrid(
-                      options: _cityPreferences,
-                      selectedValue: _cityPreference,
-                      onSelected: (v) => _setSingle(
-                        v,
-                        _cityPreference,
-                        (next) => _cityPreference = next,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _Section(
-                index: '05',
-                title: '作品集状态',
-                subtitle: '作品集阶段会影响时间线和服务建议。',
-                child: Column(
-                  children: [
-                    _ChoiceGrid(
-                      options: _portfolioStatuses,
-                      selectedValue: _portfolioStatus,
-                      onSelected: (v) => _setSingle(
-                        v,
-                        _portfolioStatus,
-                        (next) => _portfolioStatus = next,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _ChipWrap(
-                      options: _portfolioStyles,
-                      selectedValues: _selectedPortfolioStyles,
-                      onSelected: (v) =>
-                          _toggle(_selectedPortfolioStyles, v, max: 3),
-                    ),
-                  ],
-                ),
-              ),
-              _Section(
-                index: '06',
-                title: '语言能力',
-                subtitle: '填写考试类型和当前分数或状态。',
-                child: Column(
-                  children: [
-                    _ChoiceGrid(
-                      options: _englishTypes,
-                      selectedValue: _englishTestType,
-                      compact: true,
-                      onSelected: (v) => _setSingle(
-                        v,
-                        _englishTestType,
-                        (next) => _englishTestType = next,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    _ProfileTextField(
-                      controller: _englishScoreCtrl,
-                      label: '英语成绩',
-                      hint: '例如：IELTS 6.5 / TOEFL 92 / 未考',
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ],
-                ),
-              ),
-              _Section(
-                index: '07',
-                title: '预算与现实',
-                subtitle: '预算、奖学金和家庭支持会影响国家与院校建议。',
-                child: Column(
-                  children: [
-                    _ChoiceGrid(
-                      options: _budgetRanges,
-                      selectedValue: _budgetRange,
-                      onSelected: (v) => _setSingle(
-                        v,
-                        _budgetRange,
-                        (next) => _budgetRange = next,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _ChoiceGrid(
-                      options: _scholarshipNeeds,
-                      selectedValue: _scholarshipNeed,
-                      compact: true,
-                      onSelected: (v) => _setSingle(
-                        v,
-                        _scholarshipNeed,
-                        (next) => _scholarshipNeed = next,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _ChoiceGrid(
-                      options: _familySupportLevels,
-                      selectedValue: _familySupport,
-                      compact: true,
-                      onSelected: (v) => _setSingle(
-                        v,
-                        _familySupport,
-                        (next) => _familySupport = next,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _Section(
-                index: '08',
-                title: '时间线',
-                subtitle: '选择你计划入学的时间。',
-                child: _ChoiceGrid(
-                  options: _targetIntakes,
-                  selectedValue: _targetIntake,
-                  compact: true,
-                  onSelected: (v) => _setSingle(
-                    v,
-                    _targetIntake,
-                    (next) => _targetIntake = next,
-                  ),
-                ),
-              ),
-              _Section(
-                index: '09',
-                title: '个性化信号',
-                subtitle: '这些会让推荐更接近你的真实偏好。',
-                child: Column(
-                  children: [
-                    _ProfileTextField(
-                      controller: _favoriteCtrl,
-                      label: '喜欢的艺术家、品牌或风格',
-                      hint: '例如：川久保玲、包豪斯、影像装置、手工材料',
-                      maxLines: 3,
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    const SizedBox(height: 14),
-                    _ChipWrap(
-                      options: _priorityOptions,
-                      selectedValues: _priorityFactors,
-                      onSelected: (v) => _toggle(_priorityFactors, v, max: 5),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 260),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          child: _started
+              ? _buildStepBody(key: ValueKey<int>(_currentStep))
+              : _buildIntro(key: const ValueKey('intro')),
         ),
       ),
     );
   }
-}
 
-class _Section extends StatelessWidget {
-  const _Section({
-    required this.index,
-    required this.title,
-    required this.subtitle,
-    required this.child,
-  });
-
-  final String index;
-  final String title;
-  final String subtitle;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
+  Widget _buildIntro({Key? key}) {
+    return SingleChildScrollView(
+      key: key,
+      padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: kCobalt.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  index,
-                  style: const TextStyle(
-                    color: kCobalt,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
+                      '完善你的艺术画像',
                       style: TextStyle(
+                        fontSize: 31,
+                        fontWeight: FontWeight.w900,
                         color: context.artC.ink,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
+                        height: 1.08,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 10),
                     Text(
-                      subtitle,
+                      '让 Artiqore 根据你的身份、目标和现实条件推荐更合适的院校与内容。',
                       style: TextStyle(
-                        color: context.artC.ink.withValues(alpha: 0.48),
-                        fontSize: 12,
-                        height: 1.35,
+                        fontSize: 14,
+                        color: context.artC.ink.withValues(alpha: 0.56),
+                        height: 1.5,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 16),
+              _AvatarPicker(
+                avatarUrl: _avatarUrl,
+                uploading: _uploading.contains('avatar'),
+                onTap:
+                    _uploading.contains('avatar') ? null : _pickAndUploadAvatar,
+              ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 34),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(
+                color: context.artC.silver.withValues(alpha: 0.34),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: context.artC.ink.withValues(alpha: 0.045),
+                  blurRadius: 22,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _IntroRow(
+                  icon: Icons.layers_outlined,
+                  title: '4 个轻量步骤',
+                  subtitle: '每次只做一个小选择，不再面对长表单。',
+                ),
+                SizedBox(height: 18),
+                _IntroRow(
+                  icon: Icons.schedule_rounded,
+                  title: '约 3 分钟完成',
+                  subtitle: '先收集核心必填项，其他细节以后再补。',
+                ),
+                SizedBox(height: 18),
+                _IntroRow(
+                  icon: Icons.auto_awesome_rounded,
+                  title: '生成初始推荐画像',
+                  subtitle: '用于选校、专业、案例和 AI 咨询的基础判断。',
+                ),
+              ],
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              _error!,
+              style: const TextStyle(fontSize: 12, color: Colors.red),
+            ),
+          ],
+          const SizedBox(height: 34),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => setState(() => _started = true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kCobalt,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 17),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+              child: const Text(
+                '开始定制 · 约 3 分钟',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepBody({Key? key}) {
+    return SingleChildScrollView(
+      key: key,
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 140),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _StepHeader(
+            step: _currentStep + 1,
+            title: switch (_currentStep) {
+              0 => '你是谁？',
+              1 => '你想去哪？',
+              2 => '现实条件如何？',
+              _ => '你的艺术偏好？',
+            },
+            subtitle: switch (_currentStep) {
+              0 => '先确认身份、目标学位和当前阶段。',
+              1 => '选择申请方向、目标专业和国家偏好。',
+              2 => '告诉我们作品集进度、申请时间和预算。',
+              _ => '这些是可选信息，会让推荐更像你。',
+            },
+            onBack: _goBack,
+            onSkip: _currentStep == 3 ? _submit : null,
+            saving: _saving,
+          ),
+          const SizedBox(height: 18),
+          if (_error != null) ...[
+            Text(
+              _error!,
+              style: const TextStyle(fontSize: 12, color: Colors.red),
+            ),
+            const SizedBox(height: 14),
+          ],
+          _StepCard(child: _buildCurrentStep()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCurrentStep() {
+    return switch (_currentStep) {
+      0 => _buildIdentityStep(),
+      1 => _buildTargetStep(),
+      2 => _buildRealityStep(),
+      _ => _buildPreferenceStep(),
+    };
+  }
+
+  Widget _buildIdentityStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _QuestionBlock(
+          title: '身份角色',
+          required: true,
+          child: _ChoiceGrid(
+            options: _userRoles,
+            selectedValue: _userRole,
+            onSelected: (v) =>
+                _setSingle(v, _userRole, (next) => _userRole = next),
+          ),
+        ),
+        _QuestionBlock(
+          title: '目标学位',
+          required: true,
+          child: _ChoiceGrid(
+            options: _targetDegrees,
+            selectedValue: _targetDegree,
+            onSelected: (v) =>
+                _setSingle(v, _targetDegree, (next) => _targetDegree = next),
+          ),
+        ),
+        _QuestionBlock(
+          title: '当前阶段',
+          required: true,
+          child: _ChoiceGrid(
+            options: _educationStages,
+            selectedValue: _educationStage,
+            compact: true,
+            onSelected: (v) => _setSingle(
+              v,
+              _educationStage,
+              (next) => _educationStage = next,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTargetStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _QuestionBlock(
+          title: '目标方向',
+          child: _ChoiceGrid(
+            options: _directions,
+            selectedValues: _targetDirections,
+            onSelected: (v) {
+              setState(() {
+                if (_targetDirections.contains(v)) {
+                  _targetDirections.remove(v);
+                } else {
+                  _targetDirections.add(v);
+                }
+                _targetMajors.removeWhere((major) {
+                  final item = _majors.firstWhere((m) => m.value == major);
+                  return _targetDirections.isNotEmpty &&
+                      !_targetDirections.contains(item.category);
+                });
+              });
+            },
+          ),
+        ),
+        _QuestionBlock(
+          title: '目标专业',
+          required: true,
+          trailing: '${_targetMajors.length}/6',
+          child: _ChipWrap(
+            options: _visibleMajors
+                .map((m) =>
+                    _ProfileOption(m.value, m.label, Icons.sell_outlined))
+                .toList(),
+            selectedValues: _targetMajors,
+            max: 6,
+            onSelected: (v) => _toggle(_targetMajors, v, max: 6),
+          ),
+        ),
+        _QuestionBlock(
+          title: '目标国家',
+          required: true,
+          trailing: '${_targetCountries.length}/5',
+          child: _ChipWrap(
+            options: _countries,
+            selectedValues: _targetCountries,
+            max: 5,
+            onSelected: (v) => _toggle(_targetCountries, v, max: 5),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRealityStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _QuestionBlock(
+          title: '作品集状态',
+          required: true,
+          child: _ChoiceGrid(
+            options: _portfolioStatuses,
+            selectedValue: _portfolioStatus,
+            onSelected: (v) => _setSingle(
+              v,
+              _portfolioStatus,
+              (next) => _portfolioStatus = next,
+            ),
+          ),
+        ),
+        _QuestionBlock(
+          title: '申请时间',
+          required: true,
+          child: _ChoiceGrid(
+            options: _targetIntakes,
+            selectedValue: _targetIntake,
+            compact: true,
+            onSelected: (v) =>
+                _setSingle(v, _targetIntake, (next) => _targetIntake = next),
+          ),
+        ),
+        _QuestionBlock(
+          title: '预算范围',
+          child: _ChoiceGrid(
+            options: _budgetRanges,
+            selectedValue: _budgetRange,
+            onSelected: (v) =>
+                _setSingle(v, _budgetRange, (next) => _budgetRange = next),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPreferenceStep() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _ProfileTextField(
+          controller: _favoriteCtrl,
+          label: '喜欢的艺术家、品牌或风格',
+          hint: '例如：川久保玲、包豪斯、影像装置、手工材料',
+          maxLines: 3,
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 18),
+        _QuestionBlock(
+          title: '优先考虑因素',
+          trailing: '${_priorityFactors.length}/5',
+          child: _ChipWrap(
+            options: _priorityOptions,
+            selectedValues: _priorityFactors,
+            max: 5,
+            onSelected: (v) => _toggle(_priorityFactors, v, max: 5),
+          ),
+        ),
+        _QuestionBlock(
+          title: '学校类型偏好',
+          child: _ChoiceGrid(
+            options: _schoolTypes,
+            selectedValues: _selectedSchoolTypes,
+            onSelected: (v) => _toggle(_selectedSchoolTypes, v),
+          ),
+        ),
+        _QuestionBlock(
+          title: '排名敏感度',
+          child: _ChoiceGrid(
+            options: _rankingSensitivityOptions,
+            selectedValue: _rankingSensitivity,
+            onSelected: (v) => _setSingle(
+              v,
+              _rankingSensitivity,
+              (next) => _rankingSensitivity = next,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStepNavigation() {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+        decoration: BoxDecoration(
+          color: context.artC.porcelain.withValues(alpha: 0.97),
+          border: Border(
+            top: BorderSide(color: context.artC.silver.withValues(alpha: 0.5)),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      minHeight: 6,
+                      value: _stepProgress,
+                      backgroundColor:
+                          context.artC.silver.withValues(alpha: 0.7),
+                      color: kCobalt,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '${((_stepProgress) * 100).round()}%',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: context.artC.ink.withValues(alpha: 0.55),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _stepCanContinue && !_saving ? _goNext : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _stepCanContinue ? kCobalt : kCobaltMuted,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: kCobaltMuted,
+                  disabledForegroundColor: Colors.white.withValues(alpha: 0.7),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(kRadiusMedium),
+                  ),
+                ),
+                child: _saving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        _primaryActionLabel,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AvatarPicker extends StatelessWidget {
+  const _AvatarPicker({
+    required this.avatarUrl,
+    required this.uploading,
+    required this.onTap,
+  });
+
+  final String? avatarUrl;
+  final bool uploading;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 68,
+        height: 68,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: context.artC.silver, width: 2),
+          boxShadow: [kShadowCard],
+        ),
+        child: uploading
+            ? const Padding(
+                padding: EdgeInsets.all(20),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: kCobalt,
+                ),
+              )
+            : avatarUrl != null
+                ? ClipOval(
+                    child: Image.network(
+                      avatarUrl!,
+                      width: 68,
+                      height: 68,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                          Icons.add_a_photo_outlined,
+                          color: kCobalt,
+                          size: 24),
+                    ),
+                  )
+                : const Icon(
+                    Icons.add_a_photo_outlined,
+                    color: kCobalt,
+                    size: 24,
+                  ),
+      ),
+    );
+  }
+}
+
+class _IntroRow extends StatelessWidget {
+  const _IntroRow({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: kCobalt.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Icon(icon, size: 21, color: kCobalt),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  color: context.artC.ink,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.38,
+                  fontWeight: FontWeight.w600,
+                  color: context.artC.ink.withValues(alpha: 0.48),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StepHeader extends StatelessWidget {
+  const _StepHeader({
+    required this.step,
+    required this.title,
+    required this.subtitle,
+    required this.onBack,
+    required this.saving,
+    this.onSkip,
+  });
+
+  final int step;
+  final String title;
+  final String subtitle;
+  final VoidCallback onBack;
+  final VoidCallback? onSkip;
+  final bool saving;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            GestureDetector(
+              onTap: onBack,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: context.artC.silver.withValues(alpha: 0.58),
+                  ),
+                ),
+                child: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 17,
+                  color: context.artC.ink,
+                ),
+              ),
+            ),
+            const Spacer(),
+            if (onSkip != null)
+              TextButton(
+                onPressed: saving ? null : onSkip,
+                child: Text(
+                  '跳过，直接进入系统',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: context.artC.ink.withValues(alpha: 0.48),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 22),
+        Text(
+          'STEP $step / 4',
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.8,
+            color: kCobalt,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 30,
+            height: 1.08,
+            fontWeight: FontWeight.w900,
+            color: context.artC.ink,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 14,
+            height: 1.45,
+            fontWeight: FontWeight.w600,
+            color: context.artC.ink.withValues(alpha: 0.52),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StepCard extends StatelessWidget {
+  const _StepCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: context.artC.silver.withValues(alpha: 0.32)),
+        boxShadow: [
+          BoxShadow(
+            color: context.artC.ink.withValues(alpha: 0.04),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _QuestionBlock extends StatelessWidget {
+  const _QuestionBlock({
+    required this.title,
+    required this.child,
+    this.required = false,
+    this.trailing,
+  });
+
+  final String title;
+  final Widget child;
+  final bool required;
+  final String? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  color: context.artC.ink,
+                ),
+              ),
+              if (required) ...[
+                const SizedBox(width: 4),
+                const Text(
+                  '*',
+                  style: TextStyle(
+                    color: Color(0xFFC62828),
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+              const Spacer(),
+              if (trailing != null)
+                Text(
+                  trailing!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: context.artC.ink.withValues(alpha: 0.38),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
           child,
         ],
       ),
@@ -1062,11 +1274,13 @@ class _ChipWrap extends StatelessWidget {
     required this.options,
     required this.selectedValues,
     required this.onSelected,
+    this.max,
   });
 
   final List<_ProfileOption> options;
   final Set<String> selectedValues;
   final ValueChanged<String> onSelected;
+  final int? max;
 
   @override
   Widget build(BuildContext context) {
@@ -1075,16 +1289,25 @@ class _ChipWrap extends StatelessWidget {
       runSpacing: 8,
       children: options.map((option) {
         final selected = selectedValues.contains(option.value);
+        final disabled =
+            max != null && selectedValues.length >= max! && !selected;
         return GestureDetector(
-          onTap: () => onSelected(option.value),
+          onTap: disabled ? null : () => onSelected(option.value),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: selected ? kCobalt : Colors.white,
+              color: selected
+                  ? kCobalt
+                  : disabled
+                      ? context.artC.silver.withValues(alpha: 0.22)
+                      : Colors.white,
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
-                color: selected ? kCobalt : context.artC.silver,
+                color: selected
+                    ? kCobalt
+                    : context.artC.silver
+                        .withValues(alpha: disabled ? 0.32 : 1),
               ),
             ),
             child: Text(
@@ -1092,7 +1315,8 @@ class _ChipWrap extends StatelessWidget {
               style: TextStyle(
                 color: selected
                     ? Colors.white
-                    : context.artC.ink.withValues(alpha: 0.66),
+                    : context.artC.ink
+                        .withValues(alpha: disabled ? 0.28 : 0.66),
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../cases/cases_screen.dart';
 import '../programs/program_list_enhanced_screen.dart';
 import '../schools/school_list_screen.dart';
+import 'my_tracker_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 class ApplicationScreen extends StatefulWidget {
@@ -46,6 +47,7 @@ class _ApplicationScreenState extends State<ApplicationScreen> {
                         widget.onProgramSearchToolsChanged,
                   ),
                   const CasesScreen(),
+                  const MyTrackerScreen(),
                 ],
               ),
             ),

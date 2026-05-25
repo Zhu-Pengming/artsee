@@ -131,6 +131,7 @@ export interface ConsultInput {
 }
 
 export interface Source {
+  schoolId?: string;
   schoolName?: string;
   heading: string;
   similarity: number;
@@ -299,6 +300,7 @@ export async function runConsultStages(input: ConsultInput): Promise<ConsultStag
     systemPrompt,
     userMessage,
     sources: knowledgeChunks.map((c) => ({
+      schoolId: c.schoolId,
       schoolName: c.schoolName,
       heading: c.headingPath,
       similarity: c.similarity,

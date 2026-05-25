@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../config/dev_test_account.dart';
 import '../../services/supabase_service.dart';
 import '../../services/backend_api_service.dart';
-import '../../widgets/common.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -38,6 +37,9 @@ const _greyscale = ColorFilter.matrix([
 ]);
 
 class _LoginScreenState extends State<LoginScreen> {
+  static const _graphite = Color(0xFF111111);
+  static const _fieldFill = Color(0xFFF7F7F5);
+
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -213,13 +215,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            context.artC.ink.withValues(alpha: 0.45),
-                            context.artC.ink.withValues(alpha: 0.1),
-                            Colors.transparent,
+                            context.artC.ink.withValues(alpha: 0.5),
+                            context.artC.ink.withValues(alpha: 0.12),
+                            context.artC.ink.withValues(alpha: 0.18),
+                            context.artC.ink.withValues(alpha: 0.58),
                           ],
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          stops: const [0.0, 0.4, 1.0],
+                          stops: const [0.0, 0.38, 0.62, 1.0],
                         ),
                       ),
                     ),
@@ -315,7 +318,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: SafeArea(
                 top: false,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(28, 32, 28, 20),
+                  padding: const EdgeInsets.fromLTRB(28, 42, 28, 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -354,8 +357,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               _isLogin ? '登录' : '注册',
                               key: ValueKey<bool>(_isLogin),
                               style: TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w900,
                                 color: context.artC.ink,
                                 height: 1.2,
                               ),
@@ -363,7 +366,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 34),
                       Form(
                         key: _formKey,
                         child: Column(
@@ -410,17 +413,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                 textAlign: TextAlign.center,
                               ),
                             ],
-                            const SizedBox(height: 28),
+                            const SizedBox(height: 30),
                             SizedBox(
                               height: 54,
                               child: ElevatedButton(
                                 onPressed: _loading ? null : _submit,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: kCobalt,
+                                  backgroundColor: _graphite,
+                                  disabledBackgroundColor:
+                                      _graphite.withValues(alpha: 0.46),
                                   foregroundColor: Colors.white,
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(16),
                                   ),
                                 ),
                                 child: _loading
@@ -455,7 +460,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12),
                                   child: Text(
-                                    '或使用以下方式登录',
+                                    '其他登录方式',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: context.artC.ink
@@ -473,18 +478,18 @@ class _LoginScreenState extends State<LoginScreen> {
                               ],
                             ),
                             const SizedBox(height: 18),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _SocialButton(
-                                  icon: Icons.chat_bubble_outline,
-                                  onTap: () {
-                                    // TODO: 微信登录
-                                  },
-                                ),
-                              ],
+                            _SecondaryAuthButton(
+                              icon: Icons.phone_iphone_rounded,
+                              label: '手机验证码登录',
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('手机验证码登录即将开放'),
+                                  ),
+                                );
+                              },
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 18),
                             GestureDetector(
                               onTap: () => setState(() => _isLogin = !_isLogin),
                               child: Text(
@@ -498,7 +503,30 @@ class _LoginScreenState extends State<LoginScreen> {
                                 textAlign: TextAlign.center,
                               ),
                             ),
-                            const SizedBox(height: 40),
+                            const SizedBox(height: 30),
+                            Center(
+                              child: GestureDetector(
+                                onTap: () => Navigator.pop(context),
+                                onLongPress: devLoginShortcutsEnabled
+                                    ? (_loading ? null : _devQuickLogin)
+                                    : null,
+                                behavior: HitTestBehavior.opaque,
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8),
+                                  child: Text(
+                                    '先去逛逛  →',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: context.artC.ink
+                                          .withValues(alpha: 0.46),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
                           ],
                         ),
                       ),
@@ -508,30 +536,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-          if (devLoginShortcutsEnabled)
-            Positioned(
-              bottom: 10,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: GestureDetector(
-                  onTap: _loading ? null : _devQuickLogin,
-                  child: Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: context.artC.silver.withValues(alpha: 0.35),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.login,
-                      size: 22,
-                      color: context.artC.ink.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -557,57 +561,89 @@ class _LoginScreenState extends State<LoginScreen> {
         hintStyle: TextStyle(
           fontSize: 14,
           color: context.artC.ink.withValues(alpha: 0.35),
+          fontWeight: FontWeight.w600,
         ),
         filled: true,
-        fillColor: context.artC.silver.withValues(alpha: 0.35),
+        fillColor: _fieldFill,
         prefixIcon: Icon(icon,
             size: 20, color: context.artC.ink.withValues(alpha: 0.35)),
         contentPadding: const EdgeInsets.symmetric(vertical: 18),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(
+            color: context.artC.silver.withValues(alpha: 0.38),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: _graphite, width: 1.2),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(
+            color: context.artC.silver.withValues(alpha: 0.38),
+          ),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: Color(0xFFC62828), width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: Color(0xFFC62828), width: 1.2),
         ),
       ),
-      style: TextStyle(fontSize: 15, color: context.artC.ink),
+      style: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
+        color: context.artC.ink,
+      ),
     );
   }
 }
 
-class _SocialButton extends StatelessWidget {
+class _SecondaryAuthButton extends StatelessWidget {
   final IconData icon;
+  final String label;
   final VoidCallback? onTap;
 
-  const _SocialButton({required this.icon, this.onTap});
+  const _SecondaryAuthButton({
+    required this.icon,
+    required this.label,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
-        width: 52,
-        height: 52,
+        height: 50,
+        padding: const EdgeInsets.symmetric(horizontal: 18),
         decoration: BoxDecoration(
-          color: context.artC.silver.withValues(alpha: 0.35),
-          shape: BoxShape.circle,
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: context.artC.silver.withValues(alpha: 0.45),
+          ),
         ),
-        child: Icon(icon,
-            size: 22, color: context.artC.ink.withValues(alpha: 0.6)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon,
+                size: 18, color: context.artC.ink.withValues(alpha: 0.64)),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: context.artC.ink.withValues(alpha: 0.68),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

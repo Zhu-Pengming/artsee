@@ -3,6 +3,73 @@
 export 'school_detail.dart';
 export 'program_with_school.dart';
 
+class ApplicationTrackerItem {
+  final String id;
+  final String? schoolId;
+  final String? programId;
+  final String schoolName;
+  final String? programName;
+  final String tier;
+  final String status;
+  final String? deadline;
+  final String? notes;
+  final String createdAt;
+  final String? updatedAt;
+
+  const ApplicationTrackerItem({
+    required this.id,
+    this.schoolId,
+    this.programId,
+    required this.schoolName,
+    this.programName,
+    required this.tier,
+    required this.status,
+    this.deadline,
+    this.notes,
+    required this.createdAt,
+    this.updatedAt,
+  });
+
+  factory ApplicationTrackerItem.fromJson(Map<String, dynamic> json) {
+    return ApplicationTrackerItem(
+      id: json['id'].toString(),
+      schoolId: json['school_id']?.toString(),
+      programId: json['program_id']?.toString(),
+      schoolName: json['school_name']?.toString() ?? '未命名院校',
+      programName: json['program_name']?.toString(),
+      tier: json['tier']?.toString() ?? 'match',
+      status: json['status']?.toString() ?? 'planning',
+      deadline: json['deadline']?.toString(),
+      notes: json['notes']?.toString(),
+      createdAt: json['created_at']?.toString() ?? '',
+      updatedAt: json['updated_at']?.toString(),
+    );
+  }
+}
+
+class ApplicationTimelineTask {
+  final String date;
+  final String task;
+  final String schoolName;
+  final String priority;
+
+  const ApplicationTimelineTask({
+    required this.date,
+    required this.task,
+    required this.schoolName,
+    required this.priority,
+  });
+
+  factory ApplicationTimelineTask.fromJson(Map<String, dynamic> json) {
+    return ApplicationTimelineTask(
+      date: json['date']?.toString() ?? '',
+      task: json['task']?.toString() ?? '',
+      schoolName: json['schoolName']?.toString() ?? '',
+      priority: json['priority']?.toString() ?? 'medium',
+    );
+  }
+}
+
 class AppCase {
   final String id;
   final String title;
