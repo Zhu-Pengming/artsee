@@ -16,9 +16,6 @@ import { loadUserProfile, formatFullProfile, fireRecordFromTurn } from '@/lib/me
 export async function POST(request: NextRequest) {
   try {
     const user = await getUserFromBearer(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const body = await request.json();
     const { institutionIds } = body;
@@ -30,8 +27,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 加载用户画像
-    const userProfile = await loadUserProfile(user.id);
+    // 登录用户注入画像；公开原型入口无登录态时仍可生成基础择校分析。
+    const userProfile = user ? await loadUserProfile(user.id) : null;
 
     // 拉取院校数据
     const supabase = createServiceClient();
@@ -119,11 +116,13 @@ export async function POST(request: NextRequest) {
     // 异步触发 record(从用户选择的院校 IDs 推断偏好)
     // 注:这里简化处理,实际可以从用户选择行为推断 favorite_schools
     // 但按 PLAN.md 的约束,不应该从 AI 输出反哺,所以这里只记录用户行为
-    fireRecordFromTurn({
-      userId: user.id,
-      userMessage: `用户请求分析院校 ID: ${institutionIds.join(', ')}`,
-      sourceRoute: 'analyze',
-    });
+    if (user) {
+      fireRecordFromTurn({
+        userId: user.id,
+        userMessage: `用户请求分析院校 ID: ${institutionIds.join(', ')}`,
+        sourceRoute: 'analyze',
+      });
+    }
 
     return NextResponse.json({
       success: true,

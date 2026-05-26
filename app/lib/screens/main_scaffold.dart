@@ -5,12 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/common.dart';
 import 'auth/login_screen.dart';
-import 'cases/cases_screen.dart';
 import 'create/create_post_screen.dart';
 import 'explore/explore_screen.dart';
 import 'forum/forum_screen.dart';
 import 'home/home_screen.dart';
 import 'profile/profile_screen.dart';
+import 'schools/school_list_screen.dart';
 import 'tools/ai_consult_screen.dart';
 import '../services/supabase_service.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
@@ -19,9 +19,9 @@ final _forumKey = GlobalKey<ForumScreenState>();
 final _exploreKey = GlobalKey<ExploreScreenState>();
 
 /// ═══════════════════════════════════════════════════════════════
-/// Artiqore 艺衡 · 青花瓷典藏版 — 总入口（对齐艺术家 Web 原型）
-/// 底部：悬浮式深色胶囊导航；右下：情境化「+」按钮
-/// 子页：首页、发现、合作、学习、我的
+/// artiqore 艺见心 — App 总入口
+/// 信息架构以 `artiqore-艺见心-网页版前端与ui(1)` 为准。
+/// 子页：首页、灵感、院校、社区、我的。
 /// ═══════════════════════════════════════════════════════════════
 
 class MainScaffold extends StatefulWidget {
@@ -43,17 +43,17 @@ class _MainScaffoldState extends State<MainScaffold> {
     _NavItem(
       icon: Icons.explore_outlined,
       activeIcon: Icons.explore_rounded,
-      label: '发现',
+      label: '灵感',
     ),
     _NavItem(
       icon: Icons.school_outlined,
       activeIcon: Icons.school_rounded,
-      label: '学习',
+      label: '院校',
     ),
     _NavItem(
-      icon: Icons.handshake_outlined,
-      activeIcon: Icons.handshake_rounded,
-      label: '合作',
+      icon: Icons.forum_outlined,
+      activeIcon: Icons.forum_rounded,
+      label: '社区',
     ),
     _NavItem(
       icon: Icons.person_outline,
@@ -75,7 +75,7 @@ class _MainScaffoldState extends State<MainScaffold> {
       MaterialPageRoute(builder: (_) => const CreatePostScreen()),
     );
     if (!mounted || created != true) return;
-    setState(() => _currentIndex = 1);
+    setState(() => _currentIndex = 3);
     _exploreKey.currentState?.showCommunityFeed(refresh: true);
   }
 
@@ -216,8 +216,8 @@ class _MainScaffoldState extends State<MainScaffold> {
               children: [
                 const HomeScreen(),
                 ExploreScreen(key: _exploreKey),
+                const SchoolListScreen(),
                 ForumScreen(key: _forumKey),
-                const CasesScreen(),
                 const ProfileScreen(),
               ],
             ),
@@ -243,7 +243,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (_currentIndex == 1)
+                    if (_currentIndex == 3)
                       Padding(
                         padding: const EdgeInsets.only(right: 16, bottom: 8),
                         child: Align(
@@ -370,14 +370,31 @@ class _HeaderState extends State<_Header> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          Text(
-            'Artiqore',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: context.artC.ink,
-              letterSpacing: 0.3,
-            ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'artiqore',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: context.artC.ink,
+                  letterSpacing: -0.8,
+                  fontFamily: 'Noto Serif SC',
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              Text(
+                '艺见心',
+                style: TextStyle(
+                  fontSize: 8,
+                  fontWeight: FontWeight.w700,
+                  color: context.artC.ink.withOpacity(0.32),
+                  letterSpacing: 3,
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 12),
           // Search
@@ -396,7 +413,7 @@ class _HeaderState extends State<_Header> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '搜索',
+                      '搜索院校、灵感、作品集问题',
                       style: TextStyle(
                         fontSize: 12,
                         color: context.artC.ink.withOpacity(0.35),

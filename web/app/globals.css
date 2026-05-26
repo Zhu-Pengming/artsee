@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Space+Grotesk:wght@300;400;500;700&display=swap");
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
@@ -6,6 +7,8 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-poppins), var(--font-noto-sc), var(--font-sans);
+  --font-serif: "Playfair Display", serif;
+  --font-mono: "Space Grotesk", ui-monospace, monospace;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-poppins), var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -47,10 +50,25 @@
   --color-art-primary: #1a4b8c;
   --color-art-primary-light: #eef4fb;
   --color-art-primary-dark: #0d2e5a;
+  --color-porcelain: #f8f9fa;
+  --color-cobalt: #003399;
+  --color-cobalt-muted: #4a6fa5;
+  --color-ink: #1a1a1a;
+  --color-silver: #e9ecef;
   --color-warm-sand: #e8e8e2;
   --color-warm-fog: #f5f5f0;
   --color-warm-text: #1e1e1a;
   --color-warm-muted: #6b6b63;
+}
+
+@theme {
+  --font-serif: "Playfair Display", serif;
+  --font-mono: "Space Grotesk", ui-monospace, monospace;
+  --color-porcelain: #f8f9fa;
+  --color-cobalt: #003399;
+  --color-cobalt-muted: #4a6fa5;
+  --color-ink: #1a1a1a;
+  --color-silver: #e9ecef;
 }
 
 :root {
@@ -95,7 +113,10 @@
 
   body {
     @apply bg-background text-foreground;
-    background-color: #ede9e2;
+    background-color: #f8f9fa;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   html {
@@ -110,6 +131,27 @@
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.glass-morphism {
+  @apply backdrop-blur-xl bg-white/70 border border-white/20;
+}
+
+.text-editorial {
+  @apply font-serif italic tracking-tight;
+}
+
+.button-premium {
+  @apply px-8 py-4 rounded-full text-[10px] font-bold uppercase tracking-[0.3em] transition-all duration-300;
 }
 
 .card-press {

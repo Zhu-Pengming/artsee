@@ -1,4 +1,12 @@
-# Artsee / Artiqore 艺衡 — Agent 速览
+# UI reference source of truth
+
+For all frontend UI work, the latest design reference is `artiqore-艺见心-网页版前端与ui(1)/`.
+
+- Use `artiqore-艺见心-网页版前端与ui(1)/src` as the source reference for the current web and app UI.
+- The live Next.js UI is wired through `web/app/artiqore-ui/`, copied from that Chinese reference folder and adapted for Next.
+- Do not use `artlink-reference/` as the current UI baseline. It is an older April 2026 reference and must not override the current 艺见心 design.
+
+# Artsee / Artiqore 艺见心 — Agent 速览
 
 面向 AI 与协作者：**先读本段结构，再改代码。**
 

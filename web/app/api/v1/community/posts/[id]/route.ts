@@ -3,10 +3,14 @@ import { getUserFromBearer } from "@/lib/api/auth-user";
 import { createServiceClient } from "@/lib/api/supabase-service";
 
 type Ctx = { params: Promise<{ id: string }> };
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function GET(_req: NextRequest, ctx: Ctx) {
   try {
     const { id } = await ctx.params;
+    if (!UUID_RE.test(id)) {
+      return NextResponse.json({ success: false, error: "无效的帖子 ID" }, { status: 400 });
+    }
     const supabase = createServiceClient();
     const { data: row, error } = await supabase.from("community_posts").select("*").eq("id", id).maybeSingle();
 
@@ -21,9 +25,20 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
       .select("nickname, avatar_url")
       .eq("id", row.author_id)
       .maybeSingle();
+    const user = await getUserFromBearer(_req);
+    let likedByMe = false;
+    if (user) {
+      const { data: like } = await supabase
+        .from("community_post_likes")
+        .select("id")
+        .eq("post_id", id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      likedByMe = Boolean(like);
+    }
     return NextResponse.json({
       success: true,
-      data: { ...row, user_profiles: prof ?? null },
+      data: { ...row, user_profiles: prof ?? null, liked_by_me: likedByMe },
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -38,6 +53,9 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       return NextResponse.json({ success: false, error: "未授权" }, { status: 401 });
     }
     const { id } = await ctx.params;
+    if (!UUID_RE.test(id)) {
+      return NextResponse.json({ success: false, error: "无效的帖子 ID" }, { status: 400 });
+    }
     const body = await req.json();
     const supabase = createServiceClient();
 
@@ -70,6 +88,9 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
       return NextResponse.json({ success: false, error: "未授权" }, { status: 401 });
     }
     const { id } = await ctx.params;
+    if (!UUID_RE.test(id)) {
+      return NextResponse.json({ success: false, error: "无效的帖子 ID" }, { status: 400 });
+    }
     const supabase = createServiceClient();
     const { data: row } = await supabase.from("community_posts").select("author_id").eq("id", id).single();
     if (!row || row.author_id !== user.id) {

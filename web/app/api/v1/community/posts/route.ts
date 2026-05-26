@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
     }
 
     const posts = rows ?? [];
+    const user = await getUserFromBearer(req);
     const authorIds = [...new Set(posts.map((p: { author_id: string }) => p.author_id))];
     let profileMap: Record<string, { nickname: string | null; avatar_url: string | null }> = {};
     if (authorIds.length > 0) {
@@ -36,10 +37,21 @@ export async function GET(req: NextRequest) {
         ])
       );
     }
+    const postIds = posts.map((p: { id: string }) => p.id);
+    let likedIds = new Set<string>();
+    if (user && postIds.length > 0) {
+      const { data: likes } = await supabase
+        .from("community_post_likes")
+        .select("post_id")
+        .eq("user_id", user.id)
+        .in("post_id", postIds);
+      likedIds = new Set((likes ?? []).map((item: { post_id: string }) => item.post_id));
+    }
 
     const data = posts.map((p: Record<string, unknown>) => ({
       ...p,
       user_profiles: profileMap[String(p.author_id)] ?? null,
+      liked_by_me: likedIds.has(String(p.id)),
     }));
 
     return NextResponse.json({ success: true, data, pagination: { limit, offset } });

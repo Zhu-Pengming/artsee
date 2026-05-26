@@ -71,7 +71,7 @@ class _ArtseeAppState extends State<ArtseeApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Artiqore 艺衡',
+      title: 'artiqore 艺见心',
       debugShowCheckedModeBanner: false,
       scrollBehavior: const ArtseeScrollBehavior(),
       theme: buildArtseeLightTheme(),

@@ -4,6 +4,10 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
+# UI reference source of truth
+
+For frontend UI work, use `../artiqore-艺见心-网页版前端与ui(1)/src` as the source reference. The Next.js UI currently lives in `app/artiqore-ui/`, copied from that Chinese folder and adapted for Next. Do not use `../artlink-reference/` as the current UI baseline.
+
 # Artsee Next.js（`web/`）
 
 - **仓库总览**：根目录 [`../AGENTS.md`](../AGENTS.md)。
