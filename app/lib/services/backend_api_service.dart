@@ -1,10 +1,22 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/api_config.dart';
 import '../models/models.dart';
+
+class ApiException implements Exception {
+  final int code;
+  final String message;
+  final String? requestId;
+
+  ApiException({required this.code, required this.message, this.requestId});
+
+  @override
+  String toString() => 'ApiException($code): $message';
+}
 
 /// 通过 Next.js（`web/`）访问 Supabase 中的业务数据，与 Flutter 直连并存时可逐步迁移。
 class BackendApiService {
@@ -18,13 +30,136 @@ class BackendApiService {
 
   static Future<Map<String, String>> _headers({bool withAuth = false}) async {
     final h = <String, String>{
-      'Content-Type': 'application/json; charset=utf-8'
+      'Accept': 'application/json',
+      'Content-Type': 'application/json; charset=utf-8',
     };
     if (withAuth) {
       final t = Supabase.instance.client.auth.currentSession?.accessToken;
       if (t != null) h['Authorization'] = 'Bearer $t';
     }
     return h;
+  }
+
+  static Future<Map<String, String>> _authHeaders() async {
+    final h = <String, String>{};
+    final t = Supabase.instance.client.auth.currentSession?.accessToken;
+    if (t != null) h['Authorization'] = 'Bearer $t';
+    return h;
+  }
+
+  static Map<String, dynamic> _decodeBody(http.Response r) {
+    Map<String, dynamic> decoded;
+    try {
+      decoded = jsonDecode(r.body) as Map<String, dynamic>;
+    } on FormatException {
+      final preview = r.body
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      throw ApiException(
+        code: r.statusCode,
+        message: '后端返回非 JSON：${preview.length > 120 ? '${preview.substring(0, 120)}...' : preview}',
+      );
+    }
+    final code = decoded['code'] as int? ?? r.statusCode;
+    final message = (decoded['message'] is String ? decoded['message'] as String? : null) 
+                 ?? (decoded['error'] is String ? decoded['error'] as String? : null);
+    
+    if (code == 401) {
+      throw ApiException(code: code, message: message ?? '未授权，请重新登录');
+    }
+    if ((r.statusCode < 200 || r.statusCode >= 300) ||
+        decoded['success'] == false) {
+      throw ApiException(
+        code: code,
+        message: message ?? '接口请求失败',
+        requestId: decoded['requestId'] as String?,
+      );
+    }
+    return decoded;
+  }
+
+  static bool _refreshing = false;
+
+  static Future<Map<String, dynamic>> _requestJson(
+    String method,
+    String path, {
+    Map<String, String>? query,
+    Map<String, dynamic>? body,
+    bool withAuth = false,
+  }) async {
+    final uri = _api(path, query);
+    var headers = await _headers(withAuth: withAuth);
+    final payload = body == null ? null : jsonEncode(body);
+    
+    http.Response r;
+    try {
+      r = switch (method) {
+        'GET' => await http.get(uri, headers: headers),
+        'POST' => await http.post(uri, headers: headers, body: payload),
+        'PUT' => await http.put(uri, headers: headers, body: payload),
+        'PATCH' => await http.patch(uri, headers: headers, body: payload),
+        'DELETE' => await http.delete(uri, headers: headers, body: payload),
+        _ => throw ArgumentError('Unsupported method $method'),
+      };
+      return _decodeBody(r);
+    } on ApiException catch (e) {
+      if (e.code == 401 && withAuth && !_refreshing) {
+        _refreshing = true;
+        try {
+          final refreshed = await Supabase.instance.client.auth.refreshSession();
+          if (refreshed.session != null) {
+            headers = await _headers(withAuth: withAuth);
+            r = switch (method) {
+              'GET' => await http.get(uri, headers: headers),
+              'POST' => await http.post(uri, headers: headers, body: payload),
+              'PUT' => await http.put(uri, headers: headers, body: payload),
+              'PATCH' => await http.patch(uri, headers: headers, body: payload),
+              'DELETE' => await http.delete(uri, headers: headers, body: payload),
+              _ => throw ArgumentError('Unsupported method $method'),
+            };
+            return _decodeBody(r);
+          }
+        } finally {
+          _refreshing = false;
+        }
+      }
+      rethrow;
+    }
+  }
+
+  static Map<String, String> _params({
+    int? limit,
+    int? offset,
+    Map<String, String?> extra = const {},
+  }) {
+    final params = <String, String>{};
+    if (limit != null) params['limit'] = '$limit';
+    if (offset != null) params['offset'] = '$offset';
+    for (final entry in extra.entries) {
+      final value = entry.value;
+      if (value != null && value.isNotEmpty) params[entry.key] = value;
+    }
+    return params;
+  }
+
+  static ({
+    List<Map<String, dynamic>> data,
+    int? count,
+    int limit,
+    int offset
+  }) _paginated(
+    Map<String, dynamic> decoded, {
+    int limit = 20,
+    int offset = 0,
+  }) {
+    final pagination = decoded['pagination'] as Map<String, dynamic>?;
+    return (
+      data: (decoded['data'] as List<dynamic>? ?? [])
+          .cast<Map<String, dynamic>>(),
+      count: decoded['count'] as int?,
+      limit: pagination?['limit'] as int? ?? limit,
+      offset: pagination?['offset'] as int? ?? offset,
+    );
   }
 
   static Future<List<AppCase>> fetchCases({
@@ -62,10 +197,17 @@ class BackendApiService {
     return AppCase.fromJson(body['data'] as Map<String, dynamic>);
   }
 
-  static Future<List<AppCommunityPost>> fetchCommunityPosts(
-      {int limit = 20}) async {
+  static Future<List<AppCommunityPost>> fetchCommunityPosts({
+    int limit = 20,
+    int offset = 0,
+    String? kind,
+  }) async {
     final r = await http.get(
-      _api('/api/v1/community/posts', {'limit': '$limit'}),
+      _api('/api/v1/community/posts', {
+        'limit': '$limit',
+        'offset': '$offset',
+        if (kind != null) 'kind': kind,
+      }),
       headers: await _headers(),
     );
     final body = jsonDecode(r.body) as Map<String, dynamic>;
@@ -229,6 +371,35 @@ class BackendApiService {
         int? count,
         int limit,
         int offset
+      })> fetchArticles({
+    int limit = 20,
+    int offset = 0,
+    String? category,
+    String? keyword,
+    bool? featured,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/articles',
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {
+          'category': category,
+          'keyword': keyword,
+          'featured': featured == null ? null : '$featured',
+        },
+      ),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
       })> fetchSchools({
     int limit = 20,
     int offset = 0,
@@ -274,6 +445,29 @@ class BackendApiService {
     );
   }
 
+  static Future<Map<String, dynamic>> compareSchools({
+    required List<String> schoolIds,
+    List<String> dimensions = const [
+      'rank',
+      'location',
+      'portfolio',
+      'programs',
+      'cost',
+      'career',
+    ],
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/schools/compare',
+      withAuth: true,
+      body: {
+        'school_ids': schoolIds,
+        'dimensions': dimensions,
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
   static Future<AppProgram?> fetchProgram(String id) async {
     final r =
         await http.get(_api('/api/v1/programs/$id'), headers: await _headers());
@@ -312,10 +506,165 @@ class BackendApiService {
     return aiSchoolSearch(query, limitSchools: limitSchools);
   }
 
+  /// 统一 AI 咨询入口：适合首页「意见 AI」和普通问答。
+  static Future<Map<String, dynamic>> aiConsult(
+    String query, {
+    String mode = 'short',
+    String? schoolId,
+    Map<String, dynamic>? userProfile,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/ai/consult',
+      withAuth: true,
+      body: {
+        'query': query,
+        'mode': mode,
+        if (schoolId != null) 'schoolId': schoolId,
+        if (userProfile != null) 'userProfile': userProfile,
+      },
+    );
+    return decoded;
+  }
+
+  static Stream<String> streamAiChat({
+    required List<Map<String, String>> messages,
+    Map<String, dynamic>? context,
+  }) async* {
+    final request = http.Request('POST', _api('/api/v1/ai/chat'));
+    request.headers.addAll(await _headers(withAuth: true));
+    request.headers['Accept'] = 'text/event-stream';
+    request.body = jsonEncode({
+      'messages': messages,
+      if (context != null) 'context': context,
+    });
+
+    final client = http.Client();
+    final response = await client.send(request);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final errorBody = await response.stream.bytesToString();
+      throw ApiException(
+        code: response.statusCode,
+        message: errorBody.isEmpty ? 'AI 对话失败' : errorBody,
+      );
+    }
+
+    try {
+      await for (final line in response.stream
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())) {
+        if (!line.startsWith('data: ')) continue;
+        final raw = line.substring(6).trim();
+        if (raw == '[DONE]') break;
+        final decoded = jsonDecode(raw) as Map<String, dynamic>;
+        final text = decoded['text'] as String?;
+        if (text != null && text.isNotEmpty) yield text;
+      }
+    } finally {
+      client.close();
+    }
+  }
+
+  static Future<Map<String, dynamic>> aiAnalyze(
+    List<String> institutionIds,
+  ) async {
+    return _requestJson(
+      'POST',
+      '/api/v1/ai/analyze',
+      withAuth: true,
+      body: {'institutionIds': institutionIds},
+    );
+  }
+
+  static Future<Map<String, dynamic>> aiRecord({
+    required String content,
+    String kind = 'pin',
+    String? conversationId,
+    String? messageId,
+  }) async {
+    return _requestJson(
+      'POST',
+      '/api/v1/ai/record',
+      withAuth: true,
+      body: {
+        'content': content,
+        'kind': kind,
+        if (conversationId != null) 'conversationId': conversationId,
+        if (messageId != null) 'messageId': messageId,
+      },
+    );
+  }
+
+  static Future<List<Map<String, dynamic>>> getAiConversations() async {
+    final decoded = await _requestJson('GET', '/api/v1/ai/conversations', withAuth: true);
+    final conversations = decoded['conversations'] as List<dynamic>?;
+    return conversations?.cast<Map<String, dynamic>>() ?? [];
+  }
+
+  static Future<Map<String, dynamic>> createAiConversation({String? title}) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/ai/conversations',
+      withAuth: true,
+      body: {'title': title ?? '新对话'},
+    );
+    return decoded['conversation'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> getAiConversation(String conversationId) async {
+    return _requestJson('GET', '/api/v1/ai/conversations/$conversationId', withAuth: true);
+  }
+
+  static Future<void> deleteAiConversation(String conversationId) async {
+    await _requestJson('DELETE', '/api/v1/ai/conversations/$conversationId', withAuth: true);
+  }
+
+  static Future<Map<String, dynamic>> saveAiMessage({
+    required String conversationId,
+    required String role,
+    required String content,
+    Map<String, dynamic>? metadata,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/ai/conversations/$conversationId/messages',
+      withAuth: true,
+      body: {
+        'role': role,
+        'content': content,
+        if (metadata != null) 'metadata': metadata,
+      },
+    );
+    print('💬 saveAiMessage 返回: $decoded');
+    print('💬 decoded[\'message\'] 类型: ${decoded['message'].runtimeType}');
+    return decoded['message'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> searchKnowledge({
+    required String query,
+    String? schoolId,
+    double? matchThreshold,
+    int matchCount = 5,
+    String? userId,
+  }) async {
+    return _requestJson(
+      'POST',
+      '/api/v1/knowledge/search',
+      body: {
+        'query': query,
+        if (schoolId != null) 'schoolId': schoolId,
+        if (matchThreshold != null) 'matchThreshold': matchThreshold,
+        'matchCount': matchCount,
+        if (userId != null) 'userId': userId,
+      },
+    );
+  }
+
   static Future<void> createCommunityPost({
     required String title,
     String? body,
     List<String> imageUrls = const [],
+    Map<String, dynamic>? metadata,
   }) async {
     final r = await http.post(
       _api('/api/v1/community/posts'),
@@ -324,6 +673,7 @@ class BackendApiService {
         'title': title,
         'body': body,
         'image_urls': imageUrls,
+        if (metadata != null) 'metadata': metadata,
       }),
     );
     final decoded = jsonDecode(r.body) as Map<String, dynamic>;
@@ -333,6 +683,118 @@ class BackendApiService {
     if (decoded['success'] != true) {
       throw Exception(decoded['error'] ?? '发布失败');
     }
+  }
+
+  static Future<({List<Map<String, dynamic>> data, int? count, int limit, int offset})>
+      fetchCommunityCircles({
+    int limit = 30,
+    int offset = 0,
+    String? category,
+    String? keyword,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/community/circles',
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {
+          'category': category,
+          'keyword': keyword,
+        },
+      ),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> createCommunityCircle(
+    Map<String, dynamic> body,
+  ) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/community/circles',
+      withAuth: true,
+      body: body,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchConversations({
+    int limit = 30,
+    int offset = 0,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/conversations',
+      withAuth: true,
+      query: _params(limit: limit, offset: offset),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> createConversation({
+    required List<String> participantIds,
+    String type = 'direct',
+    String? title,
+    Map<String, dynamic>? metadata,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/conversations',
+      withAuth: true,
+      body: {
+        'participant_ids': participantIds,
+        'type': type,
+        if (title != null) 'title': title,
+        if (metadata != null) 'metadata': metadata,
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchConversationMessages({
+    required String conversationId,
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/conversations/$conversationId/messages',
+      withAuth: true,
+      query: _params(limit: limit, offset: offset),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> sendConversationMessage({
+    required String conversationId,
+    required String body,
+    String messageType = 'text',
+    Map<String, dynamic>? metadata,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/conversations/$conversationId/messages',
+      withAuth: true,
+      body: {
+        'body': body,
+        'message_type': messageType,
+        if (metadata != null) 'metadata': metadata,
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
   }
 
   static Future<Map<String, dynamic>> createCheckoutSession({
@@ -360,6 +822,630 @@ class BackendApiService {
       throw Exception(decoded['error'] ?? '创建支付订单失败 ${r.statusCode}');
     }
     return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> submitVerification({
+    required String type,
+    required Map<String, dynamic> materials,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/verifications',
+      withAuth: true,
+      body: {'type': type, 'materials': materials},
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchMyVerifications() async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/verifications/me',
+      withAuth: true,
+    );
+    return (decoded['data'] as List<dynamic>? ?? [])
+        .cast<Map<String, dynamic>>();
+  }
+
+  static Future<Map<String, dynamic>> reviewVerification({
+    required String id,
+    required String status,
+    String? reviewNote,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/admin/verifications/$id/review',
+      withAuth: true,
+      body: {
+        'status': status,
+        if (reviewNote != null) 'review_note': reviewNote,
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchEvents({
+    int limit = 20,
+    int offset = 0,
+    String? city,
+    String? type,
+    bool includeInactive = false,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/events',
+      withAuth: includeInactive,
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {
+          'city': city,
+          'type': type,
+          if (includeInactive) 'include_inactive': 'true',
+        },
+      ),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>?> fetchEvent(String id) async {
+    try {
+      final decoded = await _requestJson('GET', '/api/v1/events/$id');
+      return decoded['data'] as Map<String, dynamic>;
+    } on Exception catch (e) {
+      if (e.toString().contains('未找到')) return null;
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> createEvent(
+    Map<String, dynamic> body,
+  ) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/events',
+      withAuth: true,
+      body: body,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> updateEvent(
+    String id,
+    Map<String, dynamic> body,
+  ) async {
+    final decoded = await _requestJson(
+      'PATCH',
+      '/api/v1/events/$id',
+      withAuth: true,
+      body: body,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> archiveEvent(String id) async {
+    final decoded = await _requestJson(
+      'DELETE',
+      '/api/v1/events/$id',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> applyEvent({
+    required String eventId,
+    String? applyNote,
+    Map<String, dynamic>? formData,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/events/$eventId/apply',
+      withAuth: true,
+      body: {
+        if (applyNote != null) 'apply_note': applyNote,
+        if (formData != null) 'form_data': formData,
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchMyEventApplications({
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/events/applications/me',
+      withAuth: true,
+      query: _params(limit: limit, offset: offset),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> reviewEventApplication({
+    required String id,
+    required String status,
+    String? reviewNote,
+    String? ticketCode,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/admin/event-applications/$id/review',
+      withAuth: true,
+      body: {
+        'status': status,
+        if (reviewNote != null) 'review_note': reviewNote,
+        if (ticketCode != null) 'ticket_code': ticketCode,
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> checkinEvent({
+    required String eventId,
+    required String ticketCode,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/events/$eventId/checkin',
+      withAuth: true,
+      body: {'ticket_code': ticketCode},
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchOpportunities({
+    int limit = 20,
+    int offset = 0,
+    String? keyword,
+    String? city,
+    String? type,
+    bool includeInactive = false,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/opportunities',
+      withAuth: includeInactive,
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {
+          'keyword': keyword,
+          'city': city,
+          'type': type,
+          if (includeInactive) 'include_inactive': 'true',
+        },
+      ),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>?> fetchOpportunity(String id) async {
+    try {
+      final decoded = await _requestJson('GET', '/api/v1/opportunities/$id');
+      return decoded['data'] as Map<String, dynamic>;
+    } on Exception catch (e) {
+      if (e.toString().contains('未找到')) return null;
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> createOpportunity(
+    Map<String, dynamic> body,
+  ) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/opportunities',
+      withAuth: true,
+      body: body,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> updateOpportunity(
+    String id,
+    Map<String, dynamic> body,
+  ) async {
+    final decoded = await _requestJson(
+      'PATCH',
+      '/api/v1/opportunities/$id',
+      withAuth: true,
+      body: body,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> archiveOpportunity(String id) async {
+    final decoded = await _requestJson(
+      'DELETE',
+      '/api/v1/opportunities/$id',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> applyOpportunity({
+    required String opportunityId,
+    List<String> portfolioIds = const [],
+    String? proposal,
+    int? quoteAmount,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/opportunities/$opportunityId/apply',
+      withAuth: true,
+      body: {
+        'portfolio_ids': portfolioIds,
+        if (proposal != null) 'proposal': proposal,
+        if (quoteAmount != null) 'quote_amount': quoteAmount,
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchMyOpportunityApplications({
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/opportunity-applications/me',
+      withAuth: true,
+      query: _params(limit: limit, offset: offset),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> reviewOpportunityApplication({
+    required String id,
+    required String status,
+    String? reviewNote,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/admin/opportunity-applications/$id/review',
+      withAuth: true,
+      body: {
+        'status': status,
+        if (reviewNote != null) 'review_note': reviewNote,
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchMyProjects({
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/projects/me',
+      withAuth: true,
+      query: _params(limit: limit, offset: offset),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> updateProjectStatus({
+    required String id,
+    required String status,
+  }) async {
+    final decoded = await _requestJson(
+      'PUT',
+      '/api/v1/projects/$id/status',
+      withAuth: true,
+      body: {'status': status},
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> fetchProjectStatus(String id) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/projects/$id/status',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchArtists({
+    int limit = 20,
+    int offset = 0,
+    String? keyword,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/artists',
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {'keyword': keyword},
+      ),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> upsertArtistProfile(
+    Map<String, dynamic> body,
+  ) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/artists',
+      withAuth: true,
+      body: body,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>?> fetchArtist(String id) async {
+    try {
+      final decoded = await _requestJson('GET', '/api/v1/artists/$id');
+      return decoded['data'] as Map<String, dynamic>;
+    } on Exception catch (e) {
+      if (e.toString().contains('未找到')) return null;
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> fetchArtistDetail(String id) {
+    return fetchArtist(id);
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchArtworks({
+    int limit = 20,
+    int offset = 0,
+    String? userId,
+    String? category,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/artworks',
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {
+          'user_id': userId,
+          'category': category,
+        },
+      ),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> createArtwork({
+    required String title,
+    String? category,
+    List<String> images = const [],
+    String? description,
+    String visibility = 'public',
+    String status = 'published',
+    Map<String, dynamic>? metadata,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/artworks',
+      withAuth: true,
+      body: {
+        'title': title,
+        if (category != null) 'category': category,
+        'images': images,
+        if (description != null) 'description': description,
+        'visibility': visibility,
+        'status': status,
+        if (metadata != null) 'metadata': metadata,
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>?> fetchArtwork(String id) async {
+    try {
+      final decoded = await _requestJson('GET', '/api/v1/artworks/$id');
+      return decoded['data'] as Map<String, dynamic>;
+    } on Exception catch (e) {
+      if (e.toString().contains('未找到')) return null;
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateArtwork(
+    String id,
+    Map<String, dynamic> body,
+  ) async {
+    final decoded = await _requestJson(
+      'PUT',
+      '/api/v1/artworks/$id',
+      withAuth: true,
+      body: body,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> archiveArtwork(String id) async {
+    final decoded = await _requestJson(
+      'DELETE',
+      '/api/v1/artworks/$id',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> deleteArtwork(String id) {
+    return archiveArtwork(id);
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchMyArtworks({
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/artworks/me',
+      withAuth: true,
+      query: _params(limit: limit, offset: offset),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> likeArtwork(String id) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/artworks/$id/like',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> unlikeArtwork(String id) async {
+    final decoded = await _requestJson(
+      'DELETE',
+      '/api/v1/artworks/$id/like',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> favoriteArtwork(String id) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/artworks/$id/favorite',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> unfavoriteArtwork(String id) async {
+    final decoded = await _requestJson(
+      'DELETE',
+      '/api/v1/artworks/$id/favorite',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> fetchArtworkStats(String id) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/artworks/$id/stats',
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchNotifications({
+    int limit = 20,
+    int offset = 0,
+    String? readStatus,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/notifications',
+      withAuth: true,
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {'read_status': readStatus},
+      ),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> markNotificationRead(String id) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/notifications/$id/read',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<List<Map<String, dynamic>>> markAllNotificationsRead() async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/notifications/read-all',
+      withAuth: true,
+    );
+    return (decoded['data'] as List<dynamic>? ?? [])
+        .cast<Map<String, dynamic>>();
+  }
+
+  static Future<Map<String, dynamic>> uploadFile({
+    required List<int> bytes,
+    required String filename,
+    required String contentType,
+    String folder = 'uploads',
+  }) async {
+    final request = http.MultipartRequest('POST', _api('/api/v1/upload'));
+    request.headers.addAll(await _authHeaders());
+    request.fields['folder'] = folder;
+    request.files.add(http.MultipartFile.fromBytes(
+      'file',
+      bytes,
+      filename: filename,
+      contentType: _mediaType(contentType),
+    ));
+    final streamed = await request.send();
+    final r = await http.Response.fromStream(streamed);
+    return _decodeBody(r);
+  }
+
+  static MediaType _mediaType(String raw) {
+    final parts = raw.split('/');
+    if (parts.length != 2) return MediaType('application', 'octet-stream');
+    return MediaType(parts[0], parts[1]);
   }
 
   static Future<List<Map<String, dynamic>>> fetchMyOrders({
@@ -399,6 +1485,20 @@ class BackendApiService {
         .toList();
   }
 
+  static Future<HomeContent?> fetchHomeContent(String id) async {
+    final r = await http.get(
+      _api('/api/v1/home-contents/$id'),
+      headers: await _headers(),
+    );
+    if (r.statusCode == 404) return null;
+    final body = jsonDecode(r.body) as Map<String, dynamic>;
+    if (r.statusCode != 200 || body['success'] != true) {
+      throw Exception(body['error'] ?? 'home_content ${r.statusCode}');
+    }
+    final data = body['data'] as Map<String, dynamic>?;
+    return data == null ? null : HomeContent.fromJson(data);
+  }
+
   /// AI 选校：返回 Next 侧 JSON（含 `result` 表格字段）
   static Future<Map<String, dynamic>> aiSchoolSearch(String query,
       {int limitSchools = 40}) async {
@@ -436,31 +1536,184 @@ class BackendApiService {
     return decoded;
   }
 
+  static Future<Map<String, dynamic>> registerWithBff({
+    required String email,
+    required String password,
+    required String username,
+  }) {
+    return _requestJson(
+      'POST',
+      '/api/v1/auth/register',
+      body: {
+        'email': email,
+        'password': password,
+        'username': username,
+      },
+    );
+  }
+
+  static Future<Map<String, dynamic>> loginWithBff({
+    required String email,
+    required String password,
+  }) {
+    return _requestJson(
+      'POST',
+      '/api/v1/auth/login',
+      body: {
+        'email': email,
+        'password': password,
+      },
+    );
+  }
+
+  static Future<Map<String, dynamic>> devLogin({String? devSecret}) async {
+    final headers = await _headers();
+    if (devSecret != null && devSecret.isNotEmpty) {
+      headers['x-dev-secret'] = devSecret;
+    }
+    final r = await http.post(
+      _api('/api/v1/auth/dev-login'),
+      headers: headers,
+    );
+    return _decodeBody(r);
+  }
+
+  static Future<Map<String, dynamic>> fetchAuthProfile() {
+    return _requestJson('GET', '/api/v1/auth/profile', withAuth: true);
+  }
+
+  static Future<Map<String, dynamic>> updateAuthProfile(
+    Map<String, dynamic> body,
+  ) {
+    return _requestJson(
+      'POST',
+      '/api/v1/auth/update-profile',
+      withAuth: true,
+      body: body,
+    );
+  }
+
+  static Future<Map<String, dynamic>> exportAuthProfile() {
+    return _requestJson(
+      'GET',
+      '/api/v1/auth/profile/export',
+      withAuth: true,
+    );
+  }
+
+  static Future<Map<String, dynamic>> fetchProfileFieldHistory(
+    String field,
+  ) {
+    return _requestJson(
+      'GET',
+      '/api/v1/auth/profile/field-history',
+      withAuth: true,
+      query: {'field': field},
+    );
+  }
+
+  static Future<Map<String, dynamic>> sendSms({
+    required String phone,
+    String countryCode = '+86',
+    String purpose = 'login',
+  }) {
+    return _requestJson(
+      'POST',
+      '/api/v1/auth/send-sms',
+      body: {
+        'phone': phone,
+        'country_code': countryCode,
+        'purpose': purpose,
+      },
+    );
+  }
+
+  static Future<Map<String, dynamic>> verifySms({
+    required String phone,
+    required String code,
+    String countryCode = '+86',
+  }) {
+    return _requestJson(
+      'POST',
+      '/api/v1/auth/verify-sms',
+      body: {
+        'phone': phone,
+        'code': code,
+        'country_code': countryCode,
+      },
+    );
+  }
+
   /// 完成 onboarding（通过 Next.js API）
   static Future<Map<String, dynamic>> completeOnboarding({
     required String userId,
     List<String>? interestedCategories,
+    String? userRole,
+    String? userType,
+    String? primaryGoal,
+    List<String>? goals,
+    List<String>? targetDirections,
+    List<String>? targetMajors,
+    String? cityPreference,
+    List<String>? activityCities,
+    List<String>? eventPreferences,
+    String? currentStage,
+    String? verificationIntent,
   }) async {
     final url = _api('/api/v1/auth/complete-onboarding');
     final body = jsonEncode({
       'userId': userId,
       'interestedCategories': interestedCategories,
+      if (userRole != null) 'userRole': userRole,
+      if (userType != null) 'userType': userType,
+      if (primaryGoal != null) 'primaryGoal': primaryGoal,
+      if (goals != null) 'goals': goals,
+      if (targetDirections != null) 'targetDirections': targetDirections,
+      if (targetMajors != null) 'targetMajors': targetMajors,
+      if (cityPreference != null) 'cityPreference': cityPreference,
+      if (activityCities != null) 'activityCities': activityCities,
+      if (eventPreferences != null) 'eventPreferences': eventPreferences,
+      if (currentStage != null) 'currentStage': currentStage,
+      if (verificationIntent != null) 'verificationIntent': verificationIntent,
     });
     final headers = await _headers(withAuth: true);
-    
-    print('[BackendApiService] completeOnboarding: POST $url');
-    print('[BackendApiService] headers: $headers');
-    print('[BackendApiService] body: $body');
-    
     final r = await http.post(url, headers: headers, body: body);
-    
-    print('[BackendApiService] response status: ${r.statusCode}');
-    print('[BackendApiService] response body: ${r.body}');
-    
     final decoded = jsonDecode(r.body) as Map<String, dynamic>;
     if (r.statusCode != 200 || decoded['success'] != true) {
       throw Exception(decoded['error'] ?? 'onboarding 失败 ${r.statusCode}');
     }
     return decoded;
+  }
+
+  /// 获取 AI 推荐卡片（节点二）
+  static Future<List<Map<String, dynamic>>> fetchAiRecommendCards() async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/ai/recommend-cards',
+      withAuth: true,
+    );
+    final data = decoded['data'] as List<dynamic>? ?? [];
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  /// 获取用户申请准备进度
+  static Future<Map<String, dynamic>> fetchApplicationProgress() async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/user/application-progress',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>? ?? {};
+  }
+
+  /// 获取申请工具列表
+  static Future<List<Map<String, dynamic>>> fetchTools() async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/tools',
+      withAuth: false,
+    );
+    final data = decoded['data'] as List<dynamic>? ?? [];
+    return data.cast<Map<String, dynamic>>();
   }
 }

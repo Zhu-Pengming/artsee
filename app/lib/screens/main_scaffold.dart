@@ -1,38 +1,45 @@
-import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/common.dart';
 import 'auth/login_screen.dart';
 import 'create/create_post_screen.dart';
+import 'home/home_screen.dart';
+import 'news/news_scaffold.dart';
 import 'explore/explore_screen.dart';
 import 'forum/forum_screen.dart';
-import 'home/home_screen.dart';
 import 'profile/profile_screen.dart';
-import 'schools/school_list_screen.dart';
-import 'tools/ai_consult_screen.dart';
 import '../services/supabase_service.dart';
+import '../services/backend_api_service.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
-
-final _forumKey = GlobalKey<ForumScreenState>();
-final _exploreKey = GlobalKey<ExploreScreenState>();
 
 /// ═══════════════════════════════════════════════════════════════
 /// artiqore 艺见心 — App 总入口
-/// 信息架构以 `artiqore-艺见心-网页版前端与ui(1)` 为准。
-/// 子页：首页、灵感、院校、社区、我的。
+/// 当前主导航：首页 / 院校 / 灵感 / 社区 / 我的。
 /// ═══════════════════════════════════════════════════════════════
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
+
+  static final GlobalKey<_MainScaffoldState> globalKey = GlobalKey<_MainScaffoldState>();
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
 }
 
 class _MainScaffoldState extends State<MainScaffold> {
+  static const double _headerHeight = 54;
   int _currentIndex = 0;
+  final GlobalKey<NewsScaffoldState> _newsKey = GlobalKey<NewsScaffoldState>();
+  final GlobalKey<ExploreScreenState> _exploreKey =
+      GlobalKey<ExploreScreenState>();
+  final GlobalKey<ForumScreenState> _forumKey = GlobalKey<ForumScreenState>();
+
+  void switchToTab(int index) {
+    if (mounted) {
+      setState(() => _currentIndex = index);
+    }
+  }
 
   final List<_NavItem> _navItems = const [
     _NavItem(
@@ -41,14 +48,14 @@ class _MainScaffoldState extends State<MainScaffold> {
       label: '首页',
     ),
     _NavItem(
-      icon: Icons.explore_outlined,
-      activeIcon: Icons.explore_rounded,
-      label: '灵感',
-    ),
-    _NavItem(
       icon: Icons.school_outlined,
       activeIcon: Icons.school_rounded,
       label: '院校',
+    ),
+    _NavItem(
+      icon: Icons.explore_outlined,
+      activeIcon: Icons.explore_rounded,
+      label: '灵感',
     ),
     _NavItem(
       icon: Icons.forum_outlined,
@@ -62,12 +69,6 @@ class _MainScaffoldState extends State<MainScaffold> {
     ),
   ];
 
-  void _openAiConsult() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const AiConsultScreen()),
-    );
-  }
-
   Future<void> _openCreatePost() async {
     await Future.delayed(const Duration(milliseconds: 150));
     if (!mounted) return;
@@ -75,8 +76,206 @@ class _MainScaffoldState extends State<MainScaffold> {
       MaterialPageRoute(builder: (_) => const CreatePostScreen()),
     );
     if (!mounted || created != true) return;
-    setState(() => _currentIndex = 3);
-    _exploreKey.currentState?.showCommunityFeed(refresh: true);
+  }
+
+  void _showCommunityCreateSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => ClipRRect(
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(kRadiusLarge)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8EEF5).withOpacity(0.94),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(kRadiusLarge),
+              ),
+              border:
+                  Border.all(color: Colors.white.withOpacity(0.62), width: 1),
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: context.artC.ink.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildSheetOption(
+                          icon: Icons.help_outline,
+                          label: '发布问答',
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            _openCommunityDialog(_CommunityCreateKind.qa);
+                          },
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildSheetOption(
+                          icon: Icons.groups_outlined,
+                          label: '创建圈子',
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            _openCommunityDialog(_CommunityCreateKind.circle);
+                          },
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildSheetOption(
+                          icon: Icons.auto_awesome,
+                          label: '创建沙龙',
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            _openCommunityDialog(_CommunityCreateKind.salon);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openCommunityDialog(_CommunityCreateKind kind) async {
+    final titleCtrl = TextEditingController();
+    final typeCtrl = TextEditingController();
+    final cityCtrl = TextEditingController();
+    final noteCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var submitting = false;
+
+    final labels = switch (kind) {
+      _CommunityCreateKind.qa => ('发布问答', '问题标题', '话题分类', '城市/地区', '补充说明', '预算'),
+      _CommunityCreateKind.circle => ('创建圈子', '圈子名称', '圈子分类', '城市/地区', '圈子简介', '预算'),
+      _CommunityCreateKind.salon => ('创建沙龙', '沙龙标题', '沙龙类型', '城市', '地点/活动说明', '费用'),
+    };
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          Future<void> submit() async {
+            if (!formKey.currentState!.validate() || submitting) return;
+            setDialogState(() => submitting = true);
+            try {
+              if (kind == _CommunityCreateKind.qa) {
+                await BackendApiService.createCommunityPost(
+                  title: titleCtrl.text.trim(),
+                  body: noteCtrl.text.trim(),
+                  metadata: {
+                    'kind': 'qa',
+                    'category': typeCtrl.text.trim(),
+                    'city': cityCtrl.text.trim(),
+                  },
+                );
+              } else if (kind == _CommunityCreateKind.circle) {
+                await BackendApiService.createCommunityCircle({
+                  'title': titleCtrl.text.trim(),
+                  'subtitle': noteCtrl.text.trim(),
+                  'category': typeCtrl.text.trim().isEmpty
+                      ? 'art'
+                      : typeCtrl.text.trim(),
+                  'city': cityCtrl.text.trim(),
+                });
+              } else {
+                await BackendApiService.createEvent({
+                  'title': titleCtrl.text.trim(),
+                  'type': 'salon',
+                  'city': cityCtrl.text.trim(),
+                  'venue': noteCtrl.text.trim(),
+                  'summary': typeCtrl.text.trim(),
+                  if (int.tryParse(amountCtrl.text.trim()) != null)
+                    'fee_amount': int.parse(amountCtrl.text.trim()),
+                });
+              }
+              if (!mounted) return;
+              Navigator.of(dialogContext).pop();
+              if (_currentIndex == 3) {
+                _forumKey.currentState?.refreshActiveTab();
+              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('${labels.$1}成功')),
+              );
+            } catch (e) {
+              if (!mounted) return;
+              setDialogState(() => submitting = false);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('提交失败：$e')),
+              );
+            }
+          }
+
+          return AlertDialog(
+            title: Text(labels.$1),
+            content: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ResourceTextField(
+                      controller: titleCtrl,
+                      label: labels.$2,
+                      required: true,
+                    ),
+                    _ResourceTextField(controller: typeCtrl, label: labels.$3),
+                    _ResourceTextField(controller: cityCtrl, label: labels.$4),
+                    _ResourceTextField(
+                      controller: noteCtrl,
+                      label: labels.$5,
+                      maxLines: 3,
+                    ),
+                    if (kind == _CommunityCreateKind.salon)
+                      _ResourceTextField(
+                        controller: amountCtrl,
+                        label: labels.$6,
+                        keyboardType: TextInputType.number,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed:
+                    submitting ? null : () => Navigator.of(dialogContext).pop(),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: submitting ? null : submit,
+                child: Text(submitting ? '提交中' : '发布'),
+              ),
+            ],
+          );
+        },
+      ),
+    ).then((_) {
+      titleCtrl.dispose();
+      typeCtrl.dispose();
+      cityCtrl.dispose();
+      noteCtrl.dispose();
+      amountCtrl.dispose();
+    });
   }
 
   void _showCreateSheet() {
@@ -117,6 +316,41 @@ class _MainScaffoldState extends State<MainScaffold> {
                     children: [
                       Expanded(
                         child: _buildSheetOption(
+                          icon: Icons.business_center_outlined,
+                          label: '发布机会',
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            _openResourceDialog(_ResourceKind.opportunity);
+                          },
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildSheetOption(
+                          icon: Icons.grid_view_rounded,
+                          label: '发布展览',
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            _openResourceDialog(_ResourceKind.event);
+                          },
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildSheetOption(
+                          icon: Icons.palette_outlined,
+                          label: '艺术家入驻',
+                          onTap: () {
+                            Navigator.of(ctx).pop();
+                            _openResourceDialog(_ResourceKind.artist);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildSheetOption(
                           icon: Icons.add_photo_alternate_outlined,
                           label: '发布图文',
                           onTap: () {
@@ -137,6 +371,126 @@ class _MainScaffoldState extends State<MainScaffold> {
         ),
       ),
     );
+  }
+
+  Future<void> _openResourceDialog(_ResourceKind kind) async {
+    final titleCtrl = TextEditingController();
+    final typeCtrl = TextEditingController();
+    final cityCtrl = TextEditingController();
+    final noteCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var submitting = false;
+
+    final labels = switch (kind) {
+      _ResourceKind.opportunity => ('发布合作机会', '机会标题', '类型', '城市', '需求说明', '预算上限'),
+      _ResourceKind.event => ('发布展览活动', '活动标题', '类型', '城市', '地点/场馆', '费用'),
+      _ResourceKind.artist => ('艺术家入驻', '显示名称', '艺术方向', '城市', '履历/合作意向', '合作预算'),
+    };
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          Future<void> submit() async {
+            if (!formKey.currentState!.validate() || submitting) return;
+            setDialogState(() => submitting = true);
+            try {
+              if (kind == _ResourceKind.opportunity) {
+                await BackendApiService.createOpportunity({
+                  'title': titleCtrl.text.trim(),
+                  'type': typeCtrl.text.trim().isEmpty
+                      ? 'collaboration'
+                      : typeCtrl.text.trim(),
+                  'city': cityCtrl.text.trim(),
+                  'requirements': noteCtrl.text.trim(),
+                  if (int.tryParse(amountCtrl.text.trim()) != null)
+                    'budget_max': int.parse(amountCtrl.text.trim()),
+                });
+              } else if (kind == _ResourceKind.event) {
+                await BackendApiService.createEvent({
+                  'title': titleCtrl.text.trim(),
+                  'type': typeCtrl.text.trim().isEmpty
+                      ? 'exhibition'
+                      : typeCtrl.text.trim(),
+                  'city': cityCtrl.text.trim(),
+                  'venue': noteCtrl.text.trim(),
+                  if (int.tryParse(amountCtrl.text.trim()) != null)
+                    'fee_amount': int.parse(amountCtrl.text.trim()),
+                });
+              } else {
+                await BackendApiService.upsertArtistProfile({
+                  'display_name': titleCtrl.text.trim(),
+                  'art_fields': typeCtrl.text
+                      .split(RegExp(r'[,，/、]'))
+                      .map((e) => e.trim())
+                      .where((e) => e.isNotEmpty)
+                      .toList(),
+                  'experience': noteCtrl.text.trim(),
+                  'cooperation_intent': cityCtrl.text.trim(),
+                  'status': 'published',
+                });
+              }
+              if (!mounted) return;
+              Navigator.of(dialogContext).pop();
+              if (_currentIndex == 2) {
+                _exploreKey.currentState?.refreshActiveTab();
+              }
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('${labels.$1}成功')),
+              );
+            } catch (e) {
+              if (!mounted) return;
+              setDialogState(() => submitting = false);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('提交失败：$e')),
+              );
+            }
+          }
+
+          return AlertDialog(
+            title: Text(labels.$1),
+            content: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ResourceTextField(controller: titleCtrl, label: labels.$2, required: true),
+                    _ResourceTextField(controller: typeCtrl, label: labels.$3),
+                    _ResourceTextField(controller: cityCtrl, label: labels.$4),
+                    _ResourceTextField(controller: noteCtrl, label: labels.$5, maxLines: 3),
+                    if (kind != _ResourceKind.artist)
+                      _ResourceTextField(
+                        controller: amountCtrl,
+                        label: labels.$6,
+                        keyboardType: TextInputType.number,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed:
+                    submitting ? null : () => Navigator.of(dialogContext).pop(),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: submitting ? null : submit,
+                child: Text(submitting ? '提交中' : '发布'),
+              ),
+            ],
+          );
+        },
+      ),
+    ).then((_) {
+      titleCtrl.dispose();
+      typeCtrl.dispose();
+      cityCtrl.dispose();
+      noteCtrl.dispose();
+      amountCtrl.dispose();
+    });
   }
 
   Widget _buildSheetOption({
@@ -198,7 +552,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   @override
   Widget build(BuildContext context) {
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    const headerHeight = 35.0;
+    final showTopHeader = _currentIndex == 1 || _currentIndex == 2 || _currentIndex == 3;
 
     return Scaffold(
       backgroundColor: context.artC.porcelain,
@@ -207,7 +561,7 @@ class _MainScaffoldState extends State<MainScaffold> {
         fit: StackFit.expand,
         children: [
           Positioned(
-            top: statusBarHeight + headerHeight,
+            top: statusBarHeight + (showTopHeader ? _headerHeight : 0),
             left: 0,
             right: 0,
             bottom: 0,
@@ -215,22 +569,24 @@ class _MainScaffoldState extends State<MainScaffold> {
               index: _currentIndex,
               children: [
                 const HomeScreen(),
+                NewsScaffold(key: _newsKey),
                 ExploreScreen(key: _exploreKey),
-                const SchoolListScreen(),
                 ForumScreen(key: _forumKey),
                 const ProfileScreen(),
               ],
             ),
           ),
-          Positioned(
-            top: statusBarHeight,
-            left: 0,
-            right: 0,
-            child: _Header(
-              height: headerHeight,
-              onLoginTap: () => _openLoginOrProfile(),
+          if (showTopHeader)
+            Positioned(
+              top: statusBarHeight,
+              left: 0,
+              right: 0,
+              child: _TopHeader(
+                showCreateIcon: _currentIndex == 2 || _currentIndex == 3,
+                onSearchTap: _handleHeaderSearch,
+                onActionTap: _handleHeaderAction,
+              ),
             ),
-          ),
           Positioned(
             left: 0,
             right: 0,
@@ -243,26 +599,6 @@ class _MainScaffoldState extends State<MainScaffold> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (_currentIndex == 3)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 16, bottom: 8),
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: _ArtiqoreFab(onPressed: _showCreateSheet),
-                        ),
-                      ),
-                    if (_currentIndex == 0)
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          right: 16,
-                          bottom: 8,
-                          left: 0,
-                        ),
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: _AiConsultFab(onPressed: _openAiConsult),
-                        ),
-                      ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
                       child: Center(child: _buildFloatingNav()),
@@ -312,117 +648,126 @@ class _MainScaffoldState extends State<MainScaffold> {
       ),
     );
   }
-}
 
-class _Header extends StatefulWidget {
-  final double height;
-  final VoidCallback? onLoginTap;
-
-  const _Header({required this.height, this.onLoginTap});
-
-  @override
-  State<_Header> createState() => _HeaderState();
-}
-
-class _HeaderState extends State<_Header> {
-  User? _user;
-  String? _avatarUrl;
-  StreamSubscription<AuthState>? _authSub;
-
-  @override
-  void initState() {
-    super.initState();
-    _user = SupabaseService.currentUser;
-    _loadAvatar();
-    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((_) {
-      if (mounted) {
-        setState(() => _user = SupabaseService.currentUser);
-        _loadAvatar();
-      }
-    });
-  }
-
-  Future<void> _loadAvatar() async {
-    if (!SupabaseService.isLoggedIn) {
-      if (mounted) setState(() => _avatarUrl = null);
-      return;
+  void _handleHeaderSearch() {
+    if (_currentIndex == 1) {
+      _newsKey.currentState?.toggleSchoolSearchPanel(expand: true);
     }
-    final profile = await SupabaseService.fetchProfile();
-    if (mounted) setState(() => _avatarUrl = profile?['avatar_url'] as String?);
   }
 
-  @override
-  void dispose() {
-    _authSub?.cancel();
-    super.dispose();
+  void _handleHeaderAction() {
+    if (_currentIndex == 1) {
+      _newsKey.currentState?.toggleSchoolSearchPanel();
+    } else if (_currentIndex == 2) {
+      _showCreateSheet();
+    } else if (_currentIndex == 3) {
+      _showCommunityCreateSheet();
+    }
   }
+}
+
+class _TopHeader extends StatelessWidget {
+  final bool showCreateIcon;
+  final VoidCallback onSearchTap;
+  final VoidCallback onActionTap;
+
+  const _TopHeader({
+    required this.showCreateIcon,
+    required this.onSearchTap,
+    required this.onActionTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: widget.height,
+      height: _MainScaffoldState._headerHeight,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: context.artC.porcelain.withOpacity(0.95),
+        color: context.artC.porcelain.withOpacity(0.96),
         border: Border(
-          bottom: BorderSide(color: context.artC.silver.withOpacity(0.15)),
+          bottom: BorderSide(color: context.artC.silver.withOpacity(0.12)),
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'artiqore',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  color: context.artC.ink,
-                  letterSpacing: -0.8,
-                  fontFamily: 'Noto Serif SC',
-                  fontStyle: FontStyle.italic,
+          SizedBox(
+            width: 82,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'artiqore',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 16,
+                    height: 0.95,
+                    fontWeight: FontWeight.w900,
+                    fontStyle: FontStyle.italic,
+                    letterSpacing: -0.8,
+                    color: context.artC.ink,
+                    fontFamily: 'Noto Serif SC',
+                  ),
                 ),
-              ),
-              Text(
-                '艺见心',
-                style: TextStyle(
-                  fontSize: 8,
-                  fontWeight: FontWeight.w700,
-                  color: context.artC.ink.withOpacity(0.32),
-                  letterSpacing: 3,
+                Text(
+                  '艺见心',
+                  style: TextStyle(
+                    fontSize: 7,
+                    height: 1,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 3,
+                    color: context.artC.ink.withOpacity(0.34),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(width: 12),
-          // Search
+          const SizedBox(width: 8),
           Expanded(
+            child: GestureDetector(
+              onTap: onSearchTap,
+              child: Container(
+                height: 34,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: context.artC.silver.withOpacity(0.34),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.search, size: 16, color: context.artC.ink.withOpacity(0.35)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '搜索院校、灵感、作品集问题',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: context.artC.ink.withOpacity(0.35),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onActionTap,
             child: Container(
+              width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: context.artC.silver.withOpacity(0.35),
-                borderRadius: BorderRadius.circular(999),
+                color: context.artC.silver.withOpacity(0.34),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Row(
-                children: [
-                  const SizedBox(width: 12),
-                  Icon(Icons.search,
-                      size: 16, color: context.artC.ink.withOpacity(0.35)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '搜索院校、灵感、作品集问题',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: context.artC.ink.withOpacity(0.35),
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
+              child: Icon(
+                showCreateIcon ? Icons.add_rounded : Icons.tune_rounded,
+                size: showCreateIcon ? 23 : 18,
+                color: showCreateIcon ? kCobalt : context.artC.ink.withOpacity(0.48),
               ),
             ),
           ),
@@ -430,15 +775,46 @@ class _HeaderState extends State<_Header> {
       ),
     );
   }
+}
 
-  Widget _avatarFallback() {
-    final email = _user?.email ?? '';
-    final ch = email.isNotEmpty ? email.substring(0, 1).toUpperCase() : 'U';
-    return Center(
-      child: Text(
-        ch,
-        style: TextStyle(
-            fontSize: 12, fontWeight: FontWeight.w700, color: kCobalt),
+enum _ResourceKind { opportunity, event, artist }
+
+enum _CommunityCreateKind { qa, circle, salon }
+
+class _ResourceTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final bool required;
+  final int maxLines;
+  final TextInputType? keyboardType;
+
+  const _ResourceTextField({
+    required this.controller,
+    required this.label,
+    this.required = false,
+    this.maxLines = 1,
+    this.keyboardType,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        controller: controller,
+        maxLines: maxLines,
+        keyboardType: keyboardType,
+        validator: required
+            ? (value) =>
+                value == null || value.trim().isEmpty ? '请填写$label' : null
+            : null,
+        decoration: InputDecoration(
+          labelText: label,
+          isDense: true,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
       ),
     );
   }
@@ -454,48 +830,6 @@ class _NavItem {
     required this.activeIcon,
     required this.label,
   });
-}
-
-/// 首页悬浮 AI（对齐稿件 AIAssistant：渐变胶囊 + 星标）
-class _AiConsultFab extends StatelessWidget {
-  final VoidCallback onPressed;
-
-  const _AiConsultFab({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onPressed,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [kCobalt, Color(0xFF1E3A5F)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: kCobalt.withOpacity(0.25),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Icon(
-            Icons.auto_awesome,
-            color: Colors.white,
-            size: 22,
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// 右下角「+」：不用 InkWell，避免 Web 上方形水波纹与浅蓝渐变伪影
@@ -572,16 +906,28 @@ class _NavButtonState extends State<_NavButton> {
                   ? kCobalt
                   : context.artC.ink.withOpacity(0.32),
             ),
-            const SizedBox(height: 6),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOutCubic,
-              width: widget.isSelected ? 5 : 0,
-              height: widget.isSelected ? 5 : 0,
-              decoration: BoxDecoration(
-                color: kCobalt,
-                shape: BoxShape.circle,
-              ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeOutCubic,
+              child: widget.isSelected
+                  ? Padding(
+                      key: ValueKey(widget.item.label),
+                      padding: const EdgeInsets.only(top: 5),
+                      child: Text(
+                        widget.item.label,
+                        style: const TextStyle(
+                          color: kCobalt,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    )
+                  : const SizedBox(
+                      key: ValueKey('empty'),
+                      height: 14,
+                    ),
             ),
           ],
         ),

@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/app_config.dart';
 import 'screens/main_scaffold.dart';
@@ -92,7 +91,7 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   Map<String, dynamic>? _profile;
   bool _loadingProfile = true;
-  bool _localOnboardingDone = false;
+  bool _onboardingDoneThisSession = false;
   StreamSubscription<AuthState>? _authSub;
 
   @override
@@ -103,8 +102,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _init() async {
-    final prefs = await SharedPreferences.getInstance();
-    _localOnboardingDone = prefs.getBool('artsee_onboarding_done') ?? false;
     await _reload();
   }
 
@@ -119,6 +116,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       if (mounted) {
         setState(() {
           _profile = null;
+          _onboardingDoneThisSession = false;
           _loadingProfile = false;
         });
       }
@@ -132,7 +130,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       _loadingProfile = false;
     });
     final dbDone = p != null && p['has_completed_onboarding'] == true;
-    final needOnboarding = !dbDone && !_localOnboardingDone;
+    final needOnboarding = !dbDone && !_onboardingDoneThisSession;
     if (needOnboarding) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
@@ -142,15 +140,21 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _onOnboardingCompleted() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('artsee_onboarding_done', true);
-    if (mounted) setState(() => _localOnboardingDone = true);
+    if (mounted) {
+      setState(() {
+        _onboardingDoneThisSession = true;
+        _profile = {
+          ...?_profile,
+          'has_completed_onboarding': true,
+        };
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (!SupabaseService.isLoggedIn) {
-      return const MainScaffold();
+      return MainScaffold(key: MainScaffold.globalKey);
     }
     if (_loadingProfile) {
       return Scaffold(
@@ -163,10 +167,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
     final dbDone = _profile != null && _profile!['has_completed_onboarding'] == true;
     final devSkip = AppConfig.devLoginEnabled &&
         SupabaseService.currentUser?.email == 'dev.test@artsee.app';
-    final done = dbDone || _localOnboardingDone || devSkip;
+    final done = dbDone || _onboardingDoneThisSession || devSkip;
     if (!done) {
       return ArtInterestOnboardingScreen(onCompleted: _onOnboardingCompleted);
     }
-    return const MainScaffold();
+    return MainScaffold(key: MainScaffold.globalKey);
   }
 }

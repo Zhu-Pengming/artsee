@@ -5,6 +5,7 @@ import React from 'react';
 import { Search, MapPin, Calendar, Clock, Users, ArrowRight, Star, Trophy, Target, Tent, Music, Camera, Heart, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
+import { useEvents } from '../hooks/useEvents';
 
 const CATEGORIES = [
   { id: 'hot', label: '热门', icon: <Star size={14} />, image: 'https://images.unsplash.com/photo-1543157145-f78c636d023d?auto=format&fit=crop&q=80&w=1200' },
@@ -118,11 +119,29 @@ export const ClubView = ({
   onTravelClick?: () => void
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
+  const { events, loading } = useEvents({ limit: 30 });
 
-  const filteredClubs = CLUBS.filter(club => 
+  // 将 API 数据转换为 UI 格式，如果为空则使用 Mock 数据
+  const apiEvents = events.map(event => ({
+    id: event.id,
+    title: event.title || '艺术活动',
+    clubName: 'artiqore',
+    clubLogo: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100',
+    participants: event.current_participants || 0,
+    status: event.status === 'active' ? '报名中' : '已结束',
+    date: event.start_time || '',
+    distance: '',
+    location: event.venue || event.city || '',
+    images: event.cover_image_url ? [event.cover_image_url] : [],
+    tags: [event.type || '活动'],
+  }));
+
+  const displayClubs = apiEvents.length > 0 ? apiEvents : CLUBS;
+
+  const filteredClubs = displayClubs.filter(club => 
     club.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     club.clubName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    club.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+    (club.tags && club.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())))
   );
 
   const venues = [

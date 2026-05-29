@@ -9,16 +9,18 @@ class SchoolListScreen extends StatefulWidget {
   const SchoolListScreen({super.key});
 
   @override
-  State<SchoolListScreen> createState() => _SchoolListScreenState();
+  State<SchoolListScreen> createState() => SchoolListScreenState();
 }
 
-class _SchoolListScreenState extends State<SchoolListScreen> {
+class SchoolListScreenState extends State<SchoolListScreen>
+    with TickerProviderStateMixin {
   final List<Map<String, dynamic>> _items = [];
   final TextEditingController _searchController = TextEditingController();
-  String? _selectedCountry;
+  final FocusNode _searchFocusNode = FocusNode();
   String? _selectedRegionTag;
   String? _selectedSchoolType;
   String? _selectedAdvantageSubject;
+  bool _searchPanelExpanded = false;
   bool _loading = false;
   bool _hasMore = true;
   String? _error;
@@ -33,8 +35,14 @@ class _SchoolListScreenState extends State<SchoolListScreen> {
 
   @override
   void dispose() {
+    _searchFocusNode.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void toggleFilterPanel({bool? expand}) {
+    final shouldExpand = expand ?? !_searchPanelExpanded;
+    setState(() => _searchPanelExpanded = shouldExpand);
   }
 
   Future<void> _loadMore() async {
@@ -45,7 +53,6 @@ class _SchoolListScreenState extends State<SchoolListScreen> {
         limit: _limit,
         offset: _offset,
         keyword: _searchController.text.trim(),
-        country: _selectedCountry,
         regionTag: _selectedRegionTag,
         schoolType: _selectedSchoolType,
         advantageSubject: _selectedAdvantageSubject,
@@ -81,11 +88,6 @@ class _SchoolListScreenState extends State<SchoolListScreen> {
     await _loadMore();
   }
 
-  void _setCountry(String? country) {
-    setState(() => _selectedCountry = country);
-    _refresh();
-  }
-
   void _setRegionTag(String? value) {
     setState(() => _selectedRegionTag = value);
     _refresh();
@@ -103,7 +105,6 @@ class _SchoolListScreenState extends State<SchoolListScreen> {
 
   void _clearFilters() {
     setState(() {
-      _selectedCountry = null;
       _selectedRegionTag = null;
       _selectedSchoolType = null;
       _selectedAdvantageSubject = null;
@@ -113,39 +114,33 @@ class _SchoolListScreenState extends State<SchoolListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      color: kCobalt,
-      onRefresh: _refresh,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-        children: [
-          _ArchiveHeader(),
-          const SizedBox(height: 18),
-          _SearchBar(
-            controller: _searchController,
-            onSubmitted: (_) => _refresh(),
-            onClear: () {
-              if (_searchController.text.isEmpty) return;
-              _searchController.clear();
-              _refresh();
-            },
+    return Material(
+      color: context.artC.porcelain,
+      child: RefreshIndicator(
+        color: kCobalt,
+        onRefresh: _refresh,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+          children: [
+          AnimatedSize(
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: _searchPanelExpanded
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 0, bottom: 12),
+                    child: _FilterPanel(
+                      selectedRegionTag: _selectedRegionTag,
+                      selectedSchoolType: _selectedSchoolType,
+                      selectedAdvantageSubject: _selectedAdvantageSubject,
+                      onRegionTagChanged: _setRegionTag,
+                      onSchoolTypeChanged: _setSchoolType,
+                      onAdvantageSubjectChanged: _setAdvantageSubject,
+                      onClear: _clearFilters,
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
-          const SizedBox(height: 14),
-          _CountryTabs(
-            selectedCountry: _selectedCountry,
-            onSelected: _setCountry,
-          ),
-          const SizedBox(height: 14),
-          _FilterPanel(
-            selectedRegionTag: _selectedRegionTag,
-            selectedSchoolType: _selectedSchoolType,
-            selectedAdvantageSubject: _selectedAdvantageSubject,
-            onRegionTagChanged: _setRegionTag,
-            onSchoolTypeChanged: _setSchoolType,
-            onAdvantageSubjectChanged: _setAdvantageSubject,
-            onClear: _clearFilters,
-          ),
-          const SizedBox(height: 14),
           if (_items.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),
@@ -240,196 +235,14 @@ class _SchoolListScreenState extends State<SchoolListScreen> {
                 );
               },
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SearchBar extends StatelessWidget {
-  final TextEditingController controller;
-  final ValueChanged<String> onSubmitted;
-  final VoidCallback onClear;
-
-  const _SearchBar({
-    required this.controller,
-    required this.onSubmitted,
-    required this.onClear,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(kRadiusLarge),
-        boxShadow: [kShadowCard],
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.search,
-            size: 20,
-            color: context.artC.ink.withOpacity(0.35),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              onSubmitted: onSubmitted,
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: '搜索院校名称',
-                border: InputBorder.none,
-                hintStyle: TextStyle(color: context.artC.ink.withOpacity(0.3)),
-              ),
-              style: TextStyle(
-                color: context.artC.ink,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          IconButton(
-            onPressed: onClear,
-            icon: Icon(
-              Icons.close,
-              size: 18,
-              color: context.artC.ink.withOpacity(0.35),
-            ),
-            tooltip: '清空',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ArchiveHeader extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(width: 44, height: 1, color: kCobalt),
-            const SizedBox(width: 12),
-            Text(
-              'ARTLINK GLOBAL ARCHIVE',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                fontStyle: FontStyle.italic,
-                letterSpacing: 2.6,
-                color: kCobalt.withOpacity(0.95),
-              ),
-            ),
           ],
         ),
-        const SizedBox(height: 18),
-        Text(
-          '全球顶尖艺术院校',
-          style: TextStyle(
-            fontSize: 32,
-            height: 1.08,
-            fontWeight: FontWeight.w300,
-            fontStyle: FontStyle.italic,
-            color: context.artC.ink,
-            fontFamily: 'Noto Serif SC',
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '汇聚全球顶尖创意人才，探索通往艺术殿堂的学术路径。',
-          style: TextStyle(
-            fontSize: 14,
-            height: 1.45,
-            fontWeight: FontWeight.w400,
-            color: context.artC.ink.withOpacity(0.42),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CountryTabs extends StatelessWidget {
-  final String? selectedCountry;
-  final ValueChanged<String?> onSelected;
-
-  const _CountryTabs({
-    required this.selectedCountry,
-    required this.onSelected,
-  });
-
-  static const countries = <String>[
-    '中西部旗舰',
-    '意大利',
-    '英国',
-    '其他南美国家',
-    '墨西哥',
-    '德国',
-    '韩国',
-    '南方与西南',
-    '中国',
-    '美国',
-    '新加坡',
-    '埃及',
-    '新西兰',
-    '加州旗舰',
-    '东北强校',
-    '尼日利亚',
-    '南非',
-    '刚果（金）',
-    '加拿大',
-    '其他非洲国家',
-    '其他欧洲国家',
-    '日本',
-    '法国',
-    '澳大利亚',
-    '北欧',
-    '荷兰',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 42,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: countries.length + 1,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final country = index == 0 ? null : countries[index - 1];
-          final selected = selectedCountry == country;
-          return ChoiceChip(
-            selected: selected,
-            label: Text(country ?? '全部国家'),
-            onSelected: (_) => onSelected(country),
-            selectedColor: kCobalt,
-            backgroundColor: Colors.white,
-            labelStyle: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color:
-                  selected ? Colors.white : context.artC.ink.withOpacity(0.55),
-            ),
-            side: BorderSide(
-              color: selected ? kCobalt : context.artC.silver.withOpacity(0.6),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          );
-        },
       ),
     );
   }
 }
 
-class _FilterPanel extends StatelessWidget {
+class _FilterPanel extends StatelessWidget{
   final String? selectedRegionTag;
   final String? selectedSchoolType;
   final String? selectedAdvantageSubject;
@@ -469,22 +282,6 @@ class _FilterPanel extends StatelessWidget {
     _FilterOption('multi_disciplinary', '综合类'),
   ];
 
-  static const advantageSubjects = <String>[
-    'Fine Art',
-    'Design',
-    'Visual Arts',
-    'Architecture',
-    'Animation',
-    'Photography',
-    'Illustration',
-    'Film',
-    'Fashion Design',
-    'Graphic Design',
-    'Art History',
-    'Sculpture',
-    'Painting',
-  ];
-
   @override
   Widget build(BuildContext context) {
     final hasFilters = selectedRegionTag != null ||
@@ -492,105 +289,45 @@ class _FilterPanel extends StatelessWidget {
         selectedAdvantageSubject != null;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(kRadiusLarge),
-        boxShadow: [kShadowCard],
+        color: Colors.white.withOpacity(0.64),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: context.artC.silver.withOpacity(0.32)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: kCobalt.withOpacity(0.07),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(Icons.tune, color: kCobalt, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '院校筛选',
-                      style: TextStyle(
-                        color: context.artC.ink,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'REGION TAG / TYPE / STRENGTHS',
-                      style: TextStyle(
-                        color: context.artC.ink.withOpacity(0.28),
-                        fontSize: 9,
-                        letterSpacing: 2.2,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              TextButton.icon(
-                onPressed: hasFilters ? onClear : null,
-                icon: const Icon(Icons.close, size: 14),
-                label: const Text('清除筛选'),
+          if (hasFilters)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: onClear,
                 style: TextButton.styleFrom(
-                  foregroundColor: context.artC.ink.withOpacity(0.45),
-                  disabledForegroundColor: context.artC.ink.withOpacity(0.18),
-                  textStyle: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  foregroundColor: kCobalt,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  '清除',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _FilterDropdown(
-            label: '区域标签',
-            value: selectedRegionTag,
-            hint: '全部区域标签',
-            items: regionTags
-                .map((item) => DropdownMenuItem(
-                      value: item.value,
-                      child: Text(item.label),
-                    ))
-                .toList(),
-            onChanged: onRegionTagChanged,
-          ),
-          const SizedBox(height: 12),
-          _FilterDropdown(
+            ),
+          if (hasFilters) const SizedBox(height: 8),
+          _FilterSection(
             label: '院校类型',
-            value: selectedSchoolType,
-            hint: '全部院校类型',
-            items: schoolTypes
-                .map((item) => DropdownMenuItem(
-                      value: item.value,
-                      child: Text(item.label),
-                    ))
-                .toList(),
+            items: schoolTypes,
+            selectedValue: selectedSchoolType,
             onChanged: onSchoolTypeChanged,
           ),
-          const SizedBox(height: 12),
-          _FilterDropdown(
-            label: '优势学科',
-            value: selectedAdvantageSubject,
-            hint: '全部优势学科',
-            items: advantageSubjects
-                .map((item) => DropdownMenuItem(
-                      value: item,
-                      child: Text(item),
-                    ))
-                .toList(),
-            onChanged: onAdvantageSubjectChanged,
+          const SizedBox(height: 10),
+          _FilterSection(
+            label: '区域标签',
+            items: regionTags,
+            selectedValue: selectedRegionTag,
+            onChanged: onRegionTagChanged,
           ),
         ],
       ),
@@ -598,18 +335,16 @@ class _FilterPanel extends StatelessWidget {
   }
 }
 
-class _FilterDropdown extends StatelessWidget {
+class _FilterSection extends StatelessWidget {
   final String label;
-  final String? value;
-  final String hint;
-  final List<DropdownMenuItem<String>> items;
+  final List<_FilterOption> items;
+  final String? selectedValue;
   final ValueChanged<String?> onChanged;
 
-  const _FilterDropdown({
+  const _FilterSection({
     required this.label,
-    required this.value,
-    required this.hint,
     required this.items,
+    required this.selectedValue,
     required this.onChanged,
   });
 
@@ -618,50 +353,69 @@ class _FilterDropdown extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 2, bottom: 6),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: context.artC.ink.withOpacity(0.38),
-            ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: context.artC.ink.withOpacity(0.42),
           ),
         ),
-        DropdownButtonFormField<String>(
-          value: value,
-          isExpanded: true,
-          items: items,
-          onChanged: onChanged,
-          decoration: InputDecoration(
-            hintText: hint,
-            filled: true,
-            fillColor: context.artC.porcelain.withOpacity(0.5),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide:
-                  BorderSide(color: context.artC.silver.withOpacity(0.5)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide:
-                  BorderSide(color: context.artC.silver.withOpacity(0.5)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: kCobalt),
-            ),
-          ),
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: context.artC.ink,
+        const SizedBox(height: 7),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildFilterChip(
+                context,
+                label: '全部',
+                value: null,
+                isSelected: selectedValue == null,
+              ),
+              const SizedBox(width: 8),
+              ...items.map((item) => Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _buildFilterChip(
+                      context,
+                      label: item.label,
+                      value: item.value,
+                      isSelected: selectedValue == item.value,
+                    ),
+                  )),
+            ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildFilterChip(
+    BuildContext context, {
+    required String label,
+    required String? value,
+    required bool isSelected,
+  }) {
+    return GestureDetector(
+      onTap: () => onChanged(value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? kCobalt : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? kCobalt : context.artC.silver.withOpacity(0.4),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: isSelected ? Colors.white : context.artC.ink.withOpacity(0.7),
+          ),
+        ),
+      ),
     );
   }
 }

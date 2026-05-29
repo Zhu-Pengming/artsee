@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     // Generate answer (non-streaming)
     const { answer } = await generate(stages, {
-      maxTokens: mode === 'report' ? 2000 : 800,
+      maxTokens: mode === 'report' ? 4000 : 3000,
     });
 
     const latencyMs = Date.now() - startTime;

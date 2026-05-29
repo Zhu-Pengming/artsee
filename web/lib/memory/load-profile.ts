@@ -5,11 +5,11 @@
  * 绝不允许在路由里裸写 supabase 查询。
  */
 
-import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/api/supabase-service';
 import type { UserProfile } from '@/lib/supabase/types';
 import type { UserProfile as FormatterUserProfile } from './profile-formatter';
 
-const LOAD_TIMEOUT_MS = 200;
+const LOAD_TIMEOUT_MS = 1200;
 
 /**
  * 加载用户画像(带超时降级)
@@ -23,7 +23,7 @@ export async function loadUserProfile(
   timeoutMs: number = LOAD_TIMEOUT_MS
 ): Promise<FormatterUserProfile | null> {
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     
     // 创建超时 Promise
     const timeoutPromise = new Promise<null>((resolve) => {
@@ -35,8 +35,11 @@ export async function loadUserProfile(
       .from('user_profiles')
       .select(`
         user_role,
+        user_type,
+        location,
         target_degree,
         current_education_stage,
+        interested_categories,
         target_directions,
         target_majors,
         target_countries,
@@ -55,6 +58,8 @@ export async function loadUserProfile(
         portfolio_style_tendency,
         favorite_artists_or_styles,
         priority_factors,
+        profile_completion_score,
+        onboarding_completed_at,
         family_support_level,
         other_languages
       `)
@@ -76,8 +81,11 @@ export async function loadUserProfile(
     // 转换为 FormatterUserProfile 格式(null → undefined)
     return {
       user_role: result.user_role ?? undefined,
+      user_type: result.user_type ?? undefined,
+      location: result.location ?? undefined,
       target_degree: result.target_degree ?? undefined,
       current_education_stage: result.current_education_stage ?? undefined,
+      interested_categories: result.interested_categories ?? undefined,
       target_directions: result.target_directions ?? undefined,
       target_majors: result.target_majors ?? undefined,
       target_countries: result.target_countries ?? undefined,
@@ -96,6 +104,8 @@ export async function loadUserProfile(
       portfolio_style_tendency: result.portfolio_style_tendency ?? undefined,
       favorite_artists_or_styles: result.favorite_artists_or_styles ?? undefined,
       priority_factors: result.priority_factors ?? undefined,
+      profile_completion_score: result.profile_completion_score ?? undefined,
+      onboarding_completed_at: result.onboarding_completed_at ?? undefined,
       family_support_level: result.family_support_level ?? undefined,
       other_languages: result.other_languages ?? undefined,
     };

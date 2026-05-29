@@ -62,8 +62,11 @@ import { ChatWindow } from './components/ChatSystem';
 import { ArrowLeft } from 'lucide-react';
 
 import { AIAssistant } from './components/AIAssistant';
+import { AuthDialog } from './components/AuthDialog';
+import { useAuth } from './hooks/useAuth';
 
 export default function App() {
+  const auth = useAuth();
   const [role, setRole] = useState<UserRole>('consumer');
   const [activeView, setActiveView] = useState('home');
   const [activeBusinessView, setActiveBusinessView] = useState('workplace');
@@ -100,6 +103,7 @@ export default function App() {
   const [aiInitialPrompt, setAiInitialPrompt] = useState('');
   const [paymentInfo, setPaymentInfo] = useState<{ amount: string, title: string, itemTitle: string } | null>(null);
   const [communityPosts, setCommunityPosts] = useState<Post[]>(MOCK_POSTS);
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
 
   const [viewHistory, setViewHistory] = useState<string[]>(['home']);
 
@@ -619,6 +623,9 @@ export default function App() {
       case 'me':
         return (
           <MeView 
+            user={auth.user}
+            isAuthenticated={auth.isAuthenticated}
+            onLogin={() => setIsAuthDialogOpen(true)}
             onSwitchRole={() => setRole('business')} 
             onEditProfile={() => setSelectedUserId('me')}
             onStatClick={(type) => setSelectedModule(type)}
@@ -635,11 +642,7 @@ export default function App() {
               };
               setSelectedModule(labelToId[label] || 'settings');
             }}
-            onLogout={() => {
-               if (confirm('Are you sure you want to exit?')) {
-                 location.reload();
-               }
-            }}
+            onLogout={auth.logout}
             onModuleClick={setSelectedModule}
           />
         );
@@ -776,6 +779,14 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      <AuthDialog
+        isOpen={isAuthDialogOpen}
+        onClose={() => setIsAuthDialogOpen(false)}
+        onLogin={auth.login}
+        onSignup={auth.signup}
+        onDevLogin={auth.devLogin}
+      />
       </div>
     </MotionConfig>
   );

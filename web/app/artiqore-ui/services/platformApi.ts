@@ -4,6 +4,7 @@
 import { MOCK_POSTS } from '../data';
 import { INSTITUTIONS_DATA, Institution } from '../data/institutions';
 import { Post } from '../types';
+import { schoolsApi, communityApi, aiApi } from './apiClient';
 
 type ApiResult<T> = {
   success?: boolean;
@@ -44,21 +45,6 @@ function formatRelativeTime(raw?: string) {
   const days = Math.floor(hours / 24);
   if (days < 30) return `${days}天前`;
   return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
-}
-
-async function requestJson<T>(url: string, init?: RequestInit): Promise<ApiResult<T>> {
-  const response = await fetch(url, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-  });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok || body?.success === false) {
-    throw new Error(body?.error || body?.message || `API ${response.status}`);
-  }
-  return body;
 }
 
 export function mapSchoolToInstitution(row: any): Institution {
@@ -132,16 +118,13 @@ export function mapPostToUi(row: any): Post {
 }
 
 export async function fetchSchoolsForUi(params: { limit?: number; offset?: number; keyword?: string } = {}) {
-  const query = new URLSearchParams({
-    limit: String(params.limit ?? 80),
-    offset: String(params.offset ?? 0),
-  });
-  if (params.keyword?.trim()) query.set('keyword', params.keyword.trim());
-
   try {
-    const body = await requestJson<any[]>(`/api/v1/schools?${query}`);
-    const rows = Array.isArray(body.data) ? body.data : [];
-    return rows.map(mapSchoolToInstitution);
+    const rows = await schoolsApi.list({
+      limit: params.limit ?? 80,
+      offset: params.offset ?? 0,
+      keyword: params.keyword?.trim(),
+    });
+    return Array.isArray(rows) ? rows.map(mapSchoolToInstitution) : FALLBACK_INSTITUTIONS;
   } catch (error) {
     console.warn('[artiqore-ui] schools API fallback:', error);
     return FALLBACK_INSTITUTIONS;
@@ -149,15 +132,12 @@ export async function fetchSchoolsForUi(params: { limit?: number; offset?: numbe
 }
 
 export async function fetchCommunityPostsForUi(params: { limit?: number; offset?: number } = {}) {
-  const query = new URLSearchParams({
-    limit: String(params.limit ?? 40),
-    offset: String(params.offset ?? 0),
-  });
-
   try {
-    const body = await requestJson<any[]>(`/api/v1/community/posts?${query}`);
-    const rows = Array.isArray(body.data) ? body.data : [];
-    return rows.length ? rows.map(mapPostToUi) : MOCK_POSTS;
+    const rows = await communityApi.getPosts({
+      limit: params.limit ?? 40,
+      offset: params.offset ?? 0,
+    });
+    return Array.isArray(rows) && rows.length ? rows.map(mapPostToUi) : MOCK_POSTS;
   } catch (error) {
     console.warn('[artiqore-ui] community API fallback:', error);
     return MOCK_POSTS;
@@ -168,20 +148,23 @@ export async function askConsultant(query: string) {
   const trimmed = query.trim();
   if (!trimmed) return '';
 
-  const body = await requestJson<any>('/api/v1/ai/consult', {
-    method: 'POST',
-    body: JSON.stringify({ query: trimmed, mode: 'chat' }),
-  });
-  return firstString(body?.data?.answer, body?.answer, body?.result?.answer);
+  try {
+    const result = await aiApi.consult(trimmed, 'chat');
+    return firstString(result?.answer, result);
+  } catch (error) {
+    console.warn('[artiqore-ui] AI consult error:', error);
+    return '';
+  }
 }
 
 export async function analyzeInstitutionsWithBackend(institutions: Institution[]) {
   const institutionIds = institutions.map((item) => item.id).filter(Boolean);
   if (!institutionIds.length) return null;
 
-  const body = await requestJson<any>('/api/v1/ai/analyze', {
-    method: 'POST',
-    body: JSON.stringify({ institutionIds }),
-  });
-  return body?.result ?? body?.data ?? null;
+  try {
+    return await aiApi.analyze(institutionIds);
+  } catch (error) {
+    console.warn('[artiqore-ui] AI analyze error:', error);
+    return null;
+  }
 }

@@ -40,7 +40,7 @@
 
 | 差距 | 位置 / 证据 | 风险 |
 |---|---|---|
-| **两套大脑** | `app/api/chat/route.ts:13-51` 写死 32 校 / 69 项目；`/api/v1/ai/consult` 走完整 pipeline | 同一用户从不同入口问同题答案差异大；硬编码事实会过期 |
+| **两套大脑** | 旧 `app/api/chat/route.ts` 曾写死 32 校 / 69 项目（已迁移至 `/api/v1/ai/chat`）；`/api/v1/ai/consult` 走完整 pipeline | 同一用户从不同入口问同题答案差异大；硬编码事实会过期 |
 | **Intent 只覆盖信息类** | `lib/ai/intent.ts` 五类全是「查资料」 | 决策类问题（"我能申 Antwerp 吗"）走单跳 RAG，召回维度不全 |
 | **关键词匹配脆** | `q.includes('推荐')` 等 | "哪个对我友好"等表达全部漏检 |
 | **Skill 没文件化** | `prompts/` 只有 system-base + answer-requirements | 不同意图共享同一 prompt，PM 无法独立改 |
@@ -55,7 +55,7 @@
 
 ### 1.3 模型层小问题（顺手）
 
-- `app/api/chat/route.ts:86` `model: 'kimi-k2.5'` 拼写存疑，需确认 Moonshot 实际可用模型名。
+- `app/api/v1/ai/chat/route.ts` `model: 'moonshot-v1-32k'` 已确认为 Moonshot 可用模型名。
 - `consult/route.ts:62` `matchThreshold: 0.5` 写死，未按意图分档。
 
 ---
@@ -228,10 +228,10 @@ export function streamGenerate(stages, model, opts): AsyncIterable<{ text: strin
 #### P1.3 灰度 flag
 
 - env：`USE_UNIFIED_CONSULT=true`（默认开）
-- `chat/route.ts` 内：flag 关 → 走旧的硬编码 prompt 路径；flag 开 → 走新 pipeline
+- `v1/ai/chat/route.ts` 内：flag 关 → 走旧的硬编码 prompt 路径；flag 开 → 走新 pipeline
 - 生产观察 1 周无 regression 后删除旧路径
 
-**验收**：`/api/chat` 和 `/api/v1/ai/consult` 同一问题答案结构一致；recall 评估在 chat 入口也能跑；`chat_logs` 两路都有数据。
+**验收**：`/api/v1/ai/chat` 和 `/api/v1/ai/consult` 同一问题答案结构一致；recall 评估在 chat 入口也能跑；`chat_logs` 两路都有数据。
 
 **⚠⚠ Phase 1 完成的那一刻，上下文问题会从“潜伏”变“显性”，必须紧跟 Phase 1.5 接住。**合并前 chat 走硬编码 prompt，多轮问答靠 LLM 自己读 history 尚能吝温；合并后 chat 走 RAG，但 retrieve 只看当前一轮 query，拿到的是错的 chunks，反而把模型带偏。不能停在 Phase 1。
 

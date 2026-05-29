@@ -2,7 +2,7 @@
 
 Artsee 的 Next.js 后端服务，主要提供艺术留学相关 API、AI 咨询、知识库检索、用户资料、学校和项目数据管理能力。
 
-当前仓库以 `app/api/` 为核心，没有完整前端页面目录。对外接口主要位于 `app/api/v1/`，另有流式聊天接口 `app/api/chat`。
+当前仓库以 `app/api/` 为核心，没有完整前端页面目录。对外接口统一位于 `app/api/v1/`，包括流式聊天接口 `app/api/v1/ai/chat`。
 
 ## 技术栈
 
@@ -104,7 +104,7 @@ EMBEDDING_BATCH_SIZE=32
 
 ## API 概览
 
-后端采用 Next.js Route Handlers。业务接口按版本放在 `app/api/v1/`，聊天流式接口单独放在 `app/api/chat/`。
+后端采用 Next.js Route Handlers。所有业务接口按版本统一放在 `app/api/v1/`，包括聊天流式接口 `app/api/v1/ai/chat/`。
 
 常见约定：
 
@@ -117,7 +117,7 @@ EMBEDDING_BATCH_SIZE=32
 
 | 接口 | 方法 | 说明 |
 | --- | --- | --- |
-| `/api/chat` | POST | 流式聊天接口 |
+| `/api/v1/ai/chat` | POST | 流式聊天接口 |
 | `/api/v1/ai/consult` | POST | 非流式 AI 咨询 |
 | `/api/v1/ai/analyze` | POST | AI 分析 |
 | `/api/v1/ai/record` | POST | AI 咨询记录 |
@@ -126,7 +126,7 @@ EMBEDDING_BATCH_SIZE=32
 
 核心流程：
 
-- `/api/chat`：面向聊天场景，支持流式输出。默认走统一咨询 Pipeline，可结合历史对话、用户资料、知识库检索结果生成回答。
+- `/api/v1/ai/chat`：面向聊天场景，支持流式输出。默认走统一咨询 Pipeline，可结合历史对话、用户资料、知识库检索结果生成回答。
 - `/api/v1/ai/consult`：非流式咨询接口，适合服务端调用、测试或一次性问答。
 - `/api/v1/knowledge/search`：只做知识库检索，适合调试召回、检查 chunk 和相似度。
 - `/api/v1/ai/schools/search`：读取学校/项目数据后调用 OpenAI 兼容模型，输出选校建议。
@@ -306,7 +306,7 @@ ecosystem.config.js
 
 ## 开发约定
 
-- API 放在 `app/api/v1/`，聊天流式接口放在 `app/api/chat/`。
+- 所有 API 统一放在 `app/api/v1/`，包括聊天流式接口 `app/api/v1/ai/chat/`。旧的 `/api/chat` 已废弃，保留为重定向以保持向后兼容。
 - 服务端访问 Supabase 优先使用 `lib/api/supabase-service.ts` 或 `lib/supabase/server.ts` 中已有封装。
 - 知识库问答相关逻辑优先走 `lib/pipelines/consult-pipeline.ts`。
 - 新增或调整数据库结构时，把 SQL 放入 `docs/migrations/`。

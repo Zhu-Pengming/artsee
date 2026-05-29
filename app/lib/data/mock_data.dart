@@ -243,6 +243,28 @@ class News {
   });
 }
 
+class Opportunity {
+  final String id;
+  final String type;
+  final String title;
+  final String organization;
+  final String location;
+  final String description;
+  final List<String> requirements;
+  final String publishedAt;
+
+  Opportunity({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.organization,
+    required this.location,
+    required this.description,
+    required this.requirements,
+    required this.publishedAt,
+  });
+}
+
 // ==================== Mock 数据 ====================
 
 class MockData {
@@ -597,6 +619,40 @@ class MockData {
     ),
   ];
 
+  // 合作机会列表
+  static final List<Opportunity> opportunities = [
+    Opportunity(
+      id: 'opp_001',
+      type: '品牌合作',
+      title: '迪奥艺术联名项目',
+      organization: 'Dior',
+      location: '上海',
+      description: '寻找年轻艺术家合作设计限量版手袋系列',
+      requirements: ['具有独特艺术风格', '熟悉时尚品牌', '有作品集'],
+      publishedAt: '2024-03-20T10:00:00Z',
+    ),
+    Opportunity(
+      id: 'opp_002',
+      type: '驻留计划',
+      title: '上海新天地艺术驻留',
+      organization: '新天地',
+      location: '上海',
+      description: '为期3个月的艺术驻留计划，提供工作室和生活补贴',
+      requirements: ['当代艺术创作者', '有公共艺术经验优先'],
+      publishedAt: '2024-03-18T14:00:00Z',
+    ),
+    Opportunity(
+      id: 'opp_003',
+      type: '展览征集',
+      title: '青年艺术家群展',
+      organization: 'K11美术馆',
+      location: '深圳',
+      description: '面向35岁以下艺术家的年度群展征集',
+      requirements: ['35岁以下', '原创作品', '主题相关'],
+      publishedAt: '2024-03-15T09:00:00Z',
+    ),
+  ];
+
   // ==================== 数据获取方法 ====================
 
   static User getCurrentUser() => currentUser;
@@ -623,4 +679,6 @@ class MockData {
   static List<Artwork> getArtworks() => artworks;
   
   static List<News> getNews() => newsList;
+  
+  static List<Opportunity> getOpportunities() => opportunities;
 }

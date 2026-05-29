@@ -69,6 +69,14 @@ export async function POST(req: NextRequest) {
       .from("avatars")
       .getPublicUrl(path);
 
+    await supabase.from("upload_files").insert({
+      user_id: user.id,
+      file_url: publicUrlData.publicUrl,
+      file_type: file.type,
+      scene: folder,
+      size: file.size,
+    });
+
     return NextResponse.json({ success: true, url: publicUrlData.publicUrl });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);

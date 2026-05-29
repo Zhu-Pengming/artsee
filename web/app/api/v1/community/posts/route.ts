@@ -10,12 +10,17 @@ export async function GET(req: NextRequest) {
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
     const supabase = createServiceClient();
-    const { data: rows, error } = await supabase
+    let query = supabase
       .from("community_posts")
       .select("*")
       .eq("status", "published")
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
+
+    const kind = searchParams.get("kind")?.trim();
+    if (kind) query = query.eq("metadata->>kind", kind);
+
+    const { data: rows, error } = await query;
 
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -73,6 +78,10 @@ export async function POST(req: NextRequest) {
     const title = (body.title as string)?.trim() ?? "";
     const text = (body.body as string)?.trim() ?? "";
     const imageUrls = Array.isArray(body.image_urls) ? body.image_urls.map(String) : [];
+    const metadata =
+      body.metadata && typeof body.metadata === "object" && !Array.isArray(body.metadata)
+        ? body.metadata
+        : {};
 
     if (!title && !text && imageUrls.length === 0) {
       return NextResponse.json({ success: false, error: "请至少填写标题、正文或上传一张图片" }, { status: 400 });
@@ -87,6 +96,7 @@ export async function POST(req: NextRequest) {
         body: text || null,
         image_urls: imageUrls,
         status: "published",
+        metadata,
       })
       .select()
       .single();

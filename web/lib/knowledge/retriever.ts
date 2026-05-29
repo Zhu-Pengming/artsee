@@ -30,7 +30,15 @@ export async function searchKnowledge(
 
   const [queryEmbedding] = await generateEmbeddings([query]);
 
-  const { data, error } = await (getSupabaseAdmin() as any).rpc(
+  const supabase = getSupabaseAdmin();
+  
+  // 设置较长的超时时间用于向量搜索
+  await (supabase as any).rpc('set_config', {
+    setting: 'statement_timeout',
+    value: '30000', // 30 秒
+  });
+
+  const { data, error } = await (supabase as any).rpc(
     'match_document_chunks',
     {
       query_embedding: queryEmbedding,

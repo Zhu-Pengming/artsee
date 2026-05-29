@@ -6,6 +6,9 @@ import { Settings, ShieldCheck, Heart, Bookmark, History, CreditCard, ChevronRig
 import { cn } from '../lib/utils';
 
 export const MeView = ({ 
+  user,
+  isAuthenticated,
+  onLogin,
   onSwitchRole, 
   onEditProfile,
   onStatClick,
@@ -15,6 +18,9 @@ export const MeView = ({
   onLogout,
   onPaymentRequest
 }: { 
+  user?: any;
+  isAuthenticated?: boolean;
+  onLogin?: () => void;
   onSwitchRole?: () => void;
   onEditProfile?: () => void;
   onStatClick?: (type: 'works' | 'fans' | 'likes') => void;
@@ -24,6 +30,31 @@ export const MeView = ({
   onLogout?: () => void;
   onPaymentRequest?: (info: { amount: string, title: string, itemTitle: string }) => void;
 }) => {
+  // 未登录状态
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-6">
+        <div className="text-center space-y-6 max-w-md">
+          <div className="w-24 h-24 mx-auto bg-cobalt/10 rounded-full flex items-center justify-center">
+            <ShieldCheck size={48} className="text-cobalt" />
+          </div>
+          <h2 className="text-2xl font-bold text-ink">登录后解锁全部功能</h2>
+          <p className="text-ink/60">申请追踪 · 案例分享 · 论坛互动</p>
+          <button
+            onClick={onLogin}
+            className="w-full bg-cobalt text-white py-3 px-6 rounded-xl font-medium hover:bg-cobalt/90 transition-all active:scale-[0.98]"
+          >
+            登录 / 注册
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const displayName = user?.nickname || user?.email?.split('@')[0] || 'Artsee用户';
+  const avatarUrl = user?.avatar_url || `https://i.pravatar.cc/150?u=${encodeURIComponent(user?.id || 'default')}`;
+  const userRole = user?.role || '艺术家';
+  const isVerified = user?.is_verified || false;
   return (
     <div className="space-y-6 md:space-y-12 pb-12">
       {/* Profile & Dashboard Section */}
@@ -50,20 +81,22 @@ export const MeView = ({
             <div className="relative group/avatar">
               <div className="w-20 h-20 md:w-32 md:h-32 rounded-full border-4 md:border-8 border-porcelain shadow-xl overflow-hidden bg-porcelain">
                 <img 
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200" 
+                  src={avatarUrl} 
                   className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700" 
                   referrerPolicy="no-referrer"
                   alt="Avatar"
                 />
               </div>
-              <div className="absolute bottom-1 right-1 bg-cobalt text-white p-1.5 rounded-xl border-2 border-white shadow-xl md:group-hover/avatar:scale-110 transition-transform z-10">
-                <ShieldCheck size={12} strokeWidth={3} />
-              </div>
+              {isVerified && (
+                <div className="absolute bottom-1 right-1 bg-cobalt text-white p-1.5 rounded-xl border-2 border-white shadow-xl md:group-hover/avatar:scale-110 transition-transform z-10">
+                  <ShieldCheck size={12} strokeWidth={3} />
+                </div>
+              )}
             </div>
             <div className="mt-4 md:mt-8">
-              <h2 className="text-xl md:text-3xl font-serif font-bold text-ink italic leading-tight">陆川霖 Lin</h2>
+              <h2 className="text-xl md:text-3xl font-serif font-bold text-ink italic leading-tight">{displayName}</h2>
               <div className="mt-2 flex items-center justify-center gap-2">
-                <span className="text-[7px] md:text-[10px] font-bold text-cobalt bg-cobalt/5 px-3 py-0.5 md:py-1 rounded-full uppercase tracking-widest border border-cobalt/10">艺术家</span>
+                <span className="text-[7px] md:text-[10px] font-bold text-cobalt bg-cobalt/5 px-3 py-0.5 md:py-1 rounded-full uppercase tracking-widest border border-cobalt/10">{userRole}</span>
               </div>
             </div>
             

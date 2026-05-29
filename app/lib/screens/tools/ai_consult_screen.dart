@@ -8,7 +8,14 @@ import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 /// 懂车帝式：全屏沉浸、深色顶栏、对话 + 「对比选校」数据面板（雷达 + 参数表）
 class AiConsultScreen extends StatefulWidget {
-  const AiConsultScreen({super.key});
+  final String? initialQuery;
+  final int initialTabIndex;
+
+  const AiConsultScreen({
+    super.key,
+    this.initialQuery,
+    this.initialTabIndex = 0,
+  });
 
   @override
   State<AiConsultScreen> createState() => _AiConsultScreenState();
@@ -26,6 +33,11 @@ class _AiConsultScreenState extends State<AiConsultScreen>
   final TextEditingController _input = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
   bool _sending = false;
+  bool _useKnowledge = true;
+  bool _showHistory = false;
+  List<Map<String, dynamic>> _conversations = [];
+  String? _currentConversationId;
+  bool _loadingHistory = false;
 
   final TextEditingController _compareSearch = TextEditingController();
   final Set<String> _selectedIds = {};
@@ -39,8 +51,94 @@ class _AiConsultScreenState extends State<AiConsultScreen>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 2, vsync: this);
+    _tabCtrl = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initialTabIndex,
+    );
     _input.addListener(() => setState(() {}));
+    _loadConversations();
+    final initial = widget.initialQuery?.trim();
+    if (initial != null && initial.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _send(initial));
+    }
+  }
+
+  Future<void> _loadConversations() async {
+    setState(() => _loadingHistory = true);
+    try {
+      final conversations = await BackendApiService.getAiConversations();
+      if (mounted) {
+        setState(() {
+          _conversations = conversations;
+          _loadingHistory = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadingHistory = false);
+      }
+    }
+  }
+
+  Future<void> _createNewConversation() async {
+    try {
+      final conversation = await BackendApiService.createAiConversation();
+      setState(() {
+        _currentConversationId = conversation['id'] as String?;
+        _messages.clear();
+        _messages.add({
+          'role': 'assistant',
+          'text': '你好！我是 Artiqore AI 助手。可以问我选校、作品集与职业路径；也可切换到「对比选校」添加院校查看多维数据面板。',
+        });
+      });
+      await _loadConversations();
+    } catch (e) {
+      print('创建对话失败: $e');
+    }
+  }
+
+  Future<void> _loadConversation(String conversationId) async {
+    try {
+      final data = await BackendApiService.getAiConversation(conversationId);
+      final messages = data['messages'] as List<dynamic>? ?? [];
+      setState(() {
+        _currentConversationId = conversationId;
+        _messages.clear();
+        _messages.addAll(messages.map((m) => {
+          'role': m['role'] as String,
+          'text': m['content'] as String,
+        }));
+        _showHistory = false;
+      });
+    } catch (e) {
+      print('加载对话失败: $e');
+    }
+  }
+
+  Future<void> _deleteConversation(String conversationId) async {
+    print('🗑️ 开始删除对话: $conversationId');
+    try {
+      await BackendApiService.deleteAiConversation(conversationId);
+      print('🗑️ 后端删除成功');
+      if (_currentConversationId == conversationId) {
+        print('🗑️ 清空当前对话');
+        setState(() {
+          _currentConversationId = null;
+          _messages.clear();
+          _messages.add({
+            'role': 'assistant',
+            'text': '你好！我是 Artiqore AI 助手。可以问我选校、作品集与职业路径；也可切换到「对比选校」添加院校查看多维数据面板。',
+          });
+        });
+      }
+      print('🗑️ 重新加载对话列表');
+      await _loadConversations();
+      print('🗑️ 删除完成');
+    } catch (e, stackTrace) {
+      print('删除对话失败: $e');
+      print('堆栈跟踪: $stackTrace');
+    }
   }
 
   @override
@@ -62,10 +160,44 @@ class _AiConsultScreenState extends State<AiConsultScreen>
     _input.clear();
     _scrollBottom();
 
+    if (_currentConversationId == null) {
+      try {
+        final conversation = await BackendApiService.createAiConversation(
+          title: text.length > 30 ? '${text.substring(0, 30)}...' : text,
+        );
+        print('📦 创建对话返回: $conversation');
+        print('📦 conversation 类型: ${conversation.runtimeType}');
+        print('📦 conversation[\'id\'] 类型: ${conversation['id'].runtimeType}');
+        _currentConversationId = conversation['id'] as String?;
+        print('📦 设置的 conversationId: $_currentConversationId');
+        await _loadConversations();
+      } catch (e) {
+        print('创建对话失败: $e');
+      }
+    }
+
+    if (_currentConversationId != null) {
+      try {
+        await BackendApiService.saveAiMessage(
+          conversationId: _currentConversationId!,
+          role: 'user',
+          content: text,
+        );
+      } catch (e, stackTrace) {
+        print('保存用户消息失败: $e');
+        print('堆栈跟踪: $stackTrace');
+      }
+    }
+
     String reply;
     try {
-      final result = await BackendApiService.aiSchoolSearch(text);
-      reply = _formatAiReply(result);
+      if (_useKnowledge) {
+        final result = await BackendApiService.aiConsult(text, mode: 'chat');
+        reply = _formatConsultReply(result);
+      } else {
+        final result = await BackendApiService.aiSchoolSearch(text);
+        reply = _formatAiReply(result);
+      }
     } catch (e) {
       reply = _buildFallbackReply(text, e);
     }
@@ -78,6 +210,28 @@ class _AiConsultScreenState extends State<AiConsultScreen>
       _sending = false;
     });
     _scrollBottom();
+
+    if (_currentConversationId != null) {
+      try {
+        await BackendApiService.saveAiMessage(
+          conversationId: _currentConversationId!,
+          role: 'assistant',
+          content: reply,
+        );
+        await _loadConversations();
+      } catch (e, stackTrace) {
+        print('保存助手消息失败: $e');
+        print('堆栈跟踪: $stackTrace');
+      }
+    }
+  }
+
+  String _formatConsultReply(Map<String, dynamic> response) {
+    final answer = response['answer']?.toString().trim();
+    if (answer != null && answer.isNotEmpty) return answer;
+    final result = response['result'];
+    if (result is Map<String, dynamic>) return _formatAiReply(response);
+    return result?.toString() ?? '我已经收到你的问题，但暂时没有生成可展示的建议。';
   }
 
   String _formatAiReply(Map<String, dynamic> response) {
@@ -113,6 +267,37 @@ class _AiConsultScreenState extends State<AiConsultScreen>
     }
 
     return lines.isEmpty ? '我已经收到你的问题，但暂时没有生成可展示的结构化建议。' : lines.join('\n\n');
+  }
+
+  String _displayMessageText(String text) {
+    final result = text
+        .split('\n')
+        .map((line) {
+          final trimmed = line.trim();
+          if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+            return trimmed
+                .split('|')
+                .map((cell) => cell.trim())
+                .where((cell) =>
+                    cell.isNotEmpty && !RegExp(r'^:?-{2,}:?$').hasMatch(cell))
+                .join('  /  ');
+          }
+          return line.replaceAll('|', ' | ');
+        })
+        .join('\n')
+        .replaceAllMapped(
+          RegExp(r'[A-Za-z0-9_./:#?=&%-]{24,}'),
+          (match) => match.group(0)!.replaceAllMapped(
+            RegExp(r'.{1,16}'),
+            (part) => '${part.group(0)} ',
+          ),
+        );
+    
+    if (text.length > 500 && result.length != text.length) {
+      print('⚠️ _displayMessageText 改变了长度: ${text.length} → ${result.length}');
+    }
+    
+    return result;
   }
 
   String _buildFallbackReply(String question, Object error) {
@@ -183,41 +368,194 @@ class _AiConsultScreenState extends State<AiConsultScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.artC.porcelain,
-      body: Column(
+      body: Stack(
         children: [
-          _buildTopBar(context),
-          Material(
-            color: Colors.white,
-            child: TabBar(
-              controller: _tabCtrl,
-              indicatorColor: kCobalt,
-              indicatorWeight: 3,
-              labelColor: context.artC.ink,
-              unselectedLabelColor: context.artC.ink.withOpacity(0.38),
-              labelStyle: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
+          Column(
+            children: [
+              _buildTopBar(context),
+              Material(
+                color: Colors.white,
+                child: TabBar(
+                  controller: _tabCtrl,
+                  indicatorColor: kCobalt,
+                  indicatorWeight: 3,
+                  labelColor: context.artC.ink,
+                  unselectedLabelColor: context.artC.ink.withOpacity(0.38),
+                  labelStyle: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                  unselectedLabelStyle: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  tabs: const [
+                    Tab(text: '智能问答'),
+                    Tab(text: '对比选校'),
+                  ],
+                ),
               ),
-              unselectedLabelStyle: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+              Expanded(
+                child: TabBarView(
+                  controller: _tabCtrl,
+                  children: [
+                    _buildChatTab(),
+                    _buildCompareTab(),
+                  ],
+                ),
               ),
-              tabs: const [
-                Tab(text: '智能问答'),
-                Tab(text: '对比选校'),
-              ],
-            ),
+            ],
           ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabCtrl,
-              children: [
-                _buildChatTab(),
-                _buildCompareTab(),
-              ],
-            ),
-          ),
+          if (_showHistory) _buildHistorySidebar(context),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHistorySidebar(BuildContext context) {
+    return GestureDetector(
+      onTap: () => setState(() => _showHistory = false),
+      child: Container(
+        color: Colors.black.withOpacity(0.5),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: GestureDetector(
+            onTap: () {},
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.75,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.horizontal(right: Radius.circular(20)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: Offset(5, 0),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Text(
+                            '对话历史',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: context.artC.ink,
+                            ),
+                          ),
+                          Spacer(),
+                          IconButton(
+                            onPressed: _createNewConversation,
+                            icon: Icon(Icons.add_circle_outline, color: kCobalt),
+                          ),
+                          IconButton(
+                            onPressed: () => setState(() => _showHistory = false),
+                            icon: Icon(Icons.close, color: context.artC.ink.withOpacity(0.5)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Divider(height: 1),
+                    if (_loadingHistory)
+                      Expanded(
+                        child: Center(
+                          child: CircularProgressIndicator(color: kCobalt),
+                        ),
+                      )
+                    else if (_conversations.isEmpty)
+                      Expanded(
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.chat_bubble_outline, size: 48, color: context.artC.ink.withOpacity(0.2)),
+                              SizedBox(height: 12),
+                              Text(
+                                '暂无历史对话',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: context.artC.ink.withOpacity(0.4),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      Expanded(
+                        child: ListView.builder(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          itemCount: _conversations.length,
+                          itemBuilder: (context, i) {
+                            final conv = _conversations[i];
+                            final isActive = conv['id'] == _currentConversationId;
+                            return InkWell(
+                              onTap: () => _loadConversation(conv['id']),
+                              child: Container(
+                                margin: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                padding: EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: isActive ? kCobalt.withOpacity(0.1) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isActive ? kCobalt : context.artC.silver.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            conv['title'] ?? '新对话',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                              color: context.artC.ink,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          if (conv['last_message_preview'] != null) ...[
+                                            SizedBox(height: 4),
+                                            Text(
+                                              conv['last_message_preview'],
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: context.artC.ink.withOpacity(0.5),
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: () => _deleteConversation(conv['id']),
+                                      icon: Icon(Icons.delete_outline, size: 20, color: Colors.red.withOpacity(0.6)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -270,20 +608,62 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Intelligent Concierge · 选校参谋',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.4,
-                        color: Colors.white.withOpacity(0.45),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        'Intelligent Concierge · 选校参谋',
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.8,
+                          color: Colors.white.withOpacity(0.45),
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
               ],
             ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: () => setState(() => _showHistory = !_showHistory),
+            icon: Icon(
+              _showHistory ? Icons.chat_bubble : Icons.history,
+              color: Colors.white,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.auto_awesome,
+                color: _useKnowledge ? Color(0xFF22C55E) : Colors.white.withOpacity(0.3),
+                size: 14,
+              ),
+              const SizedBox(height: 2),
+              Transform.scale(
+                scale: 0.7,
+                child: Switch(
+                  value: _useKnowledge,
+                  onChanged: (v) => setState(() => _useKnowledge = v),
+                  activeColor: Color(0xFF22C55E),
+                  inactiveThumbColor: Colors.white.withOpacity(0.5),
+                  inactiveTrackColor: Colors.white.withOpacity(0.15),
+                ),
+              ),
+              Text(
+                _useKnowledge ? '知识库' : '纯对话',
+                style: TextStyle(
+                  fontSize: 7,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white.withOpacity(0.6),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -294,11 +674,13 @@ class _AiConsultScreenState extends State<AiConsultScreen>
     return Column(
       children: [
         Expanded(
-          child: ListView.builder(
-            controller: _scrollCtrl,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            itemCount: _messages.length + 1,
-            itemBuilder: (context, i) {
+          child: GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            child: ListView.builder(
+              controller: _scrollCtrl,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              itemCount: _messages.length + 1,
+              itemBuilder: (context, i) {
               if (i == 0) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -323,6 +705,10 @@ class _AiConsultScreenState extends State<AiConsultScreen>
               }
               final msg = _messages[i - 1];
               final user = msg['role'] == 'user';
+              final text = msg['text']!;
+              if (!user && text.length > 500) {
+                print('📝 长消息 #${i - 1}: ${text.length} 字符');
+              }
               return Align(
                 alignment: user ? Alignment.centerRight : Alignment.centerLeft,
                 child: Container(
@@ -350,19 +736,26 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                       ),
                     ],
                   ),
-                  child: Text(
-                    msg['text']!,
-                    style: TextStyle(
-                      fontSize: 13,
-                      height: 1.45,
-                      color: user
-                          ? context.artC.porcelain
-                          : context.artC.ink.withOpacity(0.88),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: 0,
+                      maxHeight: double.infinity,
+                    ),
+                    child: SelectableText(
+                      _displayMessageText(text),
+                      style: TextStyle(
+                        fontSize: 13,
+                        height: 1.45,
+                        color: user
+                            ? context.artC.porcelain
+                            : context.artC.ink.withOpacity(0.88),
+                      ),
                     ),
                   ),
                 ),
               );
             },
+          ),
           ),
         ),
         if (_sending)
@@ -393,7 +786,13 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                     Expanded(
                       child: TextField(
                         controller: _input,
+                        autofocus: widget.initialQuery == null ||
+                            widget.initialQuery!.trim().isEmpty,
+                        keyboardType: TextInputType.text,
                         textInputAction: TextInputAction.send,
+                        textCapitalization: TextCapitalization.none,
+                        enableSuggestions: true,
+                        autocorrect: true,
                         onSubmitted: (_) => _send(),
                         decoration: InputDecoration(
                           hintText: '询问艺术留学、院校或作品集…',

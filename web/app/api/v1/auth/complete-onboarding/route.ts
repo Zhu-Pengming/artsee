@@ -7,6 +7,12 @@ function toStringArray(value: unknown) {
   return value.map((item) => String(item).trim()).filter(Boolean).slice(0, 20);
 }
 
+function toOptionalString(value: unknown) {
+  if (typeof value !== "string") return undefined;
+  const text = value.trim();
+  return text.length > 0 ? text : undefined;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const user = await getUserFromBearer(req);
@@ -21,23 +27,67 @@ export async function POST(req: NextRequest) {
     }
 
     const interestedCategories = toStringArray(body.interestedCategories ?? body.interested_categories);
+    const userRole = toOptionalString(body.userRole ?? body.user_role);
+    const userType = toOptionalString(body.userType ?? body.user_type ?? userRole);
+    const primaryGoal = toOptionalString(body.primaryGoal ?? body.primary_goal);
+    const currentStage = toOptionalString(body.currentStage ?? body.current_stage);
+    const cityPreference = toOptionalString(body.cityPreference ?? body.city_preference);
+    const targetDirections = toStringArray(body.targetDirections ?? body.target_directions);
+    const targetMajors = toStringArray(body.targetMajors ?? body.target_majors);
+    const eventPreferences = toStringArray(body.eventPreferences ?? body.event_preferences);
+    const activityCities = toStringArray(body.activityCities ?? body.activity_cities);
+    const verificationIntent = toOptionalString(body.verificationIntent ?? body.verification_intent);
+    const goals = toStringArray(body.goals);
     const now = new Date().toISOString();
-    const profileCompletionScore = interestedCategories.length >= 2 ? 35 : 20;
+    const completionParts = [
+      userRole,
+      primaryGoal,
+      targetDirections.length > 0,
+      cityPreference || activityCities.length > 0,
+      currentStage,
+      verificationIntent,
+      interestedCategories.length > 0,
+    ];
+    const filledParts = completionParts.filter(Boolean).length;
+    const profileCompletionScore = Math.max(45, Math.round((filledParts / completionParts.length) * 100));
+    const priorityFactors = [
+      ...goals,
+      ...(primaryGoal ? [primaryGoal] : []),
+      ...eventPreferences.map((item) => `event:${item}`),
+      ...(verificationIntent ? [`verification:${verificationIntent}`] : []),
+    ];
 
     const supabase = createServiceClient();
+    const upsertData: Record<string, unknown> = {
+      id: user.id,
+      interested_categories: interestedCategories,
+      target_directions: targetDirections,
+      target_majors: targetMajors,
+      priority_factors: priorityFactors,
+      has_completed_onboarding: true,
+      profile_completion_score: profileCompletionScore,
+      onboarding_completed_at: now,
+      updated_at: now,
+    };
+    if (userRole) upsertData.user_role = userRole;
+    if (userType) upsertData.user_type = userType;
+    if (cityPreference) {
+      upsertData.city_preference = cityPreference;
+      upsertData.location = cityPreference;
+    } else if (activityCities[0]) {
+      upsertData.location = activityCities[0];
+    }
+    if (currentStage) {
+      upsertData.portfolio_status = currentStage;
+      if (userRole === "student") upsertData.current_education_stage = currentStage;
+    }
+    if (targetMajors.length > 0) {
+      upsertData.favorite_artists_or_styles = targetMajors.join("、");
+    }
+
     const { data: profile, error } = await supabase
       .from("user_profiles")
-      .upsert(
-        {
-          id: user.id,
-          interested_categories: interestedCategories,
-          has_completed_onboarding: true,
-          profile_completion_score: profileCompletionScore,
-          onboarding_completed_at: now,
-          updated_at: now,
-        },
-        { onConflict: "id" }
-      )
+      .upsert(upsertData, { onConflict: "id" })
       .select("*")
       .single();
 

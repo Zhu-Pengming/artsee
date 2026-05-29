@@ -17,9 +17,25 @@ export interface ExtractResult {
   rawResponse?: string;    // 原始 LLM 响应(用于 debug)
 }
 
-const GLM_API_KEY = process.env.GLM_API_KEY;
-const GLM_BASE_URL = process.env.GLM_BASE_URL || 'https://open.bigmodel.cn/api/paas/v4';
-const EXTRACT_MODEL = 'glm-4-flash';
+// 支持多个 LLM 提供商
+const LLM_API_KEY = 
+  process.env.DEEPSEEK_API_KEY ||
+  process.env.OPENAI_API_KEY ||
+  process.env.MOONSHOT_API_KEY ||
+  process.env.GLM_API_KEY;
+
+const LLM_BASE_URL = 
+  process.env.DEEPSEEK_BASE_URL ||
+  process.env.OPENAI_BASE_URL ||
+  process.env.MOONSHOT_BASE_URL ||
+  process.env.GLM_BASE_URL ||
+  'https://open.bigmodel.cn/api/paas/v4';
+
+const EXTRACT_MODEL = 
+  process.env.DEEPSEEK_API_KEY ? 'deepseek-chat' :
+  process.env.OPENAI_API_KEY ? 'gpt-4o-mini' :
+  process.env.MOONSHOT_API_KEY ? 'moonshot-v1-8k' :
+  'glm-4-flash';
 
 /**
  * 从用户消息中抽取画像信息
@@ -32,8 +48,8 @@ export async function extractProfileFromMessage(
   userMessage: string,
   assistantMessage?: string
 ): Promise<ExtractResult> {
-  if (!GLM_API_KEY) {
-    console.warn('[extractProfileFromMessage] GLM_API_KEY not configured, skipping extraction');
+  if (!LLM_API_KEY) {
+    console.warn('[extractProfileFromMessage] No LLM API key configured (DEEPSEEK/OPENAI/MOONSHOT/GLM), skipping extraction');
     return { items: [] };
   }
 
@@ -88,11 +104,11 @@ export async function extractProfileFromMessage(
   }`;
 
   try {
-    const response = await fetch(`${GLM_BASE_URL}/chat/completions`, {
+    const response = await fetch(`${LLM_BASE_URL}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${GLM_API_KEY}`,
+        Authorization: `Bearer ${LLM_API_KEY}`,
       },
       body: JSON.stringify({
         model: EXTRACT_MODEL,

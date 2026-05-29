@@ -197,6 +197,7 @@ export type UserProfile = {
   user_role: string | null
   target_degree: string | null
   current_education_stage: string | null
+  interested_categories: string[] | null
   target_directions: string[] | null
   target_majors: string[] | null
   target_countries: string[] | null

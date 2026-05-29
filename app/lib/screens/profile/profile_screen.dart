@@ -580,14 +580,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _openPlaceholder(String title) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$title - 节点二待实现')),
+    );
+  }
+
   Widget _buildMenuList() {
     final items = [
+      (label: '身份认证', icon: Icons.verified_outlined, onTap: () => _openPlaceholder('身份认证')),
       (label: '我的订单', icon: Icons.receipt_long_outlined, onTap: _openOrders),
-      (label: '作品管理', icon: Icons.layers_outlined, onTap: null),
-      (label: '合作邀约管理', icon: Icons.business_center_outlined, onTap: null),
-      (label: '展览报名记录', icon: Icons.calendar_today_outlined, onTap: null),
-      (label: '版权备案', icon: Icons.emoji_events_outlined, onTap: null),
-      (label: '认证中心', icon: Icons.verified_outlined, onTap: null),
+      (label: '作品管理', icon: Icons.layers_outlined, onTap: () => _openPlaceholder('作品管理')),
+      (label: '合作追踪', icon: Icons.business_center_outlined, onTap: () => _openPlaceholder('合作追踪')),
+      (label: '活动报名', icon: Icons.event_outlined, onTap: () => _openPlaceholder('活动报名')),
+      (label: '学习中心', icon: Icons.school_outlined, onTap: () => _openPlaceholder('学习中心')),
+      (label: '通知消息', icon: Icons.notifications_outlined, onTap: () => _openPlaceholder('通知消息')),
     ];
 
     return Column(

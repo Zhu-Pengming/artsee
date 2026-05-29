@@ -1,0 +1,25 @@
+ALTER TABLE conversations
+  ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'direct',
+  ADD COLUMN IF NOT EXISTS title TEXT,
+  ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users (id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+ALTER TABLE conversation_participants
+  ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'member',
+  ADD COLUMN IF NOT EXISTS last_read_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS sender_id UUID REFERENCES auth.users (id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS body TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS message_type TEXT NOT NULL DEFAULT 'text',
+  ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+CREATE INDEX IF NOT EXISTS idx_conversation_participants_user
+  ON conversation_participants (user_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_created
+  ON messages (conversation_id, created_at DESC);
