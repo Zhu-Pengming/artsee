@@ -19,6 +19,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   final List<XFile> _images = [];
   final TextEditingController _titleCtrl = TextEditingController();
   final TextEditingController _contentCtrl = TextEditingController();
+  final TextEditingController _tagCtrl = TextEditingController();
+  String _postType = 'artwork';
+  String _visibility = 'public';
+  bool _syncToPortfolio = false;
   bool _publishing = false;
 
   Future<void> _pickImages() async {
@@ -70,6 +74,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         title: _titleCtrl.text.trim(),
         body: _contentCtrl.text.trim(),
         imageUrls: imageUrls,
+        metadata: {
+          'post_type': _postType,
+          'tags': _tagCtrl.text
+              .split(RegExp(r'[,，、\s]+'))
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList(),
+          'visibility': _visibility,
+          'sync_to_portfolio': _syncToPortfolio,
+        },
       );
       if (!mounted) return;
       setState(() => _publishing = false);
@@ -108,6 +122,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   void dispose() {
     _titleCtrl.dispose();
     _contentCtrl.dispose();
+    _tagCtrl.dispose();
     super.dispose();
   }
 
@@ -159,6 +174,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 图片选择区
+              _PostTypeSelector(
+                value: _postType,
+                onChanged: (value) => setState(() => _postType = value),
+              ),
+              const SizedBox(height: 16),
               SizedBox(
                 height: 110,
                 child: ListView.separated(
@@ -178,38 +198,36 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ),
               const SizedBox(height: 20),
               // 标题
-              TextField(
+              _EditorTextField(
                 controller: _titleCtrl,
-                decoration: InputDecoration(
-                  hintText: '填写标题会有更多赞哦~',
-                  hintStyle: TextStyle(
-                      fontSize: 18,
-                      color: context.artC.silver,
-                      fontWeight: FontWeight.w600),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: context.artC.ink),
+                hint: _titleHint(_postType),
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
                 maxLines: 2,
               ),
               const SizedBox(height: 12),
               // 正文
-              TextField(
+              _EditorTextField(
                 controller: _contentCtrl,
-                decoration: InputDecoration(
-                  hintText: '添加正文…',
-                  hintStyle:
-                      TextStyle(fontSize: 14, color: context.artC.silver),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                style: TextStyle(
-                    fontSize: 14, height: 1.6, color: context.artC.ink),
-                maxLines: null,
+                hint: _bodyHint(_postType),
                 minLines: 6,
+                maxLines: null,
+              ),
+              const SizedBox(height: 14),
+              _EditorTextField(
+                controller: _tagCtrl,
+                hint: '添加标签，例如：作品集、RCA、插画',
+                minLines: 1,
+                maxLines: 2,
+              ),
+              const SizedBox(height: 14),
+              _VisibilityRow(
+                visibility: _visibility,
+                syncToPortfolio: _syncToPortfolio,
+                onVisibilityChanged: (value) =>
+                    setState(() => _visibility = value),
+                onSyncChanged: (value) =>
+                    setState(() => _syncToPortfolio = value),
               ),
               const SizedBox(height: 40),
             ],
@@ -217,6 +235,30 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         ),
       ),
     );
+  }
+
+  String _titleHint(String type) {
+    return switch (type) {
+      'artwork' => '作品标题',
+      'study_note' => '学习笔记标题',
+      'process' => '创作过程标题',
+      'opinion' => '观点标题',
+      'question' => '问题标题',
+      'event' => '活动召集标题',
+      _ => '填写标题',
+    };
+  }
+
+  String _bodyHint(String type) {
+    return switch (type) {
+      'artwork' => '作品年份、媒介、尺寸、创作说明...',
+      'study_note' => '记录课程、院校、申请经验或学习方法...',
+      'process' => '记录草图、材料实验、阶段反馈...',
+      'opinion' => '分享行业观察、展览观点或创作思考...',
+      'question' => '描述你的问题、背景和希望获得的建议...',
+      'event' => '说明活动时间、地点、对象和报名方式...',
+      _ => '添加正文...',
+    };
   }
 
   Widget _buildAddImageBox() {
@@ -298,6 +340,173 @@ class _ImageThumb extends StatelessWidget {
                 ),
                 child: const Icon(Icons.close, size: 14, color: Colors.white),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PostTypeSelector extends StatelessWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  const _PostTypeSelector({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    const items = [
+      ('artwork', '作品展示'),
+      ('study_note', '学习笔记'),
+      ('process', '创作过程'),
+      ('opinion', '行业观点'),
+      ('question', '求助提问'),
+      ('event', '活动召集'),
+    ];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: items.map((item) {
+        final selected = value == item.$1;
+        return GestureDetector(
+          onTap: () => onChanged(item.$1),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: selected ? kCobalt : Colors.white,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color:
+                    selected ? kCobalt : context.artC.silver.withOpacity(0.42),
+              ),
+            ),
+            child: Text(
+              item.$2,
+              style: TextStyle(
+                color: selected
+                    ? Colors.white
+                    : context.artC.ink.withOpacity(0.68),
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _EditorTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final int? maxLines;
+  final int minLines;
+  final double fontSize;
+  final FontWeight fontWeight;
+
+  const _EditorTextField({
+    required this.controller,
+    required this.hint,
+    this.maxLines = 1,
+    this.minLines = 1,
+    this.fontSize = 14,
+    this.fontWeight = FontWeight.w600,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.artC.silver.withOpacity(0.34)),
+      ),
+      child: TextField(
+        controller: controller,
+        minLines: minLines,
+        maxLines: maxLines,
+        style: TextStyle(
+          fontSize: fontSize,
+          height: 1.55,
+          fontWeight: fontWeight,
+          color: context.artC.ink,
+        ),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(
+            fontSize: fontSize,
+            color: context.artC.ink.withOpacity(0.42),
+            fontWeight: fontWeight,
+          ),
+          border: InputBorder.none,
+          isDense: true,
+          contentPadding: EdgeInsets.zero,
+        ),
+      ),
+    );
+  }
+}
+
+class _VisibilityRow extends StatelessWidget {
+  final String visibility;
+  final bool syncToPortfolio;
+  final ValueChanged<String> onVisibilityChanged;
+  final ValueChanged<bool> onSyncChanged;
+
+  const _VisibilityRow({
+    required this.visibility,
+    required this.syncToPortfolio,
+    required this.onVisibilityChanged,
+    required this.onSyncChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.artC.silver.withOpacity(0.34)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Text(
+                '可见范围',
+                style: TextStyle(
+                  color: context.artC.ink,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const Spacer(),
+              DropdownButton<String>(
+                value: visibility,
+                underline: const SizedBox.shrink(),
+                items: const [
+                  DropdownMenuItem(value: 'public', child: Text('公开')),
+                  DropdownMenuItem(value: 'followers', child: Text('关注者')),
+                  DropdownMenuItem(value: 'private', child: Text('仅自己')),
+                ],
+                onChanged: (value) {
+                  if (value != null) onVisibilityChanged(value);
+                },
+              ),
+            ],
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            value: syncToPortfolio,
+            onChanged: onSyncChanged,
+            title: const Text(
+              '同步到作品集',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
             ),
           ),
         ],

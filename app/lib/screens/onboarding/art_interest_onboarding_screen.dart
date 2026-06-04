@@ -21,15 +21,21 @@ class _ArtInterestOnboardingScreenState
   bool _saving = false;
   String? _error;
 
+  String? _entryType;
   String? _role;
   final Set<String> _goals = {};
   final Set<String> _directions = {};
-  final Set<String> _majors = {};
   String? _city;
-  final Set<String> _activityCities = {};
-  final Set<String> _eventPreferences = {};
   String? _stage;
-  String _verificationIntent = 'later';
+
+  String? _businessType;
+  final Set<String> _businessNeeds = {};
+  final Set<String> _businessMaterials = {};
+  final TextEditingController _businessNameCtrl = TextEditingController();
+  final TextEditingController _businessCityCtrl = TextEditingController();
+  final TextEditingController _businessContactCtrl = TextEditingController();
+  final TextEditingController _businessChannelCtrl = TextEditingController();
+  final TextEditingController _businessIntroCtrl = TextEditingController();
 
   static const _cities = [
     '北京',
@@ -44,63 +50,41 @@ class _ArtInterestOnboardingScreenState
     '米兰',
   ];
 
-  static const _events = [
-    '艺术讲座',
-    '创作工作坊',
-    '藏品私享会',
-    '艺术晚宴 / 酒会',
-    '展览开幕',
-    '高端酒店艺术沙龙',
+  static const _directionGroups = [
+    _Choice(id: 'fine_art', title: '纯艺', icon: Icons.brush_outlined),
+    _Choice(id: 'design', title: '设计', icon: Icons.design_services_outlined),
+    _Choice(
+        id: 'photo_video', title: '影像 / 摄影', icon: Icons.camera_alt_outlined),
+    _Choice(id: 'new_media', title: '新媒体 / 数字艺术', icon: Icons.blur_on_outlined),
+    _Choice(id: 'curation', title: '策展 / 艺术管理', icon: Icons.museum_outlined),
+    _Choice(id: 'art_market', title: '艺术市场 / 收藏', icon: Icons.diamond_outlined),
+    _Choice(
+        id: 'art_education', title: '艺术教育 / 留学', icon: Icons.school_outlined),
+    _Choice(
+        id: 'space_culture',
+        title: '空间 / 文旅 / 酒店艺术',
+        icon: Icons.apartment_outlined),
   ];
 
-  static const _directionGroups = [
-    _DirectionGroup('fine_art', '纯艺', [
-      '国画',
-      '油画',
-      '水彩',
-      '版画',
-      '雕塑',
-      '装置',
-      '综合材料',
-      '当代艺术',
-    ]),
-    _DirectionGroup('design', '设计', [
-      '平面设计',
-      '工业设计',
-      '空间设计',
-      '珠宝设计',
-      '服装设计',
-      '文创设计',
-      '品牌视觉',
-      '数字媒体',
-    ]),
-    _DirectionGroup('contemporary', '先锋 / 当代艺术', [
-      '行为艺术',
-      '实验影像',
-      '声音艺术',
-      '新媒体',
-      '策展',
-      '公共艺术',
-    ]),
-    _DirectionGroup('documentary', '纪实 / 影像', [
-      '摄影',
-      '纪录片',
-      '视觉叙事',
-      '影像装置',
-    ]),
-    _DirectionGroup('education_market', '教育 / 市场 / 空间', [
-      '艺术教育',
-      '艺术市场',
-      '收藏鉴赏',
-      '高端文旅',
-      '空间艺术',
-    ]),
+  static const _entryChoices = [
+    _Choice(
+      id: 'personal',
+      title: '我是个人用户',
+      subtitle: '学生、艺术家、爱好者、收藏者、家长或看展用户',
+      icon: Icons.person_outline_rounded,
+    ),
+    _Choice(
+      id: 'business',
+      title: '机构 / 商家入驻',
+      subtitle: '机构、画廊、活动方、酒店文旅空间、品牌合作方',
+      icon: Icons.storefront_outlined,
+    ),
   ];
 
   List<_Choice> get _roleChoices => const [
         _Choice(
           id: 'student',
-          title: '艺术学子',
+          title: '艺术学生 / 申请者',
           subtitle: '留学、考研、作品集、课程与实训',
           icon: Icons.school_outlined,
         ),
@@ -115,6 +99,12 @@ class _ArtInterestOnboardingScreenState
           title: '艺术爱好者 / 收藏者',
           subtitle: '活动、鉴赏、收藏与高端艺术体验',
           icon: Icons.diamond_outlined,
+        ),
+        _Choice(
+          id: 'parent',
+          title: '家长 / 陪同决策者',
+          subtitle: '帮孩子了解院校、费用、申请路径和作品集机构',
+          icon: Icons.family_restroom_outlined,
         ),
       ];
 
@@ -139,6 +129,15 @@ class _ArtInterestOnboardingScreenState
           _Choice(id: 'art_market', title: '了解艺术市场'),
           _Choice(id: 'art_appreciation', title: '学习艺术鉴赏'),
           _Choice(id: 'hotel_events', title: '参加高端酒店艺术活动'),
+        ];
+      case 'parent':
+        return const [
+          _Choice(id: 'art_abroad', title: '了解艺术留学'),
+          _Choice(id: 'school_selection', title: '帮孩子选学校'),
+          _Choice(id: 'portfolio_agency', title: '找作品集机构'),
+          _Choice(id: 'application_timeline', title: '了解申请时间线'),
+          _Choice(id: 'cost_career', title: '看费用和就业方向'),
+          _Choice(id: 'book_consultation', title: '预约咨询'),
         ];
       default:
         return const [
@@ -173,6 +172,14 @@ class _ArtInterestOnboardingScreenState
           _Choice(id: 'market_focus', title: '关注艺术市场'),
           _Choice(id: 'high_end_circle', title: '希望进入高端艺术圈层'),
         ];
+      case 'parent':
+        return const [
+          _Choice(id: 'just_learning', title: '刚开始了解'),
+          _Choice(id: 'child_has_interest', title: '孩子已有艺术方向'),
+          _Choice(id: 'target_country', title: '已有目标国家 / 院校'),
+          _Choice(id: 'portfolio_preparing', title: '正在准备作品集'),
+          _Choice(id: 'application_planning', title: '正在规划申请'),
+        ];
       default:
         return const [
           _Choice(id: 'exploring', title: '刚开始了解艺术留学 / 考研'),
@@ -185,26 +192,94 @@ class _ArtInterestOnboardingScreenState
     }
   }
 
-  String get _roleLabel =>
-      _roleChoices.firstWhere((item) => item.id == _role,
-          orElse: () => _roleChoices.first).title;
+  List<_Choice> get _businessTypeChoices => const [
+        _Choice(
+            id: 'study_abroad_agency',
+            title: '艺术留学机构',
+            icon: Icons.school_outlined),
+        _Choice(
+            id: 'portfolio_training',
+            title: '艺术培训 / 作品集机构',
+            icon: Icons.palette_outlined),
+        _Choice(
+            id: 'gallery_exhibition',
+            title: '画廊 / 展览机构',
+            icon: Icons.museum_outlined),
+        _Choice(
+            id: 'event_organizer',
+            title: '艺术活动主办方',
+            icon: Icons.event_outlined),
+        _Choice(
+            id: 'hotel_culture_space',
+            title: '酒店 / 文旅空间',
+            icon: Icons.apartment_outlined),
+        _Choice(
+            id: 'brand_partner',
+            title: '品牌合作方',
+            icon: Icons.handshake_outlined),
+        _Choice(
+            id: 'art_media_community',
+            title: '艺术媒体 / 社群',
+            icon: Icons.campaign_outlined),
+        _Choice(
+            id: 'other_service',
+            title: '其他艺术服务商',
+            icon: Icons.more_horiz_outlined),
+      ];
+
+  List<_Choice> get _businessNeedChoices => const [
+        _Choice(id: 'create_profile', title: '创建机构主页'),
+        _Choice(id: 'publish_course', title: '发布课程 / 服务'),
+        _Choice(id: 'publish_event', title: '发布活动 / 展览'),
+        _Choice(id: 'receive_leads', title: '接收用户咨询'),
+        _Choice(id: 'brand_collab', title: '对接品牌合作'),
+        _Choice(id: 'ai_page', title: 'AI 生成展示页'),
+      ];
+
+  List<String> get _businessMaterialChoices {
+    switch (_businessType) {
+      case 'gallery_exhibition':
+        return const ['机构证明', '展览记录', '合作艺术家', '展览现场图', '作品资源介绍', '策展 / 销售案例'];
+      case 'hotel_culture_space':
+        return const ['场地介绍', '空间图片', '可承办活动类型', '过往活动案例', '合作方式', '档期 / 容量信息'];
+      case 'brand_partner':
+        return const ['品牌介绍', '合作需求', '预算区间', '艺术家类型偏好', '过往联名案例'];
+      case 'study_abroad_agency':
+      case 'portfolio_training':
+        return const [
+          '营业执照或机构证明',
+          '课程介绍',
+          '导师介绍',
+          '成功案例',
+          '合作院校 / 项目说明',
+          '学生作品或 offer 案例'
+        ];
+      default:
+        return const ['机构证明', '服务介绍', '过往案例', '图片资料', '合作资源说明'];
+    }
+  }
+
+  bool get _isBusiness => _entryType == 'business';
+  int get _totalSteps => _isBusiness ? 5 : 4;
+  bool get _isLastStep => _step == _totalSteps - 1;
 
   bool get _canContinue {
     switch (_step) {
       case 0:
-        return true;
+        return _entryType != null;
       case 1:
-        return _role != null;
+        return _isBusiness ? _businessType != null : _role != null;
       case 2:
-        return _goals.isNotEmpty;
+        return _isBusiness
+            ? _businessNameCtrl.text.trim().isNotEmpty &&
+                _businessCityCtrl.text.trim().isNotEmpty &&
+                _businessContactCtrl.text.trim().isNotEmpty
+            : _goals.isNotEmpty && _stage != null;
       case 3:
-        return _directions.isNotEmpty && _majors.isNotEmpty;
+        return _isBusiness
+            ? _businessMaterials.isNotEmpty
+            : _directions.isNotEmpty;
       case 4:
-        return _city != null && _eventPreferences.isNotEmpty;
-      case 5:
-        return _stage != null;
-      case 6:
-      case 7:
         return true;
       default:
         return false;
@@ -218,7 +293,7 @@ class _ArtInterestOnboardingScreenState
       );
       return;
     }
-    if (_step < 7) {
+    if (!_isLastStep) {
       setState(() => _step += 1);
     } else {
       _submit();
@@ -240,6 +315,16 @@ class _ArtInterestOnboardingScreenState
     });
   }
 
+  @override
+  void dispose() {
+    _businessNameCtrl.dispose();
+    _businessCityCtrl.dispose();
+    _businessContactCtrl.dispose();
+    _businessChannelCtrl.dispose();
+    _businessIntroCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _submit() async {
     if (_saving) return;
     setState(() {
@@ -249,20 +334,48 @@ class _ArtInterestOnboardingScreenState
     try {
       final userId = SupabaseService.currentUser?.id;
       if (userId == null) throw Exception('用户未登录');
+      final interestedCategories = _isBusiness
+          ? [
+              'business_onboarding',
+              if (_businessType != null) _businessType!,
+              ..._businessNeeds,
+              ..._businessMaterials,
+            ]
+          : [..._directions, ..._goals];
+      final businessSummary = [
+        if (_businessNameCtrl.text.trim().isNotEmpty)
+          '机构名称：${_businessNameCtrl.text.trim()}',
+        if (_businessContactCtrl.text.trim().isNotEmpty)
+          '联系人：${_businessContactCtrl.text.trim()}',
+        if (_businessChannelCtrl.text.trim().isNotEmpty)
+          '渠道：${_businessChannelCtrl.text.trim()}',
+        if (_businessIntroCtrl.text.trim().isNotEmpty)
+          '简介：${_businessIntroCtrl.text.trim()}',
+      ];
       await BackendApiService.completeOnboarding(
         userId: userId,
-        interestedCategories: [..._directions, ..._majors],
-        userRole: _role,
-        userType: _role,
-        primaryGoal: _goals.isEmpty ? null : _goals.first,
-        goals: _goals.toList(),
-        targetDirections: _directions.toList(),
-        targetMajors: _majors.toList(),
-        cityPreference: _city,
-        activityCities: _activityCities.isEmpty ? [_city!] : _activityCities.toList(),
-        eventPreferences: _eventPreferences.toList(),
-        currentStage: _stage,
-        verificationIntent: _verificationIntent,
+        interestedCategories: interestedCategories,
+        userRole: _isBusiness ? _businessType : _role,
+        userType: _isBusiness ? 'business' : 'personal',
+        primaryGoal: _isBusiness
+            ? (_businessNeeds.isEmpty
+                ? 'business_settlement'
+                : _businessNeeds.first)
+            : (_goals.isEmpty ? null : _goals.first),
+        goals: _isBusiness ? _businessNeeds.toList() : _goals.toList(),
+        targetDirections: _isBusiness
+            ? ['business_settlement', if (_businessType != null) _businessType!]
+            : _directions.toList(),
+        targetMajors: _isBusiness
+            ? [..._businessMaterials, ...businessSummary]
+            : const [],
+        cityPreference: _isBusiness ? _businessCityCtrl.text.trim() : _city,
+        activityCities: _isBusiness
+            ? [_businessCityCtrl.text.trim()]
+            : (_city == null ? const [] : [_city!]),
+        eventPreferences: _isBusiness ? _businessNeeds.toList() : const [],
+        currentStage: _isBusiness ? 'pending_business_review' : _stage,
+        verificationIntent: _isBusiness ? 'business_review' : 'later',
       );
       widget.onCompleted();
     } catch (e) {
@@ -279,7 +392,10 @@ class _ArtInterestOnboardingScreenState
       body: SafeArea(
         child: Column(
           children: [
-            _TopProgress(step: _step, total: 8, onBack: _step == 0 ? null : _back),
+            _TopProgress(
+                step: _step,
+                total: _totalSteps,
+                onBack: _step == 0 ? null : _back),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(22, 10, 22, 24),
@@ -289,7 +405,8 @@ class _ArtInterestOnboardingScreenState
                     const SizedBox(height: 14),
                     Text(
                       _error!,
-                      style: const TextStyle(color: Color(0xFFE11D48), fontSize: 12),
+                      style: const TextStyle(
+                          color: Color(0xFFE11D48), fontSize: 12),
                     ),
                   ],
                 ],
@@ -297,6 +414,8 @@ class _ArtInterestOnboardingScreenState
             ),
             _BottomActions(
               step: _step,
+              isLast: _isLastStep,
+              isBusiness: _isBusiness,
               saving: _saving,
               canContinue: _canContinue,
               onSkip: widget.onCompleted,
@@ -311,152 +430,236 @@ class _ArtInterestOnboardingScreenState
   Widget _buildStep() {
     switch (_step) {
       case 0:
-        return _WelcomeStep(onStart: _next, onSkip: widget.onCompleted);
-      case 1:
         return _QuestionStep(
-          eyebrow: 'Identity',
-          title: '你目前更接近哪一种艺术身份？',
-          subtitle: '这会影响我们为你推荐的内容、活动和机会。',
+          eyebrow: 'Start',
+          title: '你希望以什么身份使用 ArtSee？',
+          subtitle: '个人用户快速建立初始画像；机构 / 商家会进入入驻申请流程。',
           child: _ChoiceList(
-            choices: _roleChoices,
-            selected: _role == null ? const {} : {_role!},
+            choices: _entryChoices,
+            selected: _entryType == null ? const {} : {_entryType!},
             onTap: (id) => setState(() {
-              _role = id;
+              _entryType = id;
+              _role = null;
+              _businessType = null;
               _goals.clear();
+              _directions.clear();
+              _businessNeeds.clear();
+              _businessMaterials.clear();
               _stage = null;
             }),
           ),
         );
+      case 1:
+        return _isBusiness
+            ? _buildBusinessTypeStep()
+            : _buildPersonalRoleStep();
       case 2:
-        return _QuestionStep(
-          eyebrow: 'Intent',
-          title: _role == 'artist'
-              ? '你希望平台主要帮你完成什么？'
-              : _role == 'collector'
-                  ? '你更感兴趣的艺术体验是什么？'
-                  : '你现在最想解决什么问题？',
-          subtitle: '可以多选，我们会优先组织你的首页推荐。',
-          child: _ChipWrap(
+        return _isBusiness
+            ? _buildBusinessBasicsStep()
+            : _buildPersonalIntentStep();
+      case 3:
+        return _isBusiness
+            ? _buildBusinessMaterialsStep()
+            : _buildPersonalDirectionStep();
+      default:
+        return _buildBusinessPreviewStep();
+    }
+  }
+
+  Widget _buildPersonalRoleStep() {
+    return _QuestionStep(
+      eyebrow: 'Identity',
+      title: '选择你的艺术身份',
+      subtitle: '只需要判断推荐路径，不会在这里要求你完成认证。',
+      child: _ChoiceList(
+        choices: _roleChoices,
+        selected: _role == null ? const {} : {_role!},
+        onTap: (id) => setState(() {
+          _role = id;
+          _goals.clear();
+          _stage = null;
+        }),
+      ),
+    );
+  }
+
+  Widget _buildPersonalIntentStep() {
+    return _QuestionStep(
+      eyebrow: 'Intent',
+      title: '你现在最想解决什么？',
+      subtitle: '上半部分最多选 3 个目标；下半部分选择当前阶段。',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ChipWrap(
             choices: _goalChoices,
             selected: _goals,
-            onTap: (id) => _toggle(_goals, id, max: 4),
+            onTap: (id) => _toggle(_goals, id, max: 3),
           ),
-        );
-      case 3:
-        return _QuestionStep(
-          eyebrow: 'Direction',
-          title: '你关注哪些艺术方向？',
-          subtitle: '先选一级方向，再选具体门类。最多选择 5 个具体方向。',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _ChipWrap(
-                choices: _directionGroups
-                    .map((item) => _Choice(id: item.id, title: item.label))
-                    .toList(),
-                selected: _directions,
-                onTap: (id) => _toggle(_directions, id, max: 4),
-              ),
-              const SizedBox(height: 18),
-              ..._directionGroups
-                  .where((group) => _directions.contains(group.id))
-                  .map(
-                    (group) => Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            group.label,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w800,
-                              color: context.artC.ink,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          _TextChipWrap(
-                            items: group.majors,
-                            selected: _majors,
-                            max: 5,
-                            onTap: (item) => _toggle(_majors, item, max: 5),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-            ],
+          const SizedBox(height: 22),
+          Text(
+            '你目前阶段？',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              color: context.artC.ink,
+            ),
           ),
-        );
-      case 4:
-        return _QuestionStep(
-          eyebrow: 'Place',
-          title: '你主要在哪座城市活动？',
-          subtitle: '活动推荐会优先匹配你常驻和愿意参加线下活动的城市。',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _TextChipWrap(
-                items: _cities,
-                selected: _city == null ? const {} : {_city!},
-                onTap: (city) => setState(() {
-                  _city = city;
-                  _activityCities.add(city);
-                }),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                '你愿意参加哪类线下艺术活动？',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                  color: context.artC.ink,
-                ),
-              ),
-              const SizedBox(height: 10),
-              _TextChipWrap(
-                items: _events,
-                selected: _eventPreferences,
-                onTap: (item) => _toggle(_eventPreferences, item, max: 4),
-              ),
-            ],
-          ),
-        );
-      case 5:
-        return _QuestionStep(
-          eyebrow: 'Stage',
-          title: '你目前处于哪个阶段？',
-          subtitle: '我们会据此控制推荐深度，避免一上来给你不合适的信息。',
-          child: _ChoiceList(
+          const SizedBox(height: 10),
+          _ChoiceList(
             choices: _stageChoices,
             selected: _stage == null ? const {} : {_stage!},
             compact: true,
             onTap: (id) => setState(() => _stage = id),
           ),
-        );
-      case 6:
-        return _VerificationStep(
-          roleLabel: _roleLabel,
-          role: _role ?? 'student',
-          intent: _verificationIntent,
-          onChanged: (value) => setState(() => _verificationIntent = value),
-        );
-      default:
-        return _SummaryStep(
-          roleLabel: _roleLabel,
-          stage: _stageChoices
-              .firstWhere((item) => item.id == _stage,
-                  orElse: () => const _Choice(id: '', title: '待补全'))
-              .title,
-          majors: _majors.toList(),
-          goals: _goalChoices
-              .where((item) => _goals.contains(item.id))
-              .map((item) => item.title)
-              .toList(),
-          city: _city ?? '待补全',
-          events: _eventPreferences.toList(),
-        );
-    }
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPersonalDirectionStep() {
+    return _QuestionStep(
+      eyebrow: 'Direction',
+      title: '你关注哪些艺术方向？',
+      subtitle: '选择 3 个以内。城市可选，后续点活动频道时也可以再补。',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ChipWrap(
+            choices: _directionGroups,
+            selected: _directions,
+            onTap: (id) => _toggle(_directions, id, max: 3),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            '常在哪座城市活动？可跳过',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              color: context.artC.ink,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _TextChipWrap(
+            items: _cities,
+            selected: _city == null ? const {} : {_city!},
+            onTap: (city) =>
+                setState(() => _city = _city == city ? null : city),
+            max: 1,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBusinessTypeStep() {
+    return _QuestionStep(
+      eyebrow: 'Settlement',
+      title: '请选择机构 / 商家类型',
+      subtitle: '类型会决定后续材料要求和 AI 展示页的生成方向。',
+      child: _ChoiceList(
+        choices: _businessTypeChoices,
+        selected: _businessType == null ? const {} : {_businessType!},
+        onTap: (id) => setState(() {
+          _businessType = id;
+          _businessMaterials.clear();
+        }),
+      ),
+    );
+  }
+
+  Widget _buildBusinessBasicsStep() {
+    return _QuestionStep(
+      eyebrow: 'Profile',
+      title: '填写基础资料',
+      subtitle: 'AI 会根据这些信息生成你的入驻展示页初稿。',
+      child: Column(
+        children: [
+          _TextInputField(
+            controller: _businessNameCtrl,
+            label: '机构 / 商家名称',
+            onChanged: () => setState(() {}),
+          ),
+          _TextInputField(
+            controller: _businessCityCtrl,
+            label: '所在城市',
+            onChanged: () => setState(() {}),
+          ),
+          _TextInputField(
+            controller: _businessContactCtrl,
+            label: '联系人 / 手机 / 邮箱',
+            onChanged: () => setState(() {}),
+          ),
+          _TextInputField(
+            controller: _businessChannelCtrl,
+            label: '官网 / 小红书 / 公众号 / Instagram，可选',
+            onChanged: () => setState(() {}),
+          ),
+          _TextInputField(
+            controller: _businessIntroCtrl,
+            label: '一句话简介，可选',
+            minLines: 2,
+            onChanged: () => setState(() {}),
+          ),
+          const SizedBox(height: 8),
+          _ChipWrap(
+            choices: _businessNeedChoices,
+            selected: _businessNeeds,
+            onTap: (id) => _toggle(_businessNeeds, id, max: 4),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBusinessMaterialsStep() {
+    return _QuestionStep(
+      eyebrow: 'Materials',
+      title: '上传资质和案例',
+      subtitle: '这里先记录你准备提交的材料类型，文件上传与审核可以后续接专门接口。',
+      child: _TextChipWrap(
+        items: _businessMaterialChoices,
+        selected: _businessMaterials,
+        onTap: (item) => _toggle(_businessMaterials, item, max: 6),
+        max: 6,
+      ),
+    );
+  }
+
+  Widget _buildBusinessPreviewStep() {
+    final typeLabel = _businessTypeChoices
+        .firstWhere((item) => item.id == _businessType,
+            orElse: () => const _Choice(id: '', title: '机构 / 商家'))
+        .title;
+    return _QuestionStep(
+      eyebrow: 'AI Preview',
+      title: 'AI 入驻页预览',
+      subtitle: '确认后提交入驻申请。审核通过后再开放主页、活动、课程和合作机会发布权限。',
+      child: Column(
+        children: [
+          _SummaryCard(
+            icon: Icons.storefront_outlined,
+            title: _businessNameCtrl.text.trim().isEmpty
+                ? typeLabel
+                : _businessNameCtrl.text.trim(),
+            text:
+                '$typeLabel · ${_businessCityCtrl.text.trim()}\n${_businessIntroCtrl.text.trim().isEmpty ? '等待 AI 根据资料生成一句话定位' : _businessIntroCtrl.text.trim()}',
+          ),
+          _SummaryCard(
+            icon: Icons.verified_outlined,
+            title: '审核材料',
+            text: _businessMaterials.take(4).join(' / '),
+          ),
+          _SummaryCard(
+            icon: Icons.lock_open_outlined,
+            title: '审核通过后可开通',
+            text: _businessNeeds.isEmpty
+                ? '机构主页 / 用户咨询 / 发布权限'
+                : _businessNeeds.take(4).join(' / '),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -481,7 +684,7 @@ class _TopProgress extends StatelessWidget {
               size: 17,
               color: onBack == null
                   ? Colors.transparent
-                  : context.artC.ink.withOpacity(0.7),
+                  : context.artC.ink.withValues(alpha: 0.7),
             ),
           ),
           Expanded(
@@ -490,7 +693,7 @@ class _TopProgress extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 3,
-                backgroundColor: context.artC.silver.withOpacity(0.28),
+                backgroundColor: context.artC.silver.withValues(alpha: 0.28),
                 valueColor: const AlwaysStoppedAnimation<Color>(kCobalt),
               ),
             ),
@@ -501,72 +704,9 @@ class _TopProgress extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w800,
-              color: context.artC.ink.withOpacity(0.38),
+              color: context.artC.ink.withValues(alpha: 0.38),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WelcomeStep extends StatelessWidget {
-  final VoidCallback onStart;
-  final VoidCallback onSkip;
-
-  const _WelcomeStep({required this.onStart, required this.onSkip});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 34),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: kCobalt,
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: [kShadowCard],
-            ),
-            child: const Icon(Icons.auto_awesome, color: Colors.white, size: 28),
-          ),
-          const SizedBox(height: 28),
-          Text(
-            '建立你的艺术身份档案',
-            style: TextStyle(
-              fontSize: 30,
-              height: 1.08,
-              fontWeight: FontWeight.w900,
-              color: context.artC.ink,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            '艺术学习、创作展示、顶奢活动、商业合作与作品变现，将被整合成你的个人艺术路径。',
-            style: TextStyle(
-              fontSize: 15,
-              height: 1.7,
-              color: context.artC.ink.withOpacity(0.58),
-            ),
-          ),
-          const SizedBox(height: 34),
-          _PorcelainPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _MiniLine(icon: Icons.psychology_outlined, text: '1 分钟生成初始艺术画像'),
-                _MiniLine(icon: Icons.event_available_outlined, text: '为首页 AI、活动和课程推荐建立上下文'),
-                _MiniLine(icon: Icons.verified_outlined, text: '认证可稍后完成，不会强制打断'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 26),
-          _PrimaryButton(label: '开始建立我的艺术画像', onPressed: onStart),
-          const SizedBox(height: 10),
-          _GhostButton(label: '先随便看看', onPressed: onSkip),
         ],
       ),
     );
@@ -617,7 +757,7 @@ class _QuestionStep extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             height: 1.55,
-            color: context.artC.ink.withOpacity(0.48),
+            color: context.artC.ink.withValues(alpha: 0.48),
           ),
         ),
         const SizedBox(height: 24),
@@ -727,128 +867,6 @@ class _TextChipWrap extends StatelessWidget {
   }
 }
 
-class _VerificationStep extends StatelessWidget {
-  final String roleLabel;
-  final String role;
-  final String intent;
-  final ValueChanged<String> onChanged;
-
-  const _VerificationStep({
-    required this.roleLabel,
-    required this.role,
-    required this.intent,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final copy = switch (role) {
-      'artist' => (
-          need: '作品集、展览经历、合作案例',
-          unlock: '品牌合作、作品售卖、B 端邀约、联名项目',
-        ),
-      'collector' => (
-          need: '收藏证明、活动记录或会员资料',
-          unlock: '私享会邀请、藏品预约、高端活动优先报名',
-        ),
-      _ => (
-          need: '学生证、录取通知书或在读证明',
-          unlock: '申请工具箱、完整院校数据、实训机会、作品集指导',
-        ),
-    };
-    return _QuestionStep(
-      eyebrow: 'Verification',
-      title: '完成认证后，你可以解锁更多专属权限。',
-      subtitle: '认证不会强制进行。你可以先进入首页，之后在「我的」里补全。',
-      child: Column(
-        children: [
-          _PorcelainPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$roleLabel认证',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: context.artC.ink,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _MiniLine(icon: Icons.assignment_outlined, text: '需要：${copy.need}'),
-                _MiniLine(icon: Icons.lock_open_outlined, text: '解锁：${copy.unlock}'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          _ChoiceList(
-            choices: const [
-              _Choice(id: 'now', title: '立即认证，解锁完整权限'),
-              _Choice(id: 'later', title: '稍后再说，先进入首页'),
-            ],
-            selected: {intent},
-            compact: true,
-            onTap: onChanged,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SummaryStep extends StatelessWidget {
-  final String roleLabel;
-  final String stage;
-  final List<String> majors;
-  final List<String> goals;
-  final String city;
-  final List<String> events;
-
-  const _SummaryStep({
-    required this.roleLabel,
-    required this.stage,
-    required this.majors,
-    required this.goals,
-    required this.city,
-    required this.events,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _QuestionStep(
-      eyebrow: 'Profile',
-      title: '你的艺术画像已生成',
-      subtitle: '进入首页后，AI 会优先根据这份画像推荐院校、活动、课程和合作机会。',
-      child: Column(
-        children: [
-          _SummaryCard(
-            icon: Icons.badge_outlined,
-            title: '身份卡',
-            text: '路径：$roleLabel\n阶段：$stage\n方向：${majors.take(3).join(' / ')}',
-          ),
-          _SummaryCard(
-            icon: Icons.route_outlined,
-            title: '推荐路径',
-            text: goals.isEmpty
-                ? '先浏览公开内容，再逐步补全画像'
-                : goals.take(3).join(' → '),
-          ),
-          _SummaryCard(
-            icon: Icons.auto_awesome_outlined,
-            title: 'AI 首页提示',
-            text: '你可以直接问我：“我适合申请哪些学校？” 或 “有哪些适合我的艺术活动？”',
-          ),
-          _SummaryCard(
-            icon: Icons.event_outlined,
-            title: '活动推荐',
-            text: '$city · ${events.take(2).join(' / ')}',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _SelectableCard extends StatelessWidget {
   final bool selected;
   final IconData? icon;
@@ -874,10 +892,11 @@ class _SelectableCard extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: EdgeInsets.all(compact ? 14 : 18),
         decoration: BoxDecoration(
-          color: selected ? kCobalt.withOpacity(0.08) : Colors.white,
+          color: selected ? kCobalt.withValues(alpha: 0.08) : Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: selected ? kCobalt : context.artC.silver.withOpacity(0.5),
+            color:
+                selected ? kCobalt : context.artC.silver.withValues(alpha: 0.5),
             width: selected ? 1.5 : 1,
           ),
           boxShadow: selected ? [kShadowCard] : null,
@@ -919,7 +938,7 @@ class _SelectableCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         height: 1.35,
-                        color: context.artC.ink.withOpacity(0.45),
+                        color: context.artC.ink.withValues(alpha: 0.45),
                       ),
                     ),
                   ],
@@ -960,7 +979,9 @@ class _Pill extends StatelessWidget {
           color: selected ? kCobalt : Colors.white,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? kCobalt : context.artC.silver.withOpacity(0.55),
+            color: selected
+                ? kCobalt
+                : context.artC.silver.withValues(alpha: 0.55),
           ),
         ),
         child: Text(
@@ -968,8 +989,67 @@ class _Pill extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w800,
-            color: selected ? Colors.white : context.artC.ink.withOpacity(0.72),
+            color: selected
+                ? Colors.white
+                : context.artC.ink.withValues(alpha: 0.72),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TextInputField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final int minLines;
+  final VoidCallback onChanged;
+
+  const _TextInputField({
+    required this.controller,
+    required this.label,
+    required this.onChanged,
+    this.minLines = 1,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        minLines: minLines,
+        maxLines: minLines == 1 ? 1 : 4,
+        onChanged: (_) => onChanged(),
+        decoration: InputDecoration(
+          hintText: label,
+          hintStyle: TextStyle(
+            color: context.artC.ink.withValues(alpha: 0.34),
+            fontWeight: FontWeight.w700,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide:
+                BorderSide(color: context.artC.silver.withValues(alpha: 0.38)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide:
+                BorderSide(color: context.artC.silver.withValues(alpha: 0.38)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: kCobalt, width: 1.4),
+          ),
+        ),
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: context.artC.ink,
         ),
       ),
     );
@@ -978,6 +1058,8 @@ class _Pill extends StatelessWidget {
 
 class _BottomActions extends StatelessWidget {
   final int step;
+  final bool isLast;
+  final bool isBusiness;
   final bool saving;
   final bool canContinue;
   final VoidCallback onSkip;
@@ -985,6 +1067,8 @@ class _BottomActions extends StatelessWidget {
 
   const _BottomActions({
     required this.step,
+    required this.isLast,
+    required this.isBusiness,
     required this.saving,
     required this.canContinue,
     required this.onSkip,
@@ -993,13 +1077,13 @@ class _BottomActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (step == 0) return const SizedBox.shrink();
-    final isLast = step == 7;
     return Container(
       padding: const EdgeInsets.fromLTRB(22, 12, 22, 18),
       decoration: BoxDecoration(
-        color: context.artC.porcelain.withOpacity(0.94),
-        border: Border(top: BorderSide(color: context.artC.silver.withOpacity(0.35))),
+        color: context.artC.porcelain.withValues(alpha: 0.94),
+        border: Border(
+            top:
+                BorderSide(color: context.artC.silver.withValues(alpha: 0.35))),
       ),
       child: SafeArea(
         top: false,
@@ -1008,17 +1092,15 @@ class _BottomActions extends StatelessWidget {
           children: [
             _PrimaryButton(
               label: saving
-                  ? '正在生成画像...'
+                  ? (isBusiness ? '正在提交申请...' : '正在生成画像...')
                   : isLast
-                      ? '进入我的艺术首页'
-                      : step == 6
-                          ? '生成我的艺术档案'
-                          : '继续建立画像',
+                      ? (isBusiness ? '提交入驻申请' : '进入首页')
+                      : '继续',
               onPressed: saving || !canContinue ? null : onContinue,
             ),
             const SizedBox(height: 8),
             _GhostButton(
-              label: step == 6 ? '稍后再说，先进入首页' : '先随便看看',
+              label: '先随便看看',
               onPressed: saving ? null : onSkip,
             ),
           ],
@@ -1043,12 +1125,14 @@ class _PrimaryButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: kCobalt,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: context.artC.silver.withOpacity(0.45),
+          disabledBackgroundColor: context.artC.silver.withValues(alpha: 0.45),
           padding: const EdgeInsets.symmetric(vertical: 15),
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
-        child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
+        child: Text(label,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
       ),
     );
   }
@@ -1069,7 +1153,7 @@ class _GhostButton extends StatelessWidget {
         style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w800,
-          color: context.artC.ink.withOpacity(0.42),
+          color: context.artC.ink.withValues(alpha: 0.42),
         ),
       ),
     );
@@ -1089,41 +1173,10 @@ class _PorcelainPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: context.artC.silver.withOpacity(0.35)),
+        border: Border.all(color: context.artC.silver.withValues(alpha: 0.35)),
         boxShadow: [kShadowCard],
       ),
       child: child,
-    );
-  }
-}
-
-class _MiniLine extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _MiniLine({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: kCobalt),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.35,
-                color: context.artC.ink.withOpacity(0.62),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1167,7 +1220,7 @@ class _SummaryCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       height: 1.5,
-                      color: context.artC.ink.withOpacity(0.56),
+                      color: context.artC.ink.withValues(alpha: 0.56),
                     ),
                   ),
                 ],
@@ -1192,12 +1245,4 @@ class _Choice {
     this.subtitle,
     this.icon,
   });
-}
-
-class _DirectionGroup {
-  final String id;
-  final String label;
-  final List<String> majors;
-
-  const _DirectionGroup(this.id, this.label, this.majors);
 }

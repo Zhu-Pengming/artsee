@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
     const { data: conversations, error } = await supabase
       .from('ai_conversations')
-      .select('id, title, last_message_preview, created_at, updated_at')
+      .select('id, title, last_message_preview, ai_profile_key, user_role_snapshot, user_type_snapshot, created_at, updated_at')
       .eq('user_id', user.id)
       .order('updated_at', { ascending: false })
       .limit(50);
@@ -39,7 +39,12 @@ export async function POST(req: NextRequest) {
     const supabase = createServiceClient();
 
     const body = await req.json();
-    const { title } = body;
+    const {
+      title,
+      aiProfileKey,
+      userRoleSnapshot,
+      userTypeSnapshot,
+    } = body;
 
     const { data: conversation, error } = await supabase
       .from('ai_conversations')
@@ -47,6 +52,11 @@ export async function POST(req: NextRequest) {
         id: randomUUID(),
         user_id: user.id,
         title: title || '新对话',
+        ai_profile_key: typeof aiProfileKey === 'string' ? aiProfileKey : null,
+        user_role_snapshot:
+          typeof userRoleSnapshot === 'string' ? userRoleSnapshot : null,
+        user_type_snapshot:
+          typeof userTypeSnapshot === 'string' ? userTypeSnapshot : null,
       })
       .select()
       .single();

@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
       profile_completion_score: profile?.profile_completion_score || 0,
       // 完整的用户画像数据
       userRole: profile?.user_role || null,
+      userType: profile?.user_type || null,
       targetDegree: profile?.target_degree || null,
       currentEducationStage: profile?.current_education_stage || null,
       currentSchool: profile?.current_school || null,

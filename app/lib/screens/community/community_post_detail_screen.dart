@@ -8,11 +8,13 @@ import 'package:artsee_app/theme/artsee_ui_colors.dart';
 class CommunityPostDetailScreen extends StatefulWidget {
   final String postId;
   final AppCommunityPost? initialPost;
+  final bool focusAnswer;
 
   const CommunityPostDetailScreen({
     super.key,
     required this.postId,
     this.initialPost,
+    this.focusAnswer = false,
   });
 
   @override
@@ -22,6 +24,7 @@ class CommunityPostDetailScreen extends StatefulWidget {
 
 class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
   final TextEditingController _commentCtrl = TextEditingController();
+  final FocusNode _commentFocusNode = FocusNode();
   AppCommunityPost? _post;
   List<AppCommunityComment> _comments = const [];
   bool _loading = true;
@@ -43,6 +46,11 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
     _commentCount = widget.initialPost?.commentCount ?? 0;
     _load(silent: widget.initialPost != null);
     _loadComments();
+    if (widget.focusAnswer) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _commentFocusNode.requestFocus();
+      });
+    }
   }
 
   Future<void> _load({bool silent = false}) async {
@@ -137,22 +145,28 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
       if (!mounted) return;
       _commentCtrl.clear();
       setState(() {
-        _comments = [..._comments, comment];
+        _comments = [comment, ..._comments];
         _commentCount += 1;
         _sendingComment = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_isQa ? '回答已发布' : '评论已发布')),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _sendingComment = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('评论失败：$e')),
+        SnackBar(content: Text('${_isQa ? '回答' : '评论'}失败：$e')),
       );
     }
   }
 
+  bool get _isQa => _post?.metadata['kind'] == 'qa';
+
   @override
   void dispose() {
     _commentCtrl.dispose();
+    _commentFocusNode.dispose();
     super.dispose();
   }
 
@@ -171,7 +185,7 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          '社区详情',
+          _isQa ? '问题详情' : '社区详情',
           style: TextStyle(
             color: context.artC.ink,
             fontSize: 16,
@@ -197,10 +211,9 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                             physics: const AlwaysScrollableScrollPhysics(),
                             slivers: [
                               SliverToBoxAdapter(
-                                  child: _ImageGallery(post: post)),
-                              SliverToBoxAdapter(
                                 child: _PostBody(
                                   post: post,
+                                  isQa: _isQa,
                                   liked: _liked,
                                   likeCount: _likeCount,
                                   commentCount: _commentCount,
@@ -208,10 +221,17 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                                   onLike: _toggleLike,
                                 ),
                               ),
+                              if (!_isQa)
+                                SliverToBoxAdapter(
+                                    child: _ImageGallery(post: post)),
+                              if (_isQa && post.imageUrls.isNotEmpty)
+                                SliverToBoxAdapter(
+                                    child: _ImageGallery(post: post)),
                               SliverToBoxAdapter(
                                 child: _CommentsSection(
                                   comments: _comments,
                                   loading: _commentsLoading,
+                                  isQa: _isQa,
                                 ),
                               ),
                               SliverToBoxAdapter(
@@ -224,7 +244,9 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                       ),
                       _CommentComposer(
                         controller: _commentCtrl,
+                        focusNode: _commentFocusNode,
                         sending: _sendingComment,
+                        isQa: _isQa,
                         onSend: _sendComment,
                       ),
                     ],
@@ -323,6 +345,7 @@ class _ImageGalleryState extends State<_ImageGallery> {
 
 class _PostBody extends StatelessWidget {
   final AppCommunityPost post;
+  final bool isQa;
   final bool liked;
   final bool likeBusy;
   final int likeCount;
@@ -331,6 +354,7 @@ class _PostBody extends StatelessWidget {
 
   const _PostBody({
     required this.post,
+    required this.isQa,
     required this.liked,
     required this.likeBusy,
     required this.likeCount,
@@ -341,21 +365,41 @@ class _PostBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final body = post.body?.trim() ?? '';
+    final category = post.metadata['category']?.toString();
+    final school = post.metadata['school']?.toString();
+    final program = post.metadata['program']?.toString();
+    final anonymous = post.metadata['anonymous'] == true;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (isQa) ...[
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              children: [
+                _DetailBadge(label: category ?? '问答', dark: true),
+                if (school != null && school.isNotEmpty)
+                  _DetailBadge(label: school, dark: false),
+                if (program != null && program.isNotEmpty)
+                  _DetailBadge(label: program, dark: false),
+              ],
+            ),
+            const SizedBox(height: 14),
+          ],
           Row(
             children: [
-              _Avatar(post: post, radius: 19),
+              _Avatar(post: post, radius: 19, anonymous: isQa && anonymous),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      post.authorNickname ?? 'Artsee 用户',
+                      isQa && anonymous
+                          ? '匿名用户'
+                          : post.authorNickname ?? 'Artsee 用户',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -379,7 +423,11 @@ class _PostBody extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            post.title.isNotEmpty ? post.title : '作品分享',
+            post.title.isNotEmpty
+                ? post.title
+                : isQa
+                    ? '未命名问题'
+                    : '作品分享',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w800,
@@ -411,7 +459,11 @@ class _PostBody extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              _Metric(icon: Icons.chat_bubble_outline, value: commentCount),
+              _Metric(
+                  icon: isQa
+                      ? Icons.question_answer_outlined
+                      : Icons.chat_bubble_outline,
+                  value: commentCount),
               const SizedBox(width: 12),
               _Metric(icon: Icons.visibility_outlined, value: post.viewCount),
             ],
@@ -425,8 +477,13 @@ class _PostBody extends StatelessWidget {
 class _Avatar extends StatelessWidget {
   final AppCommunityPost post;
   final double radius;
+  final bool anonymous;
 
-  const _Avatar({required this.post, required this.radius});
+  const _Avatar({
+    required this.post,
+    required this.radius,
+    this.anonymous = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -435,7 +492,7 @@ class _Avatar extends StatelessWidget {
       radius: radius,
       backgroundColor: kCobalt.withOpacity(0.09),
       child: ClipOval(
-        child: avatar != null && avatar.isNotEmpty
+        child: !anonymous && avatar != null && avatar.isNotEmpty
             ? Image.network(
                 avatar,
                 width: radius * 2,
@@ -464,6 +521,35 @@ class _Initial extends StatelessWidget {
           color: kCobalt,
           fontSize: 13,
           fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailBadge extends StatelessWidget {
+  final String label;
+  final bool dark;
+
+  const _DetailBadge({required this.label, required this.dark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: dark ? kCobalt : Colors.white,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: dark ? kCobalt : context.artC.silver.withOpacity(0.55),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: dark ? Colors.white : context.artC.ink.withOpacity(0.58),
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
         ),
       ),
     );
@@ -516,21 +602,27 @@ class _Metric extends StatelessWidget {
 class _CommentsSection extends StatelessWidget {
   final List<AppCommunityComment> comments;
   final bool loading;
+  final bool isQa;
 
   const _CommentsSection({
     required this.comments,
     required this.loading,
+    required this.isQa,
   });
 
   @override
   Widget build(BuildContext context) {
+    final certified =
+        comments.where((comment) => comment.likeCount > 0).toList();
+    final ordinary =
+        comments.where((comment) => comment.likeCount <= 0).toList();
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '评论',
+            isQa ? '全部回答 ${comments.length}' : '评论',
             style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w800,
@@ -562,15 +654,98 @@ class _CommentsSection extends StatelessWidget {
                 border: Border.all(color: context.artC.silver.withOpacity(0.5)),
               ),
               child: Text(
-                '还没有评论，来写下第一句反馈。',
+                isQa ? '还没有回答，分享你的经验或建议。' : '还没有评论，来写下第一句反馈。',
                 style: TextStyle(
                   fontSize: 13,
                   color: context.artC.ink.withOpacity(0.42),
                 ),
               ),
             )
-          else
-            ...comments.map((comment) => _CommentTile(comment: comment)),
+          else if (isQa) ...[
+            if (certified.isNotEmpty) ...[
+              _AnswerGroupTitle(label: '认证回答'),
+              ...certified.map((comment) => _CommentTile(
+                    comment: comment,
+                    isQa: isQa,
+                  )),
+              const SizedBox(height: 8),
+            ] else
+              _InviteAnswerCard(),
+            if (ordinary.isNotEmpty) ...[
+              _AnswerGroupTitle(label: '其他回答'),
+              ...ordinary.map((comment) => _CommentTile(
+                    comment: comment,
+                    isQa: isQa,
+                  )),
+            ],
+          ] else
+            ...comments.map((comment) => _CommentTile(
+                  comment: comment,
+                  isQa: isQa,
+                )),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnswerGroupTitle extends StatelessWidget {
+  final String label;
+
+  const _AnswerGroupTitle({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: context.artC.ink.withOpacity(0.48),
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+}
+
+class _InviteAnswerCard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(kRadiusMedium),
+        border: Border.all(color: context.artC.silver.withOpacity(0.5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.verified_outlined, color: kCobalt, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '暂无认证回答，可以邀请校友、导师或顾问来回答。',
+              style: TextStyle(
+                color: context.artC.ink.withOpacity(0.52),
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            '邀请',
+            style: TextStyle(
+              color: kCobalt,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ],
       ),
     );
@@ -579,8 +754,9 @@ class _CommentsSection extends StatelessWidget {
 
 class _CommentTile extends StatelessWidget {
   final AppCommunityComment comment;
+  final bool isQa;
 
-  const _CommentTile({required this.comment});
+  const _CommentTile({required this.comment, required this.isQa});
 
   @override
   Widget build(BuildContext context) {
@@ -621,7 +797,7 @@ class _CommentTile extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        name,
+                        isQa && comment.likeCount > 0 ? '$name · 已认证' : name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -681,12 +857,16 @@ class _CommentInitial extends StatelessWidget {
 
 class _CommentComposer extends StatelessWidget {
   final TextEditingController controller;
+  final FocusNode focusNode;
   final bool sending;
+  final bool isQa;
   final VoidCallback onSend;
 
   const _CommentComposer({
     required this.controller,
+    required this.focusNode,
     required this.sending,
+    required this.isQa,
     required this.onSend,
   });
 
@@ -715,12 +895,13 @@ class _CommentComposer extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: TextField(
                   controller: controller,
+                  focusNode: focusNode,
                   minLines: 1,
                   maxLines: 4,
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => onSend(),
                   decoration: InputDecoration(
-                    hintText: '写评论...',
+                    hintText: isQa ? '分享你的申请经验、作品集建议或行业判断...' : '写评论...',
                     border: InputBorder.none,
                     hintStyle: TextStyle(
                       fontSize: 13,

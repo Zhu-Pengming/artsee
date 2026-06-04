@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/backend_api_service.dart';
 import '../../widgets/common.dart';
+import '../profile/application_workspace_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 class SchoolDetailScreen extends StatefulWidget {
@@ -15,12 +16,15 @@ class SchoolDetailScreen extends StatefulWidget {
 class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
   Map<String, dynamic>? _data;
   bool _loading = true;
+  bool _saved = false;
+  bool _saving = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadSavedState();
   }
 
   Future<void> _load() async {
@@ -42,13 +46,166 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
     }
   }
 
+  Future<void> _loadSavedState() async {
+    try {
+      final saved = await BackendApiService.fetchSavedSchools(limit: 100);
+      if (!mounted) return;
+      setState(() {
+        _saved = saved.data.any(
+          (item) => (item['id'] ?? item['school_id'])?.toString() == widget.id,
+        );
+      });
+    } catch (_) {
+      if (mounted) setState(() => _saved = false);
+    }
+  }
+
+  Future<void> _toggleSaved() async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      if (_saved) {
+        await BackendApiService.removeSavedSchool(widget.id);
+      } else {
+        await BackendApiService.saveSchool(widget.id);
+      }
+      if (!mounted) return;
+      setState(() => _saved = !_saved);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_saved ? '已加入目标院校池' : '已移出目标院校池')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('操作失败：$e')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _openCompareWorkspace() async {
+    if (!_saved) {
+      await _toggleSaved();
+    }
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const ApplicationWorkspaceScreen(
+          kind: ApplicationWorkspaceKind.programCompare,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openConsultationSheet(String targetName) async {
+    final controller = TextEditingController();
+    var submitting = false;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          Future<void> submit() async {
+            final message = controller.text.trim();
+            if (message.isEmpty || submitting) return;
+            setSheetState(() => submitting = true);
+            try {
+              await BackendApiService.createConsultation(
+                targetType: 'school',
+                targetId: widget.id,
+                targetName: targetName,
+                message: message,
+              );
+              if (!mounted || !sheetContext.mounted) return;
+              Navigator.of(sheetContext).pop();
+              ScaffoldMessenger.of(this.context).showSnackBar(
+                const SnackBar(content: Text('咨询已提交，可在咨询记录中查看')),
+              );
+            } catch (e) {
+              if (!mounted || !context.mounted) return;
+              setSheetState(() => submitting = false);
+              ScaffoldMessenger.of(this.context).showSnackBar(
+                SnackBar(content: Text('提交失败：$e')),
+              );
+            }
+          }
+
+          return Container(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              18,
+              20,
+              MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '咨询 $targetName',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: context.artC.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: controller,
+                    minLines: 3,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      hintText: '你想咨询什么？例如作品集要求、申请时间线、语言要求...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(backgroundColor: kCobalt),
+                      onPressed: submitting ? null : submit,
+                      child: Text(submitting ? '提交中...' : '提交咨询'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    controller.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.artC.porcelain,
+      bottomNavigationBar: _data == null || _loading || _error != null
+          ? null
+          : _SchoolActionBar(
+              saved: _saved,
+              saving: _saving,
+              onSave: _toggleSaved,
+              onCompare: _openCompareWorkspace,
+              onConsult: () => _openConsultationSheet(
+                _data?['name_zh']?.toString() ?? '目标院校',
+              ),
+            ),
       body: SafeArea(
         child: _loading
-            ? Center(
+            ? const Center(
                 child: CircularProgressIndicator(
                   color: kCobalt,
                   strokeWidth: 2.5,
@@ -87,6 +244,16 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
         ? rawWebsite
         : null;
     final logoUrl = d['logo_url'] as String?;
+    final schoolTypeLabel = _schoolTypeLabel(schoolType);
+    final fitItems =
+        _fitItems(schoolType: schoolType, disciplines: disciplines, city: city);
+    final cautionItems = _cautionItems(qsRank: qsRank, schoolType: schoolType);
+    final summary = _schoolSummary(
+      nameZh: nameZh,
+      city: city,
+      schoolTypeLabel: schoolTypeLabel,
+      disciplines: disciplines,
+    );
 
     return CustomScrollView(
       slivers: [
@@ -112,6 +279,46 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
                   ),
                 ),
                 const Spacer(),
+                _HeaderActionButton(
+                  tooltip: _saved ? '已在目标池' : '加入目标池',
+                  onTap: _toggleSaved,
+                  child: _saving
+                      ? const SizedBox(
+                          width: 15,
+                          height: 15,
+                          child: CircularProgressIndicator(
+                            color: kCobalt,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Icon(
+                          _saved
+                              ? Icons.bookmark_rounded
+                              : Icons.bookmark_add_outlined,
+                          size: 19,
+                          color: kCobalt,
+                        ),
+                ),
+                const SizedBox(width: 8),
+                _HeaderActionButton(
+                  tooltip: '加入对比',
+                  onTap: _openCompareWorkspace,
+                  child: const Icon(
+                    Icons.compare_arrows_rounded,
+                    size: 19,
+                    color: kCobalt,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _HeaderActionButton(
+                  tooltip: '咨询申请',
+                  onTap: () => _openConsultationSheet(nameZh),
+                  child: const Icon(
+                    Icons.support_agent_outlined,
+                    size: 19,
+                    color: kCobalt,
+                  ),
+                ),
               ],
             ),
           ),
@@ -144,7 +351,7 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
                             : Center(
                                 child: Text(
                                   nameZh.substring(0, 1),
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 36,
                                     fontWeight: FontWeight.w700,
                                     color: kCobalt,
@@ -199,7 +406,58 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
                                 ),
                               ),
                             ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              _DetailChip(
+                                icon: Icons.place_outlined,
+                                label: [
+                                  if (city != null) city,
+                                  if (country != null) country,
+                                ].join(' · '),
+                              ),
+                              _DetailChip(
+                                icon: Icons.account_balance_outlined,
+                                label: schoolTypeLabel,
+                              ),
+                            ],
+                          ),
                         ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _PrimaryDecisionButton(
+                        icon: _saved
+                            ? Icons.bookmark_rounded
+                            : Icons.bookmark_add_outlined,
+                        label: _saved ? '已在目标池' : '加入目标池',
+                        loading: _saving,
+                        onTap: _toggleSaved,
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: _PrimaryDecisionButton(
+                        icon: Icons.compare_arrows_rounded,
+                        label: '加入对比',
+                        outlined: true,
+                        onTap: _openCompareWorkspace,
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: _PrimaryDecisionButton(
+                        icon: Icons.support_agent_outlined,
+                        label: '咨询申请',
+                        outlined: true,
+                        onTap: () => _openConsultationSheet(nameZh),
                       ),
                     ),
                   ],
@@ -224,7 +482,28 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 28),
+                const SizedBox(height: 18),
+                _buildFitCard(fitItems, cautionItems),
+                const SizedBox(height: 16),
+                _buildCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionTitle('关键结论'),
+                      const SizedBox(height: 12),
+                      Text(
+                        summary,
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.55,
+                          fontWeight: FontWeight.w700,
+                          color: context.artC.ink.withOpacity(0.72),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
                 _buildCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,7 +519,18 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
                       ),
                       if (schoolType != null && schoolType.isNotEmpty) ...[
                         const SizedBox(height: 12),
-                        _buildInfoRow('学校类型', schoolType),
+                        _buildInfoRow('学校类型', schoolTypeLabel),
+                      ],
+                      if (disciplines.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow(
+                          '优势方向',
+                          disciplines.take(4).map(_displayLabel).join(' / '),
+                        ),
+                      ],
+                      if (qsRank != null) ...[
+                        const SizedBox(height: 12),
+                        _buildInfoRow('QS 艺术排名', '#$qsRank'),
                       ],
                       if (website != null && website.isNotEmpty) ...[
                         const SizedBox(height: 12),
@@ -258,12 +548,31 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
                         _buildSectionTitle('学校介绍'),
                         const SizedBox(height: 12),
                         Text(
-                          description.trim(),
+                          summary,
                           style: TextStyle(
                             fontSize: 14,
                             height: 1.65,
-                            color: context.artC.ink.withOpacity(0.72),
-                            fontWeight: FontWeight.w500,
+                            color: context.artC.ink.withOpacity(0.74),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: context.artC.porcelain.withOpacity(0.72),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(
+                            description.trim(),
+                            maxLines: 5,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              height: 1.55,
+                              color: context.artC.ink.withOpacity(0.48),
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
@@ -382,6 +691,31 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
     );
   }
 
+  Widget _buildFitCard(List<String> fitItems, List<String> cautionItems) {
+    return _buildCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle('适合你吗？'),
+          const SizedBox(height: 14),
+          _FitColumn(
+            title: '适合',
+            icon: Icons.check_circle_rounded,
+            color: kCobalt,
+            items: fitItems,
+          ),
+          const SizedBox(height: 14),
+          _FitColumn(
+            title: '谨慎',
+            icon: Icons.info_outline_rounded,
+            color: const Color(0xFF9A6A00),
+            items: cautionItems,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCard({required Widget child}) {
     return Container(
       width: double.infinity,
@@ -448,7 +782,7 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
             border: Border.all(color: kCobalt.withOpacity(0.08)),
           ),
           child: Text(
-            value,
+            _displayLabel(value),
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -513,6 +847,293 @@ class _SchoolLogoFallback extends StatelessWidget {
   }
 }
 
+class _HeaderActionButton extends StatelessWidget {
+  final String tooltip;
+  final VoidCallback onTap;
+  final Widget child;
+
+  const _HeaderActionButton({
+    required this.tooltip,
+    required this.onTap,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        button: true,
+        label: tooltip,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [kShadowCard],
+            ),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _DetailChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    if (label.trim().isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: context.artC.silver.withOpacity(0.26),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: context.artC.ink.withOpacity(0.06)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: context.artC.ink.withOpacity(0.52)),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: context.artC.ink.withOpacity(0.58),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PrimaryDecisionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool outlined;
+  final bool loading;
+
+  const _PrimaryDecisionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.outlined = false,
+    this.loading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = outlined ? kCobalt : Colors.white;
+    return Material(
+      color: outlined ? Colors.white : kCobalt,
+      borderRadius: BorderRadius.circular(13),
+      child: InkWell(
+        onTap: loading ? null : onTap,
+        borderRadius: BorderRadius.circular(13),
+        child: Container(
+          height: 46,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(
+              color: outlined ? kCobalt.withOpacity(0.18) : kCobalt,
+            ),
+          ),
+          child: Center(
+            child: loading
+                ? SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: fg,
+                    ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, size: 16, color: fg),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: fg,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FitColumn extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final List<String> items;
+
+  const _FitColumn({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.items,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: items.map((item) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.72),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Text(
+                  item,
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.2,
+                    fontWeight: FontWeight.w700,
+                    color: context.artC.ink.withOpacity(0.68),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SchoolActionBar extends StatelessWidget {
+  final bool saved;
+  final bool saving;
+  final VoidCallback onSave;
+  final VoidCallback onCompare;
+  final VoidCallback onConsult;
+
+  const _SchoolActionBar({
+    required this.saved,
+    required this.saving,
+    required this.onSave,
+    required this.onCompare,
+    required this.onConsult,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.96),
+        border:
+            Border(top: BorderSide(color: context.artC.ink.withOpacity(0.06))),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 18,
+            offset: const Offset(0, -8),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: _PrimaryDecisionButton(
+                  icon: saved
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_add_outlined,
+                  label: saved ? '已在目标池' : '加入目标池',
+                  loading: saving,
+                  onTap: onSave,
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: _PrimaryDecisionButton(
+                  icon: Icons.compare_arrows_rounded,
+                  label: saved ? '查看对比' : '加入对比',
+                  outlined: true,
+                  onTap: onCompare,
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: _PrimaryDecisionButton(
+                  icon: Icons.support_agent_outlined,
+                  label: '咨询申请',
+                  outlined: true,
+                  onTap: onConsult,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 List<String> _stringList(dynamic value) {
   if (value is List) {
     return value
@@ -528,4 +1149,106 @@ List<String> _stringList(dynamic value) {
         .toList();
   }
   return const [];
+}
+
+String _schoolTypeLabel(String? value) {
+  switch (value) {
+    case 'art_college':
+      return '艺术学院';
+    case 'art_academy':
+      return '专业艺术学院';
+    case 'design_school':
+      return '设计学院';
+    case 'university_art_dept':
+      return '大学艺术院系';
+    case 'comprehensive_university':
+      return '综合大学艺术方向';
+    case 'multi_disciplinary':
+      return '综合艺术与设计院校';
+    case 'private_art_school':
+      return '私立艺术院校';
+    case 'public_university':
+      return '公立大学艺术方向';
+    default:
+      return value == null || value.isEmpty ? '艺术与设计院校' : _displayLabel(value);
+  }
+}
+
+String _displayLabel(String value) {
+  final normalized = value.trim();
+  final key =
+      normalized.toLowerCase().replaceAll('-', '_').replaceAll(' ', '_');
+  return switch (key) {
+    'fine_art' || 'fine_arts' => '纯艺',
+    'painting' => '绘画',
+    'sculpture' => '雕塑',
+    'design' => '设计',
+    'graphic_design' || 'communication_design' => '平面设计',
+    'visual_communication' || 'visual_communications' => '视觉传达',
+    'interaction_design' || 'interactive_design' => '交互设计',
+    'service_design' => '服务设计',
+    'industrial_design' || 'product_design' => '工业设计',
+    'architecture' || 'architectural_design' => '建筑',
+    'interior_design' => '室内设计',
+    'fashion' || 'fashion_design' => '时尚',
+    'illustration' => '插画',
+    'animation' => '动画',
+    'film' || 'film_video' => '电影影像',
+    'photography' => '摄影',
+    'curating' || 'curatorial_studies' => '策展',
+    'art_history' => '艺术史',
+    'multi_disciplinary' => '跨学科',
+    'portfolio_friendly' => '作品集友好',
+    _ => normalized.contains('_')
+        ? normalized
+            .split('_')
+            .where((part) => part.isNotEmpty)
+            .map((part) => part[0].toUpperCase() + part.substring(1))
+            .join(' ')
+        : normalized,
+  };
+}
+
+List<String> _fitItems({
+  required String? schoolType,
+  required List<String> disciplines,
+  required String? city,
+}) {
+  final primaryDirection = disciplines.isNotEmpty
+      ? disciplines.take(2).map(_displayLabel).join(' / ')
+      : '艺术与设计';
+  return [
+    if (schoolType == 'multi_disciplinary' ||
+        schoolType == 'design_school' ||
+        schoolType == 'art_college')
+      '想在$primaryDirection方向做系统深造'
+    else
+      '希望把$primaryDirection纳入目标院校池',
+    if (city != null && city.isNotEmpty) '看重$city的艺术资源与行业机会',
+    '需要通过排名、方向和作品集要求做申请取舍',
+  ];
+}
+
+List<String> _cautionItems({
+  required int? qsRank,
+  required String? schoolType,
+}) {
+  return [
+    if (qsRank != null && qsRank <= 10) '热门高排名院校，作品集概念和完成度要求更高',
+    if (schoolType == 'multi_disciplinary') '专业跨度较大，申请前要先锁定具体项目',
+    '费用、语言、DDL 和作品集格式仍需以官网为准',
+  ];
+}
+
+String _schoolSummary({
+  required String nameZh,
+  required String? city,
+  required String schoolTypeLabel,
+  required List<String> disciplines,
+}) {
+  final direction = disciplines.isNotEmpty
+      ? disciplines.take(4).map(_displayLabel).join('、')
+      : '艺术与设计';
+  final location = city == null || city.isEmpty ? '' : '位于$city，';
+  return '$nameZh$location是一所$schoolTypeLabel，适合关注$direction方向、希望把院校选择和作品集策略结合起来判断的申请者。建议把它放入目标池后，与同国家或同专业方向院校一起比较排名、预算、课程重点和申请要求。';
 }

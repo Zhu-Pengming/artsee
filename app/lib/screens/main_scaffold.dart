@@ -9,19 +9,23 @@ import 'news/news_scaffold.dart';
 import 'explore/explore_screen.dart';
 import 'forum/forum_screen.dart';
 import 'profile/profile_screen.dart';
+import 'publish/publish_exhibition_screen.dart';
+import 'publish/publish_opportunity_screen.dart';
+import 'publish/publish_artist_screen.dart';
 import '../services/supabase_service.dart';
 import '../services/backend_api_service.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 /// ═══════════════════════════════════════════════════════════════
 /// artiqore 艺见心 — App 总入口
-/// 当前主导航：首页 / 院校 / 灵感 / 社区 / 我的。
+/// 当前主导航：首页 / 院校 / 发现 / 社区 / 我的。
 /// ═══════════════════════════════════════════════════════════════
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
 
-  static final GlobalKey<_MainScaffoldState> globalKey = GlobalKey<_MainScaffoldState>();
+  static final GlobalKey<_MainScaffoldState> globalKey =
+      GlobalKey<_MainScaffoldState>();
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
@@ -30,6 +34,7 @@ class MainScaffold extends StatefulWidget {
 class _MainScaffoldState extends State<MainScaffold> {
   static const double _headerHeight = 54;
   int _currentIndex = 0;
+  bool _homeNavHidden = false;
   final GlobalKey<NewsScaffoldState> _newsKey = GlobalKey<NewsScaffoldState>();
   final GlobalKey<ExploreScreenState> _exploreKey =
       GlobalKey<ExploreScreenState>();
@@ -37,8 +42,16 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   void switchToTab(int index) {
     if (mounted) {
-      setState(() => _currentIndex = index);
+      setState(() {
+        _currentIndex = index;
+        if (index != 0) _homeNavHidden = false;
+      });
     }
+  }
+
+  void setHomeNavHidden(bool hidden) {
+    if (!mounted || _homeNavHidden == hidden) return;
+    setState(() => _homeNavHidden = hidden);
   }
 
   final List<_NavItem> _navItems = const [
@@ -55,7 +68,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     _NavItem(
       icon: Icons.explore_outlined,
       activeIcon: Icons.explore_rounded,
-      label: '灵感',
+      label: '发现',
     ),
     _NavItem(
       icon: Icons.forum_outlined,
@@ -78,84 +91,15 @@ class _MainScaffoldState extends State<MainScaffold> {
     if (!mounted || created != true) return;
   }
 
-  void _showCommunityCreateSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => ClipRRect(
-        borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(kRadiusLarge)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFE8EEF5).withOpacity(0.94),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(kRadiusLarge),
-              ),
-              border:
-                  Border.all(color: Colors.white.withOpacity(0.62), width: 1),
-            ),
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-            child: SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: context.artC.ink.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildSheetOption(
-                          icon: Icons.help_outline,
-                          label: '发布问答',
-                          onTap: () {
-                            Navigator.of(ctx).pop();
-                            _openCommunityDialog(_CommunityCreateKind.qa);
-                          },
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildSheetOption(
-                          icon: Icons.groups_outlined,
-                          label: '创建圈子',
-                          onTap: () {
-                            Navigator.of(ctx).pop();
-                            _openCommunityDialog(_CommunityCreateKind.circle);
-                          },
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildSheetOption(
-                          icon: Icons.auto_awesome,
-                          label: '创建沙龙',
-                          onTap: () {
-                            Navigator.of(ctx).pop();
-                            _openCommunityDialog(_CommunityCreateKind.salon);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _openCommunityDialog(_CommunityCreateKind kind) async {
+    if (kind == _CommunityCreateKind.circle) {
+      await _openCreateCircleSheet();
+      return;
+    }
+    if (kind == _CommunityCreateKind.salon) {
+      await _openCreateSalonSheet();
+      return;
+    }
     final titleCtrl = TextEditingController();
     final typeCtrl = TextEditingController();
     final cityCtrl = TextEditingController();
@@ -165,9 +109,30 @@ class _MainScaffoldState extends State<MainScaffold> {
     var submitting = false;
 
     final labels = switch (kind) {
-      _CommunityCreateKind.qa => ('发布问答', '问题标题', '话题分类', '城市/地区', '补充说明', '预算'),
-      _CommunityCreateKind.circle => ('创建圈子', '圈子名称', '圈子分类', '城市/地区', '圈子简介', '预算'),
-      _CommunityCreateKind.salon => ('创建沙龙', '沙龙标题', '沙龙类型', '城市', '地点/活动说明', '费用'),
+      _CommunityCreateKind.qa => (
+          '发布问答',
+          '问题标题',
+          '话题分类',
+          '城市/地区',
+          '补充说明',
+          '预算'
+        ),
+      _CommunityCreateKind.circle => (
+          '创建圈子',
+          '圈子名称',
+          '圈子分类',
+          '城市/地区',
+          '圈子简介',
+          '预算'
+        ),
+      _CommunityCreateKind.salon => (
+          '创建沙龙',
+          '沙龙标题',
+          '沙龙类型',
+          '城市',
+          '地点/活动说明',
+          '费用'
+        ),
     };
 
     await showDialog<void>(
@@ -210,6 +175,9 @@ class _MainScaffoldState extends State<MainScaffold> {
               }
               if (!mounted) return;
               Navigator.of(dialogContext).pop();
+              if (_currentIndex == 2) {
+                _exploreKey.currentState?.refreshActiveTab();
+              }
               if (_currentIndex == 3) {
                 _forumKey.currentState?.refreshActiveTab();
               }
@@ -278,7 +246,674 @@ class _MainScaffoldState extends State<MainScaffold> {
     });
   }
 
+  Future<void> _openCreateCircleSheet() async {
+    final nameCtrl = TextEditingController();
+    final placeCtrl = TextEditingController();
+    final introCtrl = TextEditingController();
+    final directions = <String>{};
+    const directionOptions = ['留学', '作品集', '同城', '就业', '市场'];
+    var joinType = 'open';
+    var submitting = false;
+    var nameError = '';
+    var directionError = '';
+    var placeError = '';
+    var introError = '';
+
+    bool validate(void Function(void Function()) setSheetState) {
+      final name = nameCtrl.text.trim();
+      final intro = introCtrl.text.trim();
+      final place = placeCtrl.text.trim();
+      setSheetState(() {
+        nameError = '';
+        directionError = '';
+        placeError = '';
+        introError = '';
+        if (name.isEmpty) {
+          nameError = '请输入圈子名称';
+        } else if (name.length < 4 || name.length > 24) {
+          nameError = '圈子名称需为 4-24 个字';
+        } else if (['艺术交流群', '交流群', '艺术圈'].contains(name)) {
+          nameError = '名称再具体一点，会更容易吸引同方向用户';
+        }
+        if (directions.isEmpty) {
+          directionError = '请选择至少一个方向';
+        }
+        if (directions.contains('同城') && place.isEmpty) {
+          placeError = '同城圈子需要填写城市或地区';
+        }
+        if (intro.length < 10) {
+          introError = '简介再具体一点，至少 10 个字';
+        }
+      });
+      return nameError.isEmpty &&
+          directionError.isEmpty &&
+          placeError.isEmpty &&
+          introError.isEmpty;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          Future<void> submit() async {
+            if (submitting || !validate(setSheetState)) return;
+            setSheetState(() => submitting = true);
+            final name = nameCtrl.text.trim();
+            final intro = introCtrl.text.trim();
+            final place = placeCtrl.text.trim();
+            final primaryDirection = directions.first;
+            try {
+              final created = await BackendApiService.createCommunityCircle({
+                'title': name,
+                'subtitle': intro,
+                'category': primaryDirection,
+                'city': place.isEmpty ? null : place,
+                'metadata': {
+                  'directions': directions.toList(),
+                  'join_type': joinType,
+                  'tags': [
+                    ...directions.map((item) => '#$item'),
+                    if (place.isNotEmpty) '#$place',
+                  ],
+                  'hot_topic': '发布第一条讨论，开启圈子交流',
+                  'announcement':
+                      '欢迎来到$name。这里适合交流${directions.join('、')}相关经验、资源和机会。请保持专业、尊重原创。',
+                },
+              });
+              if (!mounted || !sheetContext.mounted) return;
+              Navigator.of(sheetContext).pop();
+              final localCircle = {
+                ...created,
+                'join_status': 'joined',
+                'join_type': joinType,
+                'today_post_count': 0,
+                'hot_topic': '发布第一条讨论，开启圈子交流',
+                'member_count': created['member_count'] ?? 1,
+              };
+              _forumKey.currentState?.addCreatedCircle(localCircle);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('圈子已创建，你可以发布第一条动态或邀请同方向用户加入'),
+                ),
+              );
+            } catch (e) {
+              if (!mounted) return;
+              setSheetState(() => submitting = false);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('创建失败：$e')),
+              );
+            }
+          }
+
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 12,
+              right: 12,
+              bottom: MediaQuery.viewInsetsOf(sheetContext).bottom + 12,
+            ),
+            child: Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.88,
+              ),
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+              decoration: BoxDecoration(
+                color: context.artC.porcelain,
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: context.artC.silver.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        Text(
+                          '创建圈子',
+                          style: TextStyle(
+                            color: context.artC.ink,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            fontFamily: 'Noto Serif SC',
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '建立一个面向专业方向、学校或城市的艺术社群。',
+                          style: TextStyle(
+                            color: context.artC.ink.withOpacity(0.48),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        _CircleCreateTextField(
+                          controller: nameCtrl,
+                          label: '圈子名称',
+                          hint: '例如：RCA 作品集互助圈',
+                          maxLength: 24,
+                          error: nameError,
+                        ),
+                        const SizedBox(height: 14),
+                        _CircleCreateSection(
+                          title: '方向',
+                          error: directionError,
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: directionOptions
+                                .map(
+                                  (item) => _CircleCreateChip(
+                                    label: item,
+                                    selected: directions.contains(item),
+                                    onTap: () {
+                                      setSheetState(() {
+                                        if (directions.contains(item)) {
+                                          directions.remove(item);
+                                        } else if (directions.length < 2) {
+                                          directions.add(item);
+                                        } else {
+                                          directions
+                                            ..clear()
+                                            ..add(item);
+                                        }
+                                      });
+                                    },
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _CircleCreateSection(
+                          title: '加入方式',
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _CircleJoinModeCard(
+                                  title: '开放加入',
+                                  subtitle: '任何人都可以直接加入',
+                                  selected: joinType == 'open',
+                                  onTap: () =>
+                                      setSheetState(() => joinType = 'open'),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _CircleJoinModeCard(
+                                  title: '申请加入',
+                                  subtitle: '需要圈主审核',
+                                  selected: joinType == 'approval',
+                                  onTap: () => setSheetState(
+                                    () => joinType = 'approval',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _CircleCreateTextField(
+                          controller: placeCtrl,
+                          label: '城市 / 学校 / 地区（可选）',
+                          hint: '例如：伦敦、RCA、UAL',
+                          error: placeError,
+                        ),
+                        const SizedBox(height: 14),
+                        _CircleCreateTextField(
+                          controller: introCtrl,
+                          label: '圈子简介',
+                          hint: '这个圈子适合谁？大家可以在这里交流什么？',
+                          maxLines: 4,
+                          maxLength: 120,
+                          error: introError,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: submitting
+                              ? null
+                              : () => Navigator.of(sheetContext).pop(),
+                          child: const Text('取消'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: submitting ? null : submit,
+                          child: Text(submitting ? '创建中' : '创建圈子'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    ).then((_) {
+      nameCtrl.dispose();
+      placeCtrl.dispose();
+      introCtrl.dispose();
+    });
+  }
+
+  Future<void> _openCreateSalonSheet() async {
+    final titleCtrl = TextEditingController();
+    final timeCtrl = TextEditingController();
+    final cityCtrl = TextEditingController();
+    final venueCtrl = TextEditingController();
+    final guestCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    final seatsCtrl = TextEditingController(text: '8');
+    const salonTypes = ['留学答疑', '作品集诊断', '校友分享', '行业就业', '艺术市场'];
+    var salonType = '作品集诊断';
+    var mode = '线下';
+    var feeMode = 'free';
+    var submitting = false;
+    var titleError = '';
+    var timeError = '';
+    var venueError = '';
+    var guestError = '';
+    var descError = '';
+    var amountError = '';
+    var seatsError = '';
+
+    bool validate(void Function(void Function()) setSheetState) {
+      final title = titleCtrl.text.trim();
+      final start = _parseSalonDateTime(timeCtrl.text.trim());
+      final venue = venueCtrl.text.trim();
+      final guest = guestCtrl.text.trim();
+      final desc = descCtrl.text.trim();
+      final amount = int.tryParse(amountCtrl.text.trim());
+      final seats = int.tryParse(seatsCtrl.text.trim());
+      setSheetState(() {
+        titleError = '';
+        timeError = '';
+        venueError = '';
+        guestError = '';
+        descError = '';
+        amountError = '';
+        seatsError = '';
+        if (title.length < 6 || title.length > 40) {
+          titleError = '标题需为 6-40 个字';
+        }
+        if (start == null) {
+          timeError = '请按 2026-06-22 19:00 格式填写时间';
+        }
+        if (venue.isEmpty) {
+          venueError = mode == '线上' ? '请填写会议链接或待定' : '请填写地点';
+        }
+        if (guest.length < 3) {
+          guestError = '请填写嘉宾或主讲人';
+        }
+        if (desc.length < 12) {
+          descError = '活动说明再具体一点，至少 12 个字';
+        }
+        if (feeMode == 'paid' && (amount == null || amount <= 0)) {
+          amountError = '请填写有效金额';
+        }
+        if (seats == null || seats <= 0) {
+          seatsError = '请填写有效席位数';
+        }
+      });
+      return titleError.isEmpty &&
+          timeError.isEmpty &&
+          venueError.isEmpty &&
+          guestError.isEmpty &&
+          descError.isEmpty &&
+          amountError.isEmpty &&
+          seatsError.isEmpty;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          Future<void> submit() async {
+            if (submitting || !validate(setSheetState)) return;
+            setSheetState(() => submitting = true);
+            final start = _parseSalonDateTime(timeCtrl.text.trim())!;
+            final seats = int.parse(seatsCtrl.text.trim());
+            final amount =
+                feeMode == 'paid' ? int.parse(amountCtrl.text.trim()) : 0;
+            final title = titleCtrl.text.trim();
+            final desc = descCtrl.text.trim();
+            final guest = guestCtrl.text.trim();
+            final venue = venueCtrl.text.trim();
+            try {
+              final created = await BackendApiService.createEvent({
+                'title': title,
+                'type': 'salon',
+                'city':
+                    cityCtrl.text.trim().isEmpty ? mode : cityCtrl.text.trim(),
+                'venue': venue,
+                'summary': desc,
+                'description': desc,
+                'start_time': start.toIso8601String(),
+                'quota': seats,
+                'fee_amount': amount,
+                'currency': 'cny',
+                'status': 'published',
+                'metadata': {
+                  'salon_type': salonType,
+                  'mode': mode,
+                  'guest': guest,
+                  'fee_mode': feeMode,
+                  'seats_left': seats,
+                  'benefit': _salonCreateBenefit(salonType, feeMode),
+                },
+              });
+              if (!mounted || !sheetContext.mounted) return;
+              Navigator.of(sheetContext).pop();
+              final localSalon = {
+                ...created,
+                'metadata': {
+                  ...(created['metadata'] is Map
+                      ? Map<String, dynamic>.from(created['metadata'] as Map)
+                      : <String, dynamic>{}),
+                  'salon_type': salonType,
+                  'mode': mode,
+                  'guest': guest,
+                  'fee_mode': feeMode,
+                  'seats_left': seats,
+                  'benefit': _salonCreateBenefit(salonType, feeMode),
+                },
+              };
+              _forumKey.currentState?.addCreatedSalon(localSalon);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('沙龙已创建，可以在“我的预约/活动”中管理')),
+              );
+            } catch (e) {
+              if (!mounted) return;
+              setSheetState(() => submitting = false);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('创建失败：$e')),
+              );
+            }
+          }
+
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 12,
+              right: 12,
+              bottom: MediaQuery.viewInsetsOf(sheetContext).bottom + 12,
+            ),
+            child: Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.9,
+              ),
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+              decoration: BoxDecoration(
+                color: context.artC.porcelain,
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: context.artC.silver.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        Text(
+                          '创建沙龙',
+                          style: TextStyle(
+                            color: context.artC.ink,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            fontFamily: 'Noto Serif SC',
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '创建一场面向艺术申请、作品集或行业交流的活动。',
+                          style: TextStyle(
+                            color: context.artC.ink.withOpacity(0.48),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        _CircleCreateTextField(
+                          controller: titleCtrl,
+                          label: '沙龙标题',
+                          hint: '例如：RISD 校友作品集分享会',
+                          maxLength: 40,
+                          error: titleError,
+                        ),
+                        const SizedBox(height: 14),
+                        _CircleCreateSection(
+                          title: '活动类型',
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: salonTypes
+                                .map(
+                                  (item) => _CircleCreateChip(
+                                    label: item,
+                                    selected: salonType == item,
+                                    onTap: () =>
+                                        setSheetState(() => salonType = item),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _CircleCreateTextField(
+                          controller: timeCtrl,
+                          label: '活动时间',
+                          hint: '例如：2026-06-22 19:00',
+                          error: timeError,
+                        ),
+                        const SizedBox(height: 14),
+                        _CircleCreateSection(
+                          title: '举办方式',
+                          child: Row(
+                            children: ['线下', '线上', '混合']
+                                .map(
+                                  (item) => Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: _CircleCreateChip(
+                                        label: item,
+                                        selected: mode == item,
+                                        onTap: () =>
+                                            setSheetState(() => mode = item),
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _CircleCreateTextField(
+                          controller: cityCtrl,
+                          label: '城市',
+                          hint: '例如：纽约、伦敦（线上活动可留空）',
+                        ),
+                        const SizedBox(height: 14),
+                        _CircleCreateTextField(
+                          controller: venueCtrl,
+                          label: '地点 / 链接',
+                          hint: '例如：Brooklyn Art Space / Zoom 链接待定',
+                          error: venueError,
+                        ),
+                        const SizedBox(height: 14),
+                        _CircleCreateTextField(
+                          controller: guestCtrl,
+                          label: '嘉宾 / 主讲人',
+                          hint: '例如：RISD 工业设计校友',
+                          error: guestError,
+                        ),
+                        const SizedBox(height: 14),
+                        _CircleCreateTextField(
+                          controller: descCtrl,
+                          label: '活动说明',
+                          hint: '适合谁？分享什么？参与者能获得什么？',
+                          maxLines: 4,
+                          maxLength: 160,
+                          error: descError,
+                        ),
+                        const SizedBox(height: 14),
+                        _CircleCreateSection(
+                          title: '费用',
+                          error: amountError,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  ('free', '免费'),
+                                  ('invite', '邀请制'),
+                                  ('paid', '付费'),
+                                ]
+                                    .map(
+                                      (item) => Expanded(
+                                        child: Padding(
+                                          padding:
+                                              const EdgeInsets.only(right: 8),
+                                          child: _CircleCreateChip(
+                                            label: item.$2,
+                                            selected: feeMode == item.$1,
+                                            onTap: () => setSheetState(
+                                              () => feeMode = item.$1,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                              if (feeMode == 'paid') ...[
+                                const SizedBox(height: 10),
+                                TextField(
+                                  controller: amountCtrl,
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                    hintText: '金额，例如：2500',
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _CircleCreateTextField(
+                          controller: seatsCtrl,
+                          label: '席位',
+                          hint: '例如：8',
+                          error: seatsError,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: submitting
+                              ? null
+                              : () => Navigator.of(sheetContext).pop(),
+                          child: const Text('取消'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: submitting ? null : submit,
+                          child: Text(submitting ? '创建中' : '创建沙龙'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    ).then((_) {
+      titleCtrl.dispose();
+      timeCtrl.dispose();
+      cityCtrl.dispose();
+      venueCtrl.dispose();
+      guestCtrl.dispose();
+      descCtrl.dispose();
+      amountCtrl.dispose();
+      seatsCtrl.dispose();
+    });
+  }
+
   void _showCreateSheet() {
+    final primaryKind = switch (_exploreKey.currentState?.activeTabIndex ?? 0) {
+      0 => _ResourceKind.opportunity,
+      1 => _ResourceKind.event,
+      _ => _ResourceKind.artist,
+    };
+    final resourceOptions = <({
+      _ResourceKind kind,
+      IconData icon,
+      String label,
+      String subtitle,
+    })>[
+      (
+        kind: _ResourceKind.opportunity,
+        icon: Icons.business_center_outlined,
+        label: '发布合作机会',
+        subtitle: '品牌 / 空间 / 项目方招募艺术家',
+      ),
+      (
+        kind: _ResourceKind.event,
+        icon: Icons.grid_view_rounded,
+        label: '发布展览活动',
+        subtitle: '展览 / 沙龙 / 工作坊 / 导览预约',
+      ),
+      (
+        kind: _ResourceKind.artist,
+        icon: Icons.palette_outlined,
+        label: '艺术家入驻',
+        subtitle: '创建艺术家档案，被合作方发现',
+      ),
+    ];
+    final orderedResources = [
+      ...resourceOptions.where((option) => option.kind == primaryKind),
+      ...resourceOptions.where((option) => option.kind != primaryKind),
+    ];
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -312,39 +947,37 @@ class _MainScaffoldState extends State<MainScaffold> {
                     ),
                   ),
                   const SizedBox(height: 24),
+                  _SheetGroupTitle(
+                    title: '资源发布',
+                    subtitle: primaryKind == _ResourceKind.opportunity
+                        ? '当前优先发布合作机会'
+                        : primaryKind == _ResourceKind.event
+                            ? '当前优先发布展览活动'
+                            : '当前优先创建艺术家档案',
+                  ),
+                  const SizedBox(height: 10),
                   Row(
-                    children: [
-                      Expanded(
-                        child: _buildSheetOption(
-                          icon: Icons.business_center_outlined,
-                          label: '发布机会',
-                          onTap: () {
-                            Navigator.of(ctx).pop();
-                            _openResourceDialog(_ResourceKind.opportunity);
-                          },
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildSheetOption(
-                          icon: Icons.grid_view_rounded,
-                          label: '发布展览',
-                          onTap: () {
-                            Navigator.of(ctx).pop();
-                            _openResourceDialog(_ResourceKind.event);
-                          },
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildSheetOption(
-                          icon: Icons.palette_outlined,
-                          label: '艺术家入驻',
-                          onTap: () {
-                            Navigator.of(ctx).pop();
-                            _openResourceDialog(_ResourceKind.artist);
-                          },
-                        ),
-                      ),
-                    ],
+                    children: orderedResources
+                        .map(
+                          (option) => Expanded(
+                            child: _buildSheetOption(
+                              icon: option.icon,
+                              label: option.label,
+                              subtitle: option.subtitle,
+                              emphasized: option.kind == primaryKind,
+                              onTap: () {
+                                Navigator.of(ctx).pop();
+                                _openResourceDialog(option.kind);
+                              },
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  const SizedBox(height: 10),
+                  const _SheetGroupTitle(
+                    title: '个人创作',
+                    subtitle: '分享作品、灵感和展览现场',
                   ),
                   const SizedBox(height: 10),
                   Row(
@@ -352,7 +985,8 @@ class _MainScaffoldState extends State<MainScaffold> {
                       Expanded(
                         child: _buildSheetOption(
                           icon: Icons.add_photo_alternate_outlined,
-                          label: '发布图文',
+                          label: '发布图文动态',
+                          subtitle: '作品 / 现场 / 灵感记录',
                           onTap: () {
                             Navigator.of(ctx).pop();
                             _openCreatePost();
@@ -374,6 +1008,45 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   Future<void> _openResourceDialog(_ResourceKind kind) async {
+    if (kind == _ResourceKind.event) {
+      final result = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => const PublishExhibitionScreen(),
+          fullscreenDialog: true,
+        ),
+      );
+      if (result == true && _currentIndex == 2) {
+        _exploreKey.currentState?.refreshActiveTab();
+      }
+      return;
+    }
+
+    if (kind == _ResourceKind.opportunity) {
+      final result = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => const PublishOpportunityScreen(),
+          fullscreenDialog: true,
+        ),
+      );
+      if (result == true && _currentIndex == 2) {
+        _exploreKey.currentState?.refreshActiveTab();
+      }
+      return;
+    }
+
+    if (kind == _ResourceKind.artist) {
+      final result = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => const PublishArtistScreen(),
+          fullscreenDialog: true,
+        ),
+      );
+      if (result == true && _currentIndex == 2) {
+        _exploreKey.currentState?.refreshActiveTab();
+      }
+      return;
+    }
+
     final titleCtrl = TextEditingController();
     final typeCtrl = TextEditingController();
     final cityCtrl = TextEditingController();
@@ -383,9 +1056,23 @@ class _MainScaffoldState extends State<MainScaffold> {
     var submitting = false;
 
     final labels = switch (kind) {
-      _ResourceKind.opportunity => ('发布合作机会', '机会标题', '类型', '城市', '需求说明', '预算上限'),
+      _ResourceKind.opportunity => (
+          '发布合作机会',
+          '机会标题',
+          '类型',
+          '城市',
+          '需求说明',
+          '预算上限'
+        ),
       _ResourceKind.event => ('发布展览活动', '活动标题', '类型', '城市', '地点/场馆', '费用'),
-      _ResourceKind.artist => ('艺术家入驻', '显示名称', '艺术方向', '城市', '履历/合作意向', '合作预算'),
+      _ResourceKind.artist => (
+          '艺术家入驻',
+          '显示名称',
+          '艺术方向',
+          '城市',
+          '履历/合作意向',
+          '合作预算'
+        ),
     };
 
     await showDialog<void>(
@@ -456,10 +1143,14 @@ class _MainScaffoldState extends State<MainScaffold> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _ResourceTextField(controller: titleCtrl, label: labels.$2, required: true),
+                    _ResourceTextField(
+                        controller: titleCtrl,
+                        label: labels.$2,
+                        required: true),
                     _ResourceTextField(controller: typeCtrl, label: labels.$3),
                     _ResourceTextField(controller: cityCtrl, label: labels.$4),
-                    _ResourceTextField(controller: noteCtrl, label: labels.$5, maxLines: 3),
+                    _ResourceTextField(
+                        controller: noteCtrl, label: labels.$5, maxLines: 3),
                     if (kind != _ResourceKind.artist)
                       _ResourceTextField(
                         controller: amountCtrl,
@@ -496,6 +1187,8 @@ class _MainScaffoldState extends State<MainScaffold> {
   Widget _buildSheetOption({
     required IconData icon,
     required String label,
+    String? subtitle,
+    bool emphasized = false,
     required VoidCallback onTap,
   }) {
     return TextButton(
@@ -513,7 +1206,7 @@ class _MainScaffoldState extends State<MainScaffold> {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.85),
+              color: emphasized ? kCobalt : Colors.white.withOpacity(0.85),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
@@ -523,7 +1216,8 @@ class _MainScaffoldState extends State<MainScaffold> {
                 ),
               ],
             ),
-            child: Icon(icon, color: kCobalt, size: 28),
+            child: Icon(icon,
+                color: emphasized ? Colors.white : kCobalt, size: 28),
           ),
           const SizedBox(height: 10),
           Text(
@@ -534,6 +1228,21 @@ class _MainScaffoldState extends State<MainScaffold> {
               color: context.artC.ink,
             ),
           ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 9,
+                height: 1.25,
+                fontWeight: FontWeight.w600,
+                color: context.artC.ink.withOpacity(0.4),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -552,7 +1261,12 @@ class _MainScaffoldState extends State<MainScaffold> {
   @override
   Widget build(BuildContext context) {
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    final showTopHeader = _currentIndex == 1 || _currentIndex == 2 || _currentIndex == 3;
+    final showTopHeader =
+        _currentIndex == 1 || _currentIndex == 2 || _currentIndex == 3;
+    final contentTop = _currentIndex == 0
+        ? 0.0
+        : statusBarHeight + (showTopHeader ? _headerHeight : 0);
+    final hideFloatingNav = _currentIndex == 0 && _homeNavHidden;
 
     return Scaffold(
       backgroundColor: context.artC.porcelain,
@@ -561,7 +1275,7 @@ class _MainScaffoldState extends State<MainScaffold> {
         fit: StackFit.expand,
         children: [
           Positioned(
-            top: statusBarHeight + (showTopHeader ? _headerHeight : 0),
+            top: contentTop,
             left: 0,
             right: 0,
             bottom: 0,
@@ -570,8 +1284,18 @@ class _MainScaffoldState extends State<MainScaffold> {
               children: [
                 const HomeScreen(),
                 NewsScaffold(key: _newsKey),
-                ExploreScreen(key: _exploreKey),
-                ForumScreen(key: _forumKey),
+                ExploreScreen(
+                  key: _exploreKey,
+                  onTabChanged: () {
+                    if (mounted) setState(() {});
+                  },
+                ),
+                ForumScreen(
+                  key: _forumKey,
+                  onTabChanged: () {
+                    if (mounted) setState(() {});
+                  },
+                ),
                 const ProfileScreen(),
               ],
             ),
@@ -583,27 +1307,39 @@ class _MainScaffoldState extends State<MainScaffold> {
               right: 0,
               child: _TopHeader(
                 showCreateIcon: _currentIndex == 2 || _currentIndex == 3,
-                onSearchTap: _handleHeaderSearch,
+                searchHint: _headerSearchHint,
+                actionIcon: _headerActionIcon,
+                actionLabel: _headerActionLabel,
+                onSearchSubmit: _handleHeaderSearch,
                 onActionTap: _handleHeaderAction,
               ),
             ),
-          Positioned(
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
             left: 0,
             right: 0,
-            bottom: 0,
-            child: Material(
-              color: Colors.transparent,
-              child: SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-                      child: Center(child: _buildFloatingNav()),
+            bottom: hideFloatingNav ? -96 : 0,
+            child: IgnorePointer(
+              ignoring: hideFloatingNav,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 180),
+                opacity: hideFloatingNav ? 0 : 1,
+                child: Material(
+                  color: Colors.transparent,
+                  child: SafeArea(
+                    top: false,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                          child: Center(child: _buildFloatingNav()),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -649,33 +1385,151 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 
-  void _handleHeaderSearch() {
+  void _handleHeaderSearch(String keyword) {
     if (_currentIndex == 1) {
-      _newsKey.currentState?.toggleSchoolSearchPanel(expand: true);
+      _newsKey.currentState?.setSchoolSearchKeyword(keyword);
+    } else if (_currentIndex == 2) {
+      _exploreKey.currentState?.applySearch(keyword);
+    } else if (_currentIndex == 3) {
+      _forumKey.currentState?.applySearch(keyword);
     }
   }
 
   void _handleHeaderAction() {
-    if (_currentIndex == 1) {
-      _newsKey.currentState?.toggleSchoolSearchPanel();
-    } else if (_currentIndex == 2) {
+    if (_currentIndex == 2) {
       _showCreateSheet();
     } else if (_currentIndex == 3) {
-      _showCommunityCreateSheet();
+      _handleCommunityHeaderAction();
     }
+  }
+
+  String get _headerSearchHint {
+    if (_currentIndex == 1) return '搜索 RCA、插画、伦敦';
+    if (_currentIndex == 2) {
+      return _exploreKey.currentState?.searchHint ?? '搜索合作机会、展览、艺术家';
+    }
+    if (_currentIndex == 3) {
+      return _forumKey.currentState?.searchHint ?? '搜索问题、学校、作品集经验';
+    }
+    return '搜索院校、灵感、作品集问题';
+  }
+
+  IconData? get _headerActionIcon {
+    if (_currentIndex == 1) return null;
+    if (_currentIndex == 3) {
+      return _forumKey.currentState?.actionIcon ?? Icons.add_rounded;
+    }
+    return Icons.add_rounded;
+  }
+
+  void _handleCommunityHeaderAction() {
+    switch (_forumKey.currentState?.activeTabIndex ?? 0) {
+      case 0:
+        _forumKey.currentState?.openQuestionComposer();
+        break;
+      case 1:
+        _openCommunityDialog(_CommunityCreateKind.circle);
+        break;
+      case 2:
+        _forumKey.currentState?.openMyReservations();
+        break;
+      case 3:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('新聊天入口会接入联系人、合作消息和系统通知')),
+        );
+        break;
+    }
+  }
+
+  String? get _headerActionLabel {
+    if (_currentIndex == 3 &&
+        (_forumKey.currentState?.activeTabIndex ?? 0) == 0) {
+      return '提问';
+    }
+    return null;
   }
 }
 
-class _TopHeader extends StatelessWidget {
+class _SheetGroupTitle extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _SheetGroupTitle({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: context.artC.ink,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: context.artC.ink.withOpacity(0.42),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TopHeader extends StatefulWidget {
   final bool showCreateIcon;
-  final VoidCallback onSearchTap;
-  final VoidCallback onActionTap;
+  final String searchHint;
+  final IconData? actionIcon;
+  final String? actionLabel;
+  final ValueChanged<String> onSearchSubmit;
+  final VoidCallback? onActionTap;
 
   const _TopHeader({
     required this.showCreateIcon,
-    required this.onSearchTap,
+    required this.searchHint,
+    required this.actionIcon,
+    this.actionLabel,
+    required this.onSearchSubmit,
     required this.onActionTap,
   });
+
+  @override
+  State<_TopHeader> createState() => _TopHeaderState();
+}
+
+class _TopHeaderState extends State<_TopHeader> {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleSubmit(String value) {
+    final keyword = value.trim();
+    if (keyword.isNotEmpty) {
+      widget.onSearchSubmit(keyword);
+      _focusNode.unfocus();
+    }
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    widget.onSearchSubmit('');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -725,52 +1579,94 @@ class _TopHeader extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: GestureDetector(
-              onTap: onSearchTap,
-              child: Container(
-                height: 34,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: context.artC.silver.withOpacity(0.34),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.search, size: 16, color: context.artC.ink.withOpacity(0.35)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '搜索院校、灵感、作品集问题',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+            child: Container(
+              height: 34,
+              padding: const EdgeInsets.only(left: 12, right: 4),
+              decoration: BoxDecoration(
+                color: context.artC.silver.withOpacity(0.34),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.search,
+                      size: 16, color: context.artC.ink.withOpacity(0.35)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _focusNode,
+                      onSubmitted: _handleSubmit,
+                      textInputAction: TextInputAction.search,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: context.artC.ink,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: widget.searchHint,
+                        hintStyle: TextStyle(
                           fontSize: 12,
                           color: context.artC.ink.withOpacity(0.35),
                         ),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
                       ),
                     ),
-                  ],
+                  ),
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: _searchController,
+                    builder: (context, value, _) {
+                      if (value.text.isEmpty) return const SizedBox.shrink();
+                      return GestureDetector(
+                        onTap: _clearSearch,
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 16,
+                            color: context.artC.ink.withOpacity(0.42),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (widget.actionIcon != null || widget.actionLabel != null) ...[
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: widget.onActionTap,
+              child: Container(
+                width: widget.actionLabel == null ? 34 : 54,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: context.artC.silver.withOpacity(0.34),
+                  borderRadius: BorderRadius.circular(10),
                 ),
+                child: widget.actionLabel == null
+                    ? Icon(
+                        widget.actionIcon,
+                        size: widget.showCreateIcon ? 23 : 18,
+                        color: widget.showCreateIcon
+                            ? kCobalt
+                            : context.artC.ink.withOpacity(0.48),
+                      )
+                    : Center(
+                        child: Text(
+                          widget.actionLabel!,
+                          style: const TextStyle(
+                            color: kCobalt,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onActionTap,
-            child: Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: context.artC.silver.withOpacity(0.34),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                showCreateIcon ? Icons.add_rounded : Icons.tune_rounded,
-                size: showCreateIcon ? 23 : 18,
-                color: showCreateIcon ? kCobalt : context.artC.ink.withOpacity(0.48),
-              ),
-            ),
-          ),
+          ],
         ],
       ),
     );
@@ -780,6 +1676,19 @@ class _TopHeader extends StatelessWidget {
 enum _ResourceKind { opportunity, event, artist }
 
 enum _CommunityCreateKind { qa, circle, salon }
+
+DateTime? _parseSalonDateTime(String value) {
+  final normalized = value.trim().replaceFirst(' ', 'T');
+  return DateTime.tryParse(normalized);
+}
+
+String _salonCreateBenefit(String salonType, String feeMode) {
+  if (feeMode == 'free') return '免费 / 预约制 · 可回放';
+  if (feeMode == 'invite') return '邀请制 · 小范围交流';
+  if (salonType == '作品集诊断') return '含作品集点评 · 现场 Q&A';
+  if (salonType == '校友分享') return '含校友交流 · 申请经验';
+  return '含主题分享 · 现场交流';
+}
 
 class _ResourceTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -820,6 +1729,214 @@ class _ResourceTextField extends StatelessWidget {
   }
 }
 
+class _CircleCreateSection extends StatelessWidget {
+  final String title;
+  final String error;
+  final Widget child;
+
+  const _CircleCreateSection({
+    required this.title,
+    required this.child,
+    this.error = '',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: context.artC.ink,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 8),
+        child,
+        if (error.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            error,
+            style: const TextStyle(
+              color: Color(0xFFDC2626),
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CircleCreateTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final String error;
+  final int maxLines;
+  final int? maxLength;
+
+  const _CircleCreateTextField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    this.error = '',
+    this.maxLines = 1,
+    this.maxLength,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _CircleCreateSection(
+      title: label,
+      error: error,
+      child: TextField(
+        controller: controller,
+        maxLines: maxLines,
+        maxLength: maxLength,
+        decoration: InputDecoration(
+          hintText: hint,
+          counterText: '',
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 13,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(
+              color: context.artC.silver.withOpacity(0.5),
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(
+              color: context.artC.silver.withOpacity(0.45),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: kCobalt, width: 1.4),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CircleCreateChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _CircleCreateChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? kCobalt : Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? kCobalt : context.artC.silver.withOpacity(0.52),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : context.artC.ink.withOpacity(0.68),
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CircleJoinModeCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _CircleJoinModeCard({
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(
+          color: selected ? context.artC.ink : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: selected
+                ? context.artC.ink
+                : context.artC.silver.withOpacity(0.45),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  selected ? Icons.check_circle : Icons.radio_button_unchecked,
+                  color: selected ? Colors.white : kCobalt,
+                  size: 17,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: selected ? Colors.white : context.artC.ink,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: selected
+                    ? Colors.white.withOpacity(0.58)
+                    : context.artC.ink.withOpacity(0.42),
+                fontSize: 10,
+                height: 1.25,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _NavItem {
   final IconData icon;
   final IconData activeIcon;
@@ -830,40 +1947,6 @@ class _NavItem {
     required this.activeIcon,
     required this.label,
   });
-}
-
-/// 右下角「+」：不用 InkWell，避免 Web 上方形水波纹与浅蓝渐变伪影
-class _ArtiqoreFab extends StatelessWidget {
-  final VoidCallback onPressed;
-
-  const _ArtiqoreFab({required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onPressed,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: kCobalt,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: context.artC.ink.withOpacity(0.22),
-                blurRadius: 14,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Icon(Icons.add, color: Colors.white, size: 28),
-        ),
-      ),
-    );
-  }
 }
 
 class _NavButton extends StatefulWidget {

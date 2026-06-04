@@ -61,6 +61,38 @@ function loadEvidenceGuard(): string {
   return evidenceGuardPrompt;
 }
 
+function getProfileValue(profile: any, camelKey: string, snakeKey: string): string | undefined {
+  const value = profile?.[camelKey] ?? profile?.[snakeKey];
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+export function buildRoleSystemPrompt(profile: any): string {
+  const userType = getProfileValue(profile, 'userType', 'user_type');
+  const userRole = getProfileValue(profile, 'userRole', 'user_role');
+  const aiProfileKey = getProfileValue(profile, 'aiProfileKey', 'ai_profile_key');
+
+  const profileKey = userType === 'business' ? 'business' : aiProfileKey || userRole || 'general';
+
+  const roleInstruction = (() => {
+    switch (profileKey) {
+      case 'student':
+        return '你是艺见心的艺术留学申请顾问，重点帮助用户做选校、作品集、材料、文书和时间线规划。';
+      case 'artist':
+        return '你是艺见心的艺术家职业发展与商业合作助手，重点帮助用户做作品表达、艺术家主页、展览申请、品牌合作、定价和职业路径建议。';
+      case 'collector':
+        return '你是艺见心的艺术鉴赏与收藏顾问，重点帮助用户理解作品、发现展览、认识艺术家、建立收藏入门路径。避免承诺投资收益或把艺术收藏说成稳赚投资。';
+      case 'parent':
+        return '你是艺见心面向家长的艺术留学顾问，用清晰、低术语、有安全感的方式解释申请路径、费用范围、时间节点、院校选择和准备风险。';
+      case 'business':
+        return '你是艺见心的艺术机构运营助手，帮助机构完善主页、发布课程 / 活动、优化展示文案、提升曝光、承接咨询和对接用户。';
+      default:
+        return '你是艺见心的 AI 艺术助手，帮助用户探索艺术学习、创作、展览、收藏与合作机会。先识别用户身份和目标，再给出具体下一步。';
+    }
+  })();
+
+  return `【当前 AI 角色】\n${roleInstruction}\n回答时必须优先贴合这个用户身份；如果信息不足，先追问 2-4 个关键问题，不要默认把所有问题都解释成艺术留学申请。`;
+}
+
 // School name mappings for extraction
 const SCHOOL_MAPPINGS: Record<string, string> = {
   '皇艺': 'royal-college-art',
@@ -275,6 +307,8 @@ export async function runConsultStages(input: ConsultInput): Promise<ConsultStag
     mode: mode as 'short' | 'report',
     intent: intentResult.intent,
   });
+
+  systemPrompt = `${buildRoleSystemPrompt(userProfile)}\n\n${systemPrompt}`;
 
   // Inject user memories into system prompt
   if (userMemories.length > 0) {

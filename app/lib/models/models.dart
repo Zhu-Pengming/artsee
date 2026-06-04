@@ -74,6 +74,7 @@ class AppCommunityPost {
   final String title;
   final String? body;
   final List<String> imageUrls;
+  final Map<String, dynamic> metadata;
   final int likeCount;
   final int commentCount;
   final int viewCount;
@@ -87,6 +88,7 @@ class AppCommunityPost {
     required this.title,
     this.body,
     required this.imageUrls,
+    this.metadata = const {},
     required this.likeCount,
     required this.commentCount,
     required this.viewCount,
@@ -107,11 +109,13 @@ class AppCommunityPost {
       avatarUrl = up['avatar_url'] as String?;
     }
     final urls = json['image_urls'];
+    final rawMetadata = json['metadata'];
     return AppCommunityPost(
       id: json['id'] as String,
       title: json['title'] as String? ?? '',
       body: json['body'] as String?,
       imageUrls: urls is List ? urls.map((e) => e.toString()).toList() : [],
+      metadata: rawMetadata is Map<String, dynamic> ? rawMetadata : {},
       likeCount: json['like_count'] as int? ?? 0,
       commentCount: json['comment_count'] as int? ?? 0,
       viewCount: json['view_count'] as int? ?? 0,

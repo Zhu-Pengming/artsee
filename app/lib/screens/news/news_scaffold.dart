@@ -3,6 +3,8 @@ import '../../widgets/common.dart';
 import '../schools/school_list_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 import '../../services/backend_api_service.dart';
+import '_radar_compare_chart.dart';
+import '_application_workspace_widgets.dart';
 
 class NewsScaffold extends StatefulWidget {
   const NewsScaffold({super.key});
@@ -20,7 +22,7 @@ class NewsScaffoldState extends State<NewsScaffold>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -33,12 +35,28 @@ class NewsScaffoldState extends State<NewsScaffold>
     if (_tabController.index != 0) {
       _tabController.animateTo(0);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _schoolKey.currentState?.toggleFilterPanel(expand: expand ?? true);
+        _schoolKey.currentState?.openDecisionFilterSheet();
       });
       return;
     }
-    _schoolKey.currentState?.toggleFilterPanel(expand: expand);
+    _schoolKey.currentState?.openDecisionFilterSheet();
   }
+
+  /// 设置院校搜索关键词
+  void setSchoolSearchKeyword(String keyword) {
+    if (_tabController.index != 0) {
+      _tabController.animateTo(0);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _schoolKey.currentState?.setSearchKeyword(keyword);
+      });
+      return;
+    }
+    _schoolKey.currentState?.setSearchKeyword(keyword);
+  }
+
+  /// 获取当前院校搜索关键词
+  String get schoolSearchKeyword =>
+      _schoolKey.currentState?.searchKeyword ?? '';
 
   @override
   Widget build(BuildContext context) {
@@ -60,144 +78,13 @@ class NewsScaffoldState extends State<NewsScaffold>
                 controller: _tabController,
                 children: [
                   SchoolListScreen(key: _schoolKey),
-                  _RankingTab(bottom: bottom),
-                  _ArticlesTab(bottom: bottom),
-                  _ToolboxTab(bottom: bottom),
                   _CompareTab(bottom: bottom),
+                  _ToolboxTab(bottom: bottom),
                 ],
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _RankingTab extends StatefulWidget {
-  final double bottom;
-
-  const _RankingTab({required this.bottom});
-
-  @override
-  State<_RankingTab> createState() => _RankingTabState();
-}
-
-class _RankingTabState extends State<_RankingTab> {
-  List<Map<String, dynamic>> _schools = [];
-  bool _loading = true;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadRankings();
-  }
-
-  Future<void> _loadRankings() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final result = await BackendApiService.fetchSchools(
-        limit: 50,
-        offset: 0,
-      );
-      if (mounted) {
-        final rankedSchools = result.data
-            .where((s) => s['qs_art_design_rank'] != null)
-            .toList();
-        setState(() {
-          _schools = rankedSchools;
-          _loading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _loading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return RefreshIndicator(
-      color: kCobalt,
-      onRefresh: _loadRankings,
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(20, 0, 20, widget.bottom),
-        children: [
-          _DarkHeroCard(
-            eyebrow: 'ART SCHOOL INDEX 2026',
-            title: '全球艺术院校热度榜',
-            subtitle: '综合 QS、作品集难度、毕业去向与平台搜索热度生成。',
-            icon: Icons.emoji_events_outlined,
-          ),
-          const SizedBox(height: 18),
-          _MetricStrip(
-            items: [
-              ('收录院校', '${_schools.length}'),
-              ('国家地区', '18'),
-              ('更新频率', '周更'),
-            ],
-          ),
-          const SizedBox(height: 22),
-          _NewsSectionHeader(title: '综合排名', action: 'QS + 平台热度'),
-          const SizedBox(height: 12),
-          if (_loading)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 60),
-              child: Center(
-                child: CircularProgressIndicator(
-                  color: kCobalt,
-                  strokeWidth: 2.5,
-                ),
-              ),
-            )
-          else if (_error != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 40),
-              child: Column(
-                children: [
-                  Text(
-                    '加载失败: $_error',
-                    style: TextStyle(color: context.artC.ink),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: _loadRankings,
-                    style: ElevatedButton.styleFrom(backgroundColor: kCobalt),
-                    child: const Text('重试'),
-                  ),
-                ],
-              ),
-            )
-          else if (_schools.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 60),
-              child: Center(
-                child: Text(
-                  '暂无排名数据',
-                  style: TextStyle(color: context.artC.ink),
-                ),
-              ),
-            )
-          else
-            ..._schools.asMap().entries.map(
-              (entry) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _RankingCard(
-                  school: entry.value,
-                  displayRank: entry.key + 1,
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }
@@ -308,6 +195,9 @@ class _ToolboxTabState extends State<_ToolboxTab> {
   List<Map<String, dynamic>> _tools = [];
   bool _loading = true;
   String? _error;
+  int _targetSchoolCount = 0;
+  int _materialCount = 0;
+  int _completedMaterialCount = 0;
 
   @override
   void initState() {
@@ -328,6 +218,10 @@ class _ToolboxTabState extends State<_ToolboxTab> {
         setState(() {
           _progress = results[0] as Map<String, dynamic>;
           _tools = results[1] as List<Map<String, dynamic>>;
+          _targetSchoolCount = _progress?['target_school_count'] as int? ?? 0;
+          _materialCount = _progress?['material_count'] as int? ?? 0;
+          _completedMaterialCount =
+              _progress?['completed_material_count'] as int? ?? 0;
           _loading = false;
         });
       }
@@ -343,11 +237,14 @@ class _ToolboxTabState extends State<_ToolboxTab> {
 
   @override
   Widget build(BuildContext context) {
+    final percentage = _progress?['percentage'] as int? ?? 0;
+    final hasTargetSchools = _targetSchoolCount > 0;
+
     return RefreshIndicator(
       color: kCobalt,
       onRefresh: _loadData,
       child: ListView(
-        padding: EdgeInsets.fromLTRB(20, 0, 20, widget.bottom),
+        padding: EdgeInsets.fromLTRB(20, 8, 20, widget.bottom + 72),
         children: [
           if (_loading)
             Padding(
@@ -379,33 +276,37 @@ class _ToolboxTabState extends State<_ToolboxTab> {
               ),
             )
           else ...[
-            _ProgressPanel(progress: _progress),
-            const SizedBox(height: 22),
-            _NewsSectionHeader(title: '申请工具箱', action: 'MVP TOOLS'),
-            const SizedBox(height: 12),
-            if (_tools.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40),
-                child: Center(
-                  child: Text(
-                    '暂无工具',
-                    style: TextStyle(color: context.artC.ink),
-                  ),
-                ),
-              )
-            else
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _tools.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 0.92,
-                ),
-                itemBuilder: (context, index) => _ToolCard(tool: _tools[index]),
-              ),
+            // 第一层：申请状态总览
+            ApplicationStatusOverview(
+              percentage: percentage,
+              targetSchoolCount: _targetSchoolCount,
+              materialCount: _materialCount,
+              completedMaterialCount: _completedMaterialCount,
+              hasTargetSchools: hasTargetSchools,
+            ),
+            const SizedBox(height: 14),
+
+            // 第二层：核心工具
+            _NewsSectionHeader(title: '核心工具', action: ''),
+            const SizedBox(height: 6),
+            CoreToolsGrid(
+              tools: _tools,
+              materialCount: _materialCount,
+              completedMaterialCount: _completedMaterialCount,
+              hasTargetSchools: hasTargetSchools,
+            ),
+            const SizedBox(height: 18),
+
+            // 第三层：下一步任务
+            if (!hasTargetSchools) ...[
+              NextStepTasks(hasTargetSchools: hasTargetSchools),
+              const SizedBox(height: 18),
+            ],
+
+            // 第四层：申请资源
+            _NewsSectionHeader(title: '申请资源', action: ''),
+            const SizedBox(height: 6),
+            const ApplicationResources(),
           ],
         ],
       ),
@@ -423,23 +324,516 @@ class _CompareTab extends StatefulWidget {
 }
 
 class _CompareTabState extends State<_CompareTab> {
-  final TextEditingController _searchCtrl = TextEditingController();
-  List<Map<String, dynamic>> _schools = const [];
   final List<Map<String, dynamic>> _selected = [];
+  List<Map<String, dynamic>> _targetPool = const [];
   Map<String, dynamic>? _report;
-  bool _loading = true;
   bool _comparing = false;
-  String? _error;
+  bool _loadingTargetPool = true;
 
   @override
   void initState() {
     super.initState();
-    _loadSchools();
+    _loadTargetPool();
+  }
+
+  Future<void> _loadTargetPool() async {
+    setState(() => _loadingTargetPool = true);
+    try {
+      final saved = await BackendApiService.fetchSavedSchools(limit: 20);
+      if (!mounted) return;
+      setState(() {
+        _targetPool = saved.data;
+        _loadingTargetPool = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _targetPool = const [];
+        _loadingTargetPool = false;
+      });
+    }
+  }
+
+  void _toggleSchool(Map<String, dynamic> school) {
+    final id = school['id']?.toString();
+    if (id == null) return;
+    final exists = _selected.any((item) => item['id']?.toString() == id);
+    setState(() {
+      if (exists) {
+        _selected.removeWhere((item) => item['id']?.toString() == id);
+        _report = null;
+      } else if (_selected.length < 5) {
+        _selected.add(school);
+        _report = null;
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('最多选择 5 所院校')),
+        );
+      }
+    });
+  }
+
+  void _removeSchool(String id) {
+    setState(() {
+      _selected.removeWhere((item) => item['id']?.toString() == id);
+      _report = null;
+    });
+  }
+
+  Future<void> _generateReport() async {
+    if (_selected.length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请至少选择 2 所院校')),
+      );
+      return;
+    }
+    setState(() => _comparing = true);
+    try {
+      final report = await BackendApiService.compareSchools(
+        schoolIds: _selected.map((school) => school['id'].toString()).toList(),
+      );
+      if (!mounted) return;
+
+      setState(() {
+        _report = report;
+        _comparing = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _comparing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('生成失败：$e')),
+      );
+    }
+  }
+
+  void _showAddSchoolSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => _AddSchoolBottomSheet(
+        selected: _selected,
+        onToggle: (school) {
+          _toggleSchool(school);
+        },
+      ),
+    ).then((_) {
+      // 关闭后刷新主页面
+      if (mounted) setState(() {});
+      _loadTargetPool();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: EdgeInsets.fromLTRB(20, 0, 20, widget.bottom + 72),
+      children: [
+        _NewsSectionHeader(
+          title: '目标院校对比',
+          action: '已选 ${_selected.length}/5',
+        ),
+        const SizedBox(height: 16),
+
+        // 已选学校区 或 空状态
+        if (_selected.isEmpty)
+          _CompareEmptyState(
+            title: '先加入目标池，再做对比',
+            subtitle: '从院校页点击「目标池」或在这里添加 2-5 所学校，对比排名、作品集难度、预算和城市资源。',
+            onRetry: null,
+          )
+        else
+          _SelectedSchoolsPanel(
+            selected: _selected,
+            onRemove: _removeSchool,
+          ),
+
+        if (_selected.isEmpty) ...[
+          const SizedBox(height: 14),
+          _TargetPoolPanel(
+            loading: _loadingTargetPool,
+            schools: _targetPool,
+            selected: _selected,
+            onAdd: _toggleSchool,
+            onOpenAddSheet: _showAddSchoolSheet,
+          ),
+        ],
+
+        const SizedBox(height: 20),
+
+        // 操作按钮区
+        _CompareActionButtons(
+          selectedCount: _selected.length,
+          comparing: _comparing,
+          onAddSchool: _showAddSchoolSheet,
+          onCompare: _generateReport,
+        ),
+
+        // 报告区
+        if (_report != null) ...[
+          const SizedBox(height: 24),
+          _NewsSectionHeader(
+            title: '多维对比报告',
+            action: '已生成',
+          ),
+          const SizedBox(height: 12),
+          RadarCompareChart(report: _report!),
+          const SizedBox(height: 20),
+          _InsightCard(text: _report!['insight']?.toString()),
+          const SizedBox(height: 20),
+          _NewsSectionHeader(title: '维度解读', action: '6 个维度'),
+          const SizedBox(height: 12),
+          DimensionExplanations(report: _report!),
+        ],
+      ],
+    );
+  }
+}
+
+// 已选学校面板
+class _SelectedSchoolsPanel extends StatelessWidget {
+  final List<Map<String, dynamic>> selected;
+  final ValueChanged<String> onRemove;
+
+  const _SelectedSchoolsPanel({
+    required this.selected,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.artC.ink,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.stacked_line_chart_rounded,
+                  color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                '已选择 ${selected.length} 所院校',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: selected.map((school) {
+              final id = school['id']?.toString() ?? '';
+              final name = _schoolName(school);
+              return GestureDetector(
+                onTap: () => onRemove(id),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                    border:
+                        Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(Icons.close_rounded,
+                          color: Colors.white.withValues(alpha: 0.6), size: 14),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TargetPoolPanel extends StatelessWidget {
+  final bool loading;
+  final List<Map<String, dynamic>> schools;
+  final List<Map<String, dynamic>> selected;
+  final ValueChanged<Map<String, dynamic>> onAdd;
+  final VoidCallback onOpenAddSheet;
+
+  const _TargetPoolPanel({
+    required this.loading,
+    required this.schools,
+    required this.selected,
+    required this.onAdd,
+    required this.onOpenAddSheet,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final candidates = schools.take(4).toList();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.artC.silver.withValues(alpha: 0.34)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '目标池候选',
+                  style: TextStyle(
+                    color: context.artC.ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Text(
+                loading ? '加载中' : '${schools.length} 所',
+                style: const TextStyle(
+                  color: kCobalt,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '目标池是候选学校；对比是在目标池里选择 2-5 所生成分析。',
+            style: TextStyle(
+              color: context.artC.ink.withValues(alpha: 0.42),
+              fontSize: 11,
+              height: 1.35,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (loading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child:
+                    CircularProgressIndicator(color: kCobalt, strokeWidth: 2),
+              ),
+            )
+          else if (candidates.isEmpty)
+            GestureDetector(
+              onTap: onOpenAddSheet,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                decoration: BoxDecoration(
+                  color: kCobalt.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Center(
+                  child: Text(
+                    '还没有目标院校，先去添加',
+                    style: TextStyle(
+                      color: kCobalt,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            ...candidates.map((school) {
+              final id = school['id']?.toString() ??
+                  school['school_id']?.toString() ??
+                  '';
+              final isSelected =
+                  selected.any((item) => item['id']?.toString() == id);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _schoolName(school),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: context.artC.ink,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: isSelected ? null : () => onAdd(school),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? context.artC.silver.withValues(alpha: 0.24)
+                              : kCobalt.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          isSelected ? '已加入' : '加入对比',
+                          style: TextStyle(
+                            color: isSelected
+                                ? context.artC.ink.withValues(alpha: 0.38)
+                                : kCobalt,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+// 操作按钮区
+class _CompareActionButtons extends StatelessWidget {
+  final int selectedCount;
+  final bool comparing;
+  final VoidCallback onAddSchool;
+  final VoidCallback onCompare;
+
+  const _CompareActionButtons({
+    required this.selectedCount,
+    required this.comparing,
+    required this.onAddSchool,
+    required this.onCompare,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final canCompare = selectedCount >= 2 && !comparing;
+    return Row(
+      children: [
+        // 添加院校按钮
+        Expanded(
+          child: GestureDetector(
+            onTap: onAddSchool,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: kCobalt.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add_rounded, color: kCobalt, size: 20),
+                  const SizedBox(width: 6),
+                  const Text(
+                    '去添加院校',
+                    style: TextStyle(
+                      color: kCobalt,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        // 生成对比按钮
+        Expanded(
+          child: GestureDetector(
+            onTap: canCompare ? onCompare : null,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: canCompare ? kCobalt : kCobalt.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Center(
+                child: Text(
+                  comparing
+                      ? '生成中...'
+                      : canCompare
+                          ? '生成对比'
+                          : '至少选择 2 所',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// 添加院校 Bottom Sheet
+class _AddSchoolBottomSheet extends StatefulWidget {
+  final List<Map<String, dynamic>> selected;
+  final ValueChanged<Map<String, dynamic>> onToggle;
+
+  const _AddSchoolBottomSheet({
+    required this.selected,
+    required this.onToggle,
+  });
+
+  @override
+  State<_AddSchoolBottomSheet> createState() => _AddSchoolBottomSheetState();
+}
+
+class _AddSchoolBottomSheetState extends State<_AddSchoolBottomSheet> {
+  List<Map<String, dynamic>> _schools = [];
+  bool _loading = false;
+  String? _error;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  // 本地维护已选列表，用于 UI 即时更新
+  late List<Map<String, dynamic>> _localSelected;
+
+  @override
+  void initState() {
+    super.initState();
+    _localSelected = List.from(widget.selected);
   }
 
   @override
   void dispose() {
-    _searchCtrl.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -467,192 +861,406 @@ class _CompareTabState extends State<_CompareTab> {
     }
   }
 
-  void _toggleSchool(Map<String, dynamic> school) {
+  bool _isSelected(Map<String, dynamic> school) {
     final id = school['id']?.toString();
-    if (id == null) return;
-    final exists = _selected.any((item) => item['id']?.toString() == id);
-    setState(() {
-      if (exists) {
-        _selected.removeWhere((item) => item['id']?.toString() == id);
-        _report = null;
-      } else if (_selected.length < 5) {
-        _selected.add(school);
-        _report = null;
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('最多选择 5 所院校')),
-        );
-      }
-    });
+    return _localSelected.any((item) => item['id']?.toString() == id);
   }
 
-  Future<void> _generateReport() async {
-    if (_selected.length < 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请至少选择 2 所院校')),
-      );
-      return;
-    }
-    setState(() => _comparing = true);
-    try {
-      final report = await BackendApiService.compareSchools(
-        schoolIds: _selected.map((school) => school['id'].toString()).toList(),
-      );
-      if (!mounted) return;
-      setState(() {
-        _report = report;
-        _comparing = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _comparing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('生成失败：$e')),
-      );
-    }
+  void _handleToggle(Map<String, dynamic> school) {
+    final id = school['id']?.toString();
+    if (id == null) return;
+
+    setState(() {
+      final exists = _localSelected.any((item) => item['id']?.toString() == id);
+      if (exists) {
+        _localSelected.removeWhere((item) => item['id']?.toString() == id);
+      } else if (_localSelected.length < 5) {
+        _localSelected.add(school);
+      }
+    });
+
+    // 同步到父组件
+    widget.onToggle(school);
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: EdgeInsets.fromLTRB(20, 0, 20, widget.bottom),
-      children: [
-        _DarkHeroCard(
-          eyebrow: 'COMPARISON CENTER',
-          title: '院校深层对比',
-          subtitle: '选择 2-5 所院校，把排名、城市资源、作品集方向、费用压力和就业路径放到同一张决策表里。',
-          icon: Icons.compare_arrows_rounded,
-        ),
-        const SizedBox(height: 14),
-        _CompareSearchBar(
-          controller: _searchCtrl,
-          onSubmitted: (value) => _loadSchools(keyword: value.trim()),
-          onClear: () {
-            _searchCtrl.clear();
-            _loadSchools();
-          },
-        ),
-        const SizedBox(height: 14),
-        _SelectedCompareStrip(
-          selected: _selected,
-          onRemove: (id) {
-            setState(() {
-              _selected.removeWhere((item) => item['id']?.toString() == id);
-              _report = null;
-            });
-          },
-          onCompare: _generateReport,
-          comparing: _comparing,
-        ),
-        const SizedBox(height: 14),
-        _NewsSectionHeader(title: '选择院校', action: '${_selected.length}/5'),
-        const SizedBox(height: 10),
-        if (_loading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 36),
-            child: Center(child: CircularProgressIndicator(color: kCobalt)),
-          )
-        else if (_error != null)
-          _CompareEmptyState(title: '院校加载失败', subtitle: _error!, onRetry: () => _loadSchools())
-        else
-          SizedBox(
-            height: 186,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _schools.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final school = _schools[index];
-                final id = school['id']?.toString();
-                final selected = _selected.any(
-                  (item) => item['id']?.toString() == id,
-                );
-                return SizedBox(
-                  width: 176,
-                  child: _CompareSchoolCard(
-                    school: school,
-                    selected: selected,
-                    onTap: () => _toggleSchool(school),
-                  ),
-                );
-              },
-            ),
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.5,
+      maxChildSize: 0.92,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: context.artC.porcelain,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-        const SizedBox(height: 20),
-        _NewsSectionHeader(
-          title: '对比报告',
-          action: _report == null ? 'SELECT SCHOOLS' : 'SAVED',
-        ),
-        const SizedBox(height: 12),
-        if (_report == null)
-          _CompareEmptyState(
-            title: '等待生成对比',
-            subtitle: '选择至少两所院校后点击“生成对比”，系统会把结果保存为一份 Supabase 对比快照。',
-            onRetry: _generateReport,
-          )
-        else ...[
-          _DynamicCompareTable(report: _report!),
-          const SizedBox(height: 14),
-          _InsightCard(text: _report!['insight']?.toString()),
-        ],
-      ],
+          child: Column(
+            children: [
+              // 拖动条
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: context.artC.silver.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // 标题
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                child: Row(
+                  children: [
+                    Text(
+                      '添加对比院校',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: context.artC.ink,
+                      ),
+                    ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: context.artC.silver.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: context.artC.ink.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // 搜索框
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: context.artC.silver.withValues(alpha: 0.42),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.search,
+                        color: context.artC.ink.withValues(alpha: 0.36),
+                        size: 22,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (value) {
+                            setState(() => _searchQuery = value);
+                            if (value.trim().isNotEmpty) {
+                              _loadSchools(keyword: value.trim());
+                            } else {
+                              setState(() {
+                                _schools = [];
+                                _error = null;
+                              });
+                            }
+                          },
+                          decoration: InputDecoration(
+                            hintText: '搜索院校名称、城市或国家',
+                            hintStyle: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: context.artC.ink.withValues(alpha: 0.36),
+                            ),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding:
+                                const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: context.artC.ink,
+                          ),
+                        ),
+                      ),
+                      if (_searchQuery.isNotEmpty)
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _searchController.clear();
+                              _searchQuery = '';
+                              _schools = [];
+                              _error = null;
+                            });
+                          },
+                          child: Icon(
+                            Icons.clear,
+                            color: context.artC.ink.withValues(alpha: 0.36),
+                            size: 20,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // 热门标签（搜索为空时显示）
+              if (_searchQuery.isEmpty && !_loading)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _HotSearchTags(
+                    onTagTap: (keyword) {
+                      _searchController.text = keyword;
+                      setState(() => _searchQuery = keyword);
+                      _loadSchools(keyword: keyword);
+                    },
+                  ),
+                ),
+              const SizedBox(height: 12),
+              // 搜索结果列表
+              Expanded(
+                child: _loading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: kCobalt))
+                    : _error != null
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('搜索失败',
+                                    style: TextStyle(color: context.artC.ink)),
+                                const SizedBox(height: 8),
+                                TextButton(
+                                  onPressed: () =>
+                                      _loadSchools(keyword: _searchQuery),
+                                  child: const Text('重试'),
+                                ),
+                              ],
+                            ),
+                          )
+                        : _schools.isEmpty
+                            ? Center(
+                                child: Text(
+                                  _searchQuery.isEmpty ? '输入关键词搜索院校' : '未找到院校',
+                                  style: TextStyle(
+                                    color:
+                                        context.artC.ink.withValues(alpha: 0.5),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              )
+                            : ListView.separated(
+                                controller: scrollController,
+                                padding:
+                                    const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                                itemCount: _schools.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 12),
+                                itemBuilder: (context, index) {
+                                  final school = _schools[index];
+                                  final selected = _isSelected(school);
+                                  return _CompareSchoolListItem(
+                                    school: school,
+                                    selected: selected,
+                                    onTap: () => _handleToggle(school),
+                                  );
+                                },
+                              ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
 
-class _CompareSearchBar extends StatelessWidget {
-  final TextEditingController controller;
-  final ValueChanged<String> onSubmitted;
-  final VoidCallback onClear;
+class _HotSearchTags extends StatelessWidget {
+  final ValueChanged<String> onTagTap;
 
-  const _CompareSearchBar({
-    required this.controller,
-    required this.onSubmitted,
-    required this.onClear,
+  const _HotSearchTags({required this.onTagTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final tags = ['RCA', 'UAL', 'Parsons', '伦敦', '纽约', '交互设计', '视觉传达'];
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: tags.map((tag) {
+        return GestureDetector(
+          onTap: () => onTagTap(tag),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: context.artC.silver.withValues(alpha: 0.42),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.local_fire_department_rounded,
+                  size: 14,
+                  color: context.artC.ink.withValues(alpha: 0.42),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  tag,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: context.artC.ink.withValues(alpha: 0.72),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _FloatingCompareDock extends StatelessWidget {
+  final List<Map<String, dynamic>> selected;
+  final ValueChanged<String> onRemove;
+  final VoidCallback onCompare;
+  final bool comparing;
+
+  const _FloatingCompareDock({
+    required this.selected,
+    required this.onRemove,
+    required this.onCompare,
+    required this.comparing,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: context.artC.silver.withOpacity(0.34)),
+        color: Colors.white.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: kCobalt.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: context.artC.ink.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: kCobalt.withValues(alpha: 0.15),
+            blurRadius: 24,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.search, color: context.artC.ink.withOpacity(0.36), size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              textInputAction: TextInputAction.search,
-              onSubmitted: onSubmitted,
-              decoration: const InputDecoration(
-                hintText: '搜索 RCA、UAL、RISD、Parsons...',
-                border: InputBorder.none,
-                isDense: true,
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: kCobalt.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.stacked_line_chart_rounded,
+                  color: kCobalt,
+                  size: 18,
+                ),
               ),
-              style: TextStyle(
-                color: context.artC.ink,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '已选择 ${selected.length} 所院校',
+                  style: TextStyle(
+                    color: context.artC.ink,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
-            ),
+              GestureDetector(
+                onTap: comparing || selected.length < 2 ? null : onCompare,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: selected.length >= 2
+                        ? kCobalt
+                        : kCobalt.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    comparing ? '生成中...' : '生成对比',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          IconButton(
-            onPressed: onClear,
-            icon: const Icon(Icons.close_rounded, size: 17),
-            color: context.artC.ink.withOpacity(0.32),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: selected.map((school) {
+              final id = school['id']?.toString() ?? '';
+              final name = _schoolName(school);
+              return GestureDetector(
+                onTap: () => onRemove(id),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: kCobalt.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: kCobalt.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: kCobalt,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.close_rounded,
+                        color: kCobalt.withValues(alpha: 0.62),
+                        size: 14,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),
@@ -711,7 +1319,7 @@ class _SelectedCompareStrip extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    comparing ? '生成中' : '生成对比',
+                    comparing ? '生成中' : '生成多维对比',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 10,
@@ -767,6 +1375,158 @@ class _SelectedCompareStrip extends StatelessWidget {
   }
 }
 
+class _CompareSchoolListItem extends StatelessWidget {
+  final Map<String, dynamic> school;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _CompareSchoolListItem({
+    required this.school,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final name =
+        school['name_zh']?.toString() ?? school['name']?.toString() ?? '未知';
+    final enName = school['name']?.toString() ?? '';
+    final city = school['city']?.toString() ?? '';
+    final country = school['country']?.toString() ?? '';
+    final ranking = school['qs_ranking']?.toString() ?? '';
+    final location = [city, country].where((s) => s.isNotEmpty).join(', ');
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: selected ? kCobalt.withValues(alpha: 0.08) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected
+                ? kCobalt
+                : context.artC.silver.withValues(alpha: 0.42),
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          name,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: context.artC.ink,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (ranking.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: kCobalt.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'QS #$ranking',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: kCobalt,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (enName.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      enName,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: context.artC.ink.withValues(alpha: 0.5),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  if (location.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 14,
+                          color: context.artC.ink.withValues(alpha: 0.36),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            location,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: context.artC.ink.withValues(alpha: 0.42),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: selected ? kCobalt : Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: selected
+                      ? kCobalt
+                      : context.artC.silver.withValues(alpha: 0.42),
+                  width: 2,
+                ),
+              ),
+              child: selected
+                  ? const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 18,
+                    )
+                  : Icon(
+                      Icons.add,
+                      color: context.artC.ink.withValues(alpha: 0.36),
+                      size: 18,
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CompareSchoolCard extends StatelessWidget {
   final Map<String, dynamic> school;
   final bool selected;
@@ -780,7 +1540,8 @@ class _CompareSchoolCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rank = school['qs_art_design_rank'] ?? school['qs_art_rank'] ?? school['rank'];
+    final rank =
+        school['qs_art_design_rank'] ?? school['qs_art_rank'] ?? school['rank'];
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -829,7 +1590,9 @@ class _CompareSchoolCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 Icon(
-                  selected ? Icons.check_circle_rounded : Icons.add_circle_outline,
+                  selected
+                      ? Icons.check_circle_rounded
+                      : Icons.add_circle_outline,
                   color: selected ? Colors.white : kCobalt,
                   size: 20,
                 ),
@@ -1012,16 +1775,25 @@ class _DynamicCompareTable extends StatelessWidget {
 class _CompareEmptyState extends StatelessWidget {
   final String title;
   final String subtitle;
-  final VoidCallback onRetry;
+  final VoidCallback? onRetry;
 
   const _CompareEmptyState({
     required this.title,
     required this.subtitle,
-    required this.onRetry,
+    this.onRetry,
   });
 
   @override
   Widget build(BuildContext context) {
+    const dimensions = [
+      '排名与声誉',
+      '专业匹配度',
+      '作品集难度',
+      '申请竞争',
+      '费用预算',
+      '城市与就业资源',
+    ];
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1029,39 +1801,77 @@ class _CompareEmptyState extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: context.artC.silver.withOpacity(0.34)),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.compare_arrows_rounded, color: kCobalt),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: context.artC.ink,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
-                  ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.compare_arrows_rounded, color: kCobalt),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: context.artC.ink,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: context.artC.ink.withOpacity(0.44),
+                        fontSize: 12,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: context.artC.ink.withOpacity(0.44),
-                    fontSize: 12,
-                    height: 1.45,
-                  ),
+              ),
+              if (onRetry != null)
+                IconButton(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh_rounded),
+                  color: kCobalt,
                 ),
-              ],
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '将对比这些维度',
+            style: TextStyle(
+              color: context.artC.ink.withOpacity(0.62),
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
             ),
           ),
-          IconButton(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded),
-            color: kCobalt,
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: dimensions.map((item) {
+              return Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: kCobalt.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  item,
+                  style: const TextStyle(
+                    color: kCobalt,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),
@@ -1251,136 +2061,6 @@ class _NewsSectionHeader extends StatelessWidget {
   }
 }
 
-class _RankingCard extends StatelessWidget {
-  final Map<String, dynamic> school;
-  final int displayRank;
-
-  const _RankingCard({required this.school, required this.displayRank});
-
-  @override
-  Widget build(BuildContext context) {
-    final nameZh = school['name_zh'] as String? ?? '—';
-    final nameEn = school['name_en'] as String? ?? '';
-    final city = school['city'] as String? ?? '';
-    final country = school['country'] as String? ?? '';
-    final qsRank = school['qs_art_design_rank'] as int?;
-    final schoolType = school['school_type'] as String? ?? '';
-    final rankStr = displayRank.toString().padLeft(2, '0');
-    final score = qsRank != null ? (100 - qsRank).clamp(50, 100) : 75;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: context.artC.silver.withOpacity(0.38)),
-      ),
-      child: Row(
-        children: [
-          Text(
-            rankStr,
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w900,
-              fontStyle: FontStyle.italic,
-              color: displayRank == 1
-                  ? kCobalt
-                  : context.artC.ink.withOpacity(0.18),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  nameZh,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: context.artC.ink,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '$nameEn · ${city.isNotEmpty ? city : country}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: context.artC.ink.withOpacity(0.34),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    minHeight: 5,
-                    value: score / 100,
-                    backgroundColor: context.artC.silver.withOpacity(0.35),
-                    color: kCobalt,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '$score',
-                style: const TextStyle(
-                  color: kCobalt,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-              const SizedBox(height: 4),
-              if (qsRank != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: kCobalt.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    'QS #$qsRank',
-                    style: const TextStyle(
-                      color: kCobalt,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                )
-              else if (schoolType.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: kCobalt.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    schoolType,
-                    style: const TextStyle(
-                      color: kCobalt,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _FeatureArticle extends StatelessWidget {
   final Map<String, dynamic> article;
 
@@ -1416,7 +2096,10 @@ class _FeatureArticle extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
-                  colors: [context.artC.ink.withOpacity(0.88), Colors.transparent],
+                  colors: [
+                    context.artC.ink.withOpacity(0.88),
+                    Colors.transparent
+                  ],
                 ),
               ),
             ),
@@ -1612,166 +2295,6 @@ String _formatReadCount(int count) {
   return '$count';
 }
 
-class _ProgressPanel extends StatelessWidget {
-  final Map<String, dynamic>? progress;
-
-  const _ProgressPanel({this.progress});
-
-  @override
-  Widget build(BuildContext context) {
-    final percentage = progress?['percentage'] as int? ?? 0;
-    final suggestions = (progress?['suggestions'] as List<dynamic>?)?.cast<String>() ?? [];
-    final suggestionText = suggestions.isEmpty
-        ? '继续保持，完成度很高！'
-        : '建议优先补全：${suggestions.join('、')}。';
-
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: context.artC.silver.withOpacity(0.38)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.auto_graph, color: kCobalt),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  '你的申请准备度',
-                  style: TextStyle(
-                    color: context.artC.ink,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-              Text(
-                '$percentage%',
-                style: const TextStyle(
-                  color: kCobalt,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              minHeight: 8,
-              value: percentage / 100,
-              backgroundColor: context.artC.silver.withOpacity(0.34),
-              color: kCobalt,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            suggestionText,
-            style: TextStyle(
-              color: context.artC.ink.withOpacity(0.45),
-              fontSize: 12,
-              height: 1.45,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ToolCard extends StatelessWidget {
-  final Map<String, dynamic> tool;
-
-  const _ToolCard({required this.tool});
-
-  IconData _getIcon(String iconName) {
-    switch (iconName) {
-      case 'timeline':
-        return Icons.timeline_outlined;
-      case 'checklist':
-        return Icons.checklist_rtl;
-      case 'dashboard':
-        return Icons.dashboard_customize_outlined;
-      case 'document':
-        return Icons.edit_document;
-      default:
-        return Icons.apps;
-    }
-  }
-
-  Color _getColor(String? colorHex) {
-    if (colorHex == null || !colorHex.startsWith('#')) return kCobalt;
-    try {
-      return Color(int.parse(colorHex.substring(1), radix: 16) + 0xFF000000);
-    } catch (e) {
-      return kCobalt;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final title = tool['title'] as String? ?? '';
-    final subtitle = tool['subtitle'] as String? ?? '';
-    final iconName = tool['icon'] as String? ?? 'apps';
-    final colorHex = tool['color'] as String?;
-    final icon = _getIcon(iconName);
-    final color = _getColor(colorHex);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: context.artC.silver.withOpacity(0.38)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const Spacer(),
-          Text(
-            title,
-            style: TextStyle(
-              color: context.artC.ink,
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: context.artC.ink.withOpacity(0.4),
-              fontSize: 11,
-              height: 1.35,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _CompareSchoolTile extends StatelessWidget {
   final String name;
   final String subtitle;
@@ -1878,7 +2401,8 @@ class _CompareTable extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                   decoration: BoxDecoration(
                     color: kCobalt.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(999),
@@ -1946,11 +2470,9 @@ class _NewsSegmentTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const tabs = [
-      (label: '院校', icon: Icons.school_outlined),
-      (label: '排名', icon: Icons.leaderboard_outlined),
-      (label: '资讯', icon: Icons.article_outlined),
-      (label: '工具箱', icon: Icons.inventory_2_outlined),
+      (label: '找院校', icon: Icons.school_outlined),
       (label: '对比', icon: Icons.compare_arrows_rounded),
+      (label: '申请计划', icon: Icons.inventory_2_outlined),
     ];
 
     return Container(
@@ -1977,11 +2499,11 @@ class _NewsSegmentTabs extends StatelessWidget {
         labelColor: kCobalt,
         unselectedLabelColor: context.artC.ink.withOpacity(0.42),
         labelStyle: const TextStyle(
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: FontWeight.w900,
         ),
         unselectedLabelStyle: const TextStyle(
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: FontWeight.w800,
         ),
         tabs: tabs
@@ -1993,7 +2515,7 @@ class _NewsSegmentTabs extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(tab.icon, size: 12),
-                    const SizedBox(width: 3),
+                    const SizedBox(width: 2),
                     Flexible(
                       child: Text(
                         tab.label,

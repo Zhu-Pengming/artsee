@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../services/backend_api_service.dart';
 import '../../widgets/common.dart';
@@ -12,29 +14,47 @@ class SchoolListScreen extends StatefulWidget {
   State<SchoolListScreen> createState() => SchoolListScreenState();
 }
 
+enum _SchoolSortKey {
+  recommended,
+  qs,
+  heat,
+  difficultyLow,
+  value,
+  updated,
+}
+
 class SchoolListScreenState extends State<SchoolListScreen>
     with TickerProviderStateMixin {
   final List<Map<String, dynamic>> _items = [];
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   String? _selectedRegionTag;
+  String? _selectedCountry;
   String? _selectedSchoolType;
   String? _selectedAdvantageSubject;
+  _SchoolSortKey _sortKey = _SchoolSortKey.recommended;
+  int? _maxRank;
   bool _searchPanelExpanded = false;
   bool _loading = false;
   bool _hasMore = true;
   String? _error;
   int _offset = 0;
+  int _loadGeneration = 0;
   final int _limit = 20;
+  Timer? _searchDebounce;
+  final Set<String> _savedSchoolIds = {};
+  final Set<String> _savingSchoolIds = {};
 
   @override
   void initState() {
     super.initState();
     _loadMore();
+    _loadSavedSchools();
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchFocusNode.dispose();
     _searchController.dispose();
     super.dispose();
@@ -45,20 +65,77 @@ class SchoolListScreenState extends State<SchoolListScreen>
     setState(() => _searchPanelExpanded = shouldExpand);
   }
 
-  Future<void> _loadMore() async {
+  Future<void> openDecisionFilterSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => _SchoolDecisionFilterSheet(
+        sortKey: _sortKey,
+        maxRank: _maxRank,
+        selectedCountry: _selectedCountry,
+        selectedRegionTag: _selectedRegionTag,
+        selectedSchoolType: _selectedSchoolType,
+        selectedAdvantageSubject: _selectedAdvantageSubject,
+        onSortChanged: (value) {
+          Navigator.of(sheetContext).pop();
+          _setSortKey(value);
+        },
+        onRankChanged: (value) {
+          Navigator.of(sheetContext).pop();
+          _setRankRange(value);
+        },
+        onCountryChanged: (value) {
+          Navigator.of(sheetContext).pop();
+          _setCountry(value);
+        },
+        onRegionTagChanged: (value) {
+          Navigator.of(sheetContext).pop();
+          _setRegionTag(value);
+        },
+        onSchoolTypeChanged: (value) {
+          Navigator.of(sheetContext).pop();
+          _setSchoolType(value);
+        },
+        onAdvantageSubjectChanged: (value) {
+          Navigator.of(sheetContext).pop();
+          _setAdvantageSubject(value);
+        },
+        onClear: () {
+          Navigator.of(sheetContext).pop();
+          _clearFilters();
+        },
+      ),
+    );
+  }
+
+  /// 外部调用：设置搜索关键词并刷新
+  void setSearchKeyword(String keyword) {
+    _searchController.text = keyword;
+    _refresh();
+  }
+
+  /// 获取当前搜索关键词
+  String get searchKeyword => _searchController.text;
+
+  Future<void> _loadMore({int? generation}) async {
     if (_loading || !_hasMore) return;
+    final requestGeneration = generation ?? _loadGeneration;
     setState(() => _loading = true);
     try {
       final result = await BackendApiService.fetchSchools(
         limit: _limit,
         offset: _offset,
         keyword: _searchController.text.trim(),
+        country: _selectedCountry,
         regionTag: _selectedRegionTag,
         schoolType: _selectedSchoolType,
         advantageSubject: _selectedAdvantageSubject,
+        maxRank: _maxRank,
       );
-      final newItems = result.data;
+      final newItems = _sortSchools(result.data);
       final total = result.count;
+      if (!mounted || requestGeneration != _loadGeneration) return;
       if (mounted) {
         setState(() {
           _items.addAll(newItems);
@@ -69,7 +146,7 @@ class SchoolListScreenState extends State<SchoolListScreen>
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && requestGeneration == _loadGeneration) {
         setState(() {
           _error = e.toString();
           _loading = false;
@@ -79,17 +156,95 @@ class SchoolListScreenState extends State<SchoolListScreen>
   }
 
   Future<void> _refresh() async {
+    _loadGeneration += 1;
+    final generation = _loadGeneration;
     setState(() {
       _items.clear();
       _offset = 0;
       _hasMore = true;
+      _loading = false;
       _error = null;
     });
-    await _loadMore();
+    await _loadMore(generation: generation);
+    _loadSavedSchools();
+  }
+
+  Future<void> _loadSavedSchools() async {
+    try {
+      final saved = await BackendApiService.fetchSavedSchools(limit: 100);
+      if (!mounted) return;
+      setState(() {
+        _savedSchoolIds
+          ..clear()
+          ..addAll(
+            saved.data
+                .map((item) => (item['id'] ?? item['school_id'])?.toString())
+                .whereType<String>(),
+          );
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _savedSchoolIds.clear());
+    }
+  }
+
+  Future<void> _toggleSavedSchool(Map<String, dynamic> school) async {
+    final id = school['id']?.toString();
+    if (id == null || id.isEmpty || _savingSchoolIds.contains(id)) return;
+    final wasSaved = _savedSchoolIds.contains(id);
+    setState(() => _savingSchoolIds.add(id));
+    try {
+      if (wasSaved) {
+        await BackendApiService.removeSavedSchool(id);
+      } else {
+        await BackendApiService.saveSchool(id);
+      }
+      if (!mounted) return;
+      setState(() {
+        if (wasSaved) {
+          _savedSchoolIds.remove(id);
+        } else {
+          _savedSchoolIds.add(id);
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(wasSaved ? '已移出目标院校池' : '已加入目标院校池')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('操作失败：$e')),
+      );
+    } finally {
+      if (mounted) setState(() => _savingSchoolIds.remove(id));
+    }
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 360), _refresh);
+  }
+
+  void _submitSearch() {
+    _searchDebounce?.cancel();
+    _refresh();
+    _searchFocusNode.unfocus();
+  }
+
+  void _clearSearch() {
+    if (_searchController.text.isEmpty) return;
+    _searchDebounce?.cancel();
+    _searchController.clear();
+    _refresh();
   }
 
   void _setRegionTag(String? value) {
     setState(() => _selectedRegionTag = value);
+    _refresh();
+  }
+
+  void _setCountry(String? value) {
+    setState(() => _selectedCountry = value);
     _refresh();
   }
 
@@ -103,13 +258,68 @@ class SchoolListScreenState extends State<SchoolListScreen>
     _refresh();
   }
 
+  void _setSortKey(_SchoolSortKey value) {
+    setState(() => _sortKey = value);
+    _refresh();
+  }
+
+  void _setRankRange(int? value) {
+    setState(() => _maxRank = value);
+    _refresh();
+  }
+
   void _clearFilters() {
     setState(() {
       _selectedRegionTag = null;
+      _selectedCountry = null;
       _selectedSchoolType = null;
       _selectedAdvantageSubject = null;
+      _sortKey = _SchoolSortKey.recommended;
+      _maxRank = null;
     });
     _refresh();
+  }
+
+  List<Map<String, dynamic>> _sortSchools(List<Map<String, dynamic>> rows) {
+    final sorted = [...rows];
+    int rankOf(Map<String, dynamic> item) =>
+        (item['qs_art_rank'] as int?) ?? 99999;
+    int disciplineCount(Map<String, dynamic> item) =>
+        _stringList(item['strength_disciplines']).length;
+    int tagCount(Map<String, dynamic> item) =>
+        _stringList(item['feature_tags']).length;
+    int heatScore(Map<String, dynamic> item) =>
+        ((item['saved_count'] as num?)?.toInt() ?? 0) * 3 +
+        ((item['consultation_count'] as num?)?.toInt() ?? 0) * 4 +
+        disciplineCount(item) +
+        tagCount(item);
+    int valueScore(Map<String, dynamic> item) =>
+        (rankOf(item) == 99999 ? 0 : (120 - rankOf(item)).clamp(0, 120)) +
+        disciplineCount(item) * 8 +
+        tagCount(item) * 4;
+
+    switch (_sortKey) {
+      case _SchoolSortKey.qs:
+        sorted.sort((a, b) => rankOf(a).compareTo(rankOf(b)));
+      case _SchoolSortKey.heat:
+        sorted.sort((a, b) => heatScore(b).compareTo(heatScore(a)));
+      case _SchoolSortKey.difficultyLow:
+        sorted.sort((a, b) => rankOf(b).compareTo(rankOf(a)));
+      case _SchoolSortKey.value:
+        sorted.sort((a, b) => valueScore(b).compareTo(valueScore(a)));
+      case _SchoolSortKey.updated:
+        sorted.sort(
+          (a, b) => (b['updated_at']?.toString() ?? '')
+              .compareTo(a['updated_at']?.toString() ?? ''),
+        );
+      case _SchoolSortKey.recommended:
+        sorted.sort((a, b) {
+          final rankCompare = rankOf(a).compareTo(rankOf(b));
+          if (rankCompare != 0) return rankCompare;
+          return heatScore(b).compareTo(heatScore(a));
+        });
+    }
+    return sorted;
   }
 
   @override
@@ -120,121 +330,135 @@ class SchoolListScreenState extends State<SchoolListScreen>
         color: kCobalt,
         onRefresh: _refresh,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 164),
           children: [
-          AnimatedSize(
-            duration: const Duration(milliseconds: 260),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.topCenter,
-            child: _searchPanelExpanded
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 0, bottom: 12),
-                    child: _FilterPanel(
-                      selectedRegionTag: _selectedRegionTag,
-                      selectedSchoolType: _selectedSchoolType,
-                      selectedAdvantageSubject: _selectedAdvantageSubject,
-                      onRegionTagChanged: _setRegionTag,
-                      onSchoolTypeChanged: _setSchoolType,
-                      onAdvantageSubjectChanged: _setAdvantageSubject,
-                      onClear: _clearFilters,
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-          if (_items.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),
-              child: Text(
-                '共 ${_items.length}${_hasMore ? '+' : ''} 所院校',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: context.artC.ink.withOpacity(0.38),
-                ),
-              ),
+            _SchoolSortBar(
+              sortKey: _sortKey,
+              maxRank: _maxRank,
+              count: _items.length,
+              hasMore: _hasMore,
+              onOpen: openDecisionFilterSheet,
             ),
-          if (_items.isEmpty && _loading)
-            Padding(
-              padding: const EdgeInsets.only(top: 120),
-              child: Center(
-                child: CircularProgressIndicator(
-                  color: kCobalt,
-                  strokeWidth: 2.5,
+            const SizedBox(height: 10),
+            _SchoolQuickFilterRow(
+              selectedCountry: _selectedCountry,
+              selectedSchoolType: _selectedSchoolType,
+              maxRank: _maxRank,
+              sortKey: _sortKey,
+              onCountryChanged: _setCountry,
+              onSchoolTypeChanged: _setSchoolType,
+              onRankChanged: _setRankRange,
+              onSortChanged: _setSortKey,
+            ),
+            const SizedBox(height: 12),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: _searchPanelExpanded
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 0, bottom: 12),
+                      child: _FilterPanel(
+                        selectedCountry: _selectedCountry,
+                        selectedRegionTag: _selectedRegionTag,
+                        selectedSchoolType: _selectedSchoolType,
+                        selectedAdvantageSubject: _selectedAdvantageSubject,
+                        onCountryChanged: _setCountry,
+                        onRegionTagChanged: _setRegionTag,
+                        onSchoolTypeChanged: _setSchoolType,
+                        onAdvantageSubjectChanged: _setAdvantageSubject,
+                        onClear: _clearFilters,
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            if (_items.isEmpty && _loading)
+              const Padding(
+                padding: EdgeInsets.only(top: 120),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: kCobalt,
+                    strokeWidth: 2.5,
+                  ),
                 ),
-              ),
-            )
-          else if (_items.isEmpty && _error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 96),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '加载失败: $_error',
+              )
+            else if (_items.isEmpty && _error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 96),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '加载失败: $_error',
+                      style: TextStyle(color: context.artC.ink),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: _refresh,
+                      style: ElevatedButton.styleFrom(backgroundColor: kCobalt),
+                      child: const Text('重试'),
+                    ),
+                  ],
+                ),
+              )
+            else if (_items.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 120),
+                child: Center(
+                  child: Text(
+                    '暂无匹配院校',
                     style: TextStyle(color: context.artC.ink),
                   ),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: _refresh,
-                    style: ElevatedButton.styleFrom(backgroundColor: kCobalt),
-                    child: Text('重试'),
-                  ),
-                ],
-              ),
-            )
-          else if (_items.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 120),
-              child: Center(
-                child: Text(
-                  '暂无匹配院校',
-                  style: TextStyle(color: context.artC.ink),
                 ),
-              ),
-            )
-          else ...[
-            for (var index = 0; index < _items.length; index++) ...[
-              _SchoolCard(
-                data: _items[index],
-                onTap: () {
-                  final id = _items[index]['id']?.toString();
-                  if (id != null && id.isNotEmpty) {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => SchoolDetailScreen(id: id),
-                      ),
-                    );
+              )
+            else ...[
+              for (var index = 0; index < _items.length; index++) ...[
+                _SchoolCard(
+                  data: _items[index],
+                  isSaved:
+                      _savedSchoolIds.contains(_items[index]['id']?.toString()),
+                  isSaving: _savingSchoolIds
+                      .contains(_items[index]['id']?.toString()),
+                  onSaveTap: () => _toggleSavedSchool(_items[index]),
+                  onTap: () {
+                    final id = _items[index]['id']?.toString();
+                    if (id != null && id.isNotEmpty) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => SchoolDetailScreen(id: id),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                const SizedBox(height: 10),
+              ],
+            ],
+            if (_hasMore)
+              Builder(
+                builder: (context) {
+                  if (_items.isNotEmpty && !_loading) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (context.mounted) _loadMore();
+                    });
                   }
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: _loading
+                            ? const CircularProgressIndicator(
+                                color: kCobalt,
+                                strokeWidth: 2,
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                    ),
+                  );
                 },
               ),
-              const SizedBox(height: 10),
-            ],
-          ],
-          if (_hasMore)
-            Builder(
-              builder: (context) {
-                if (_items.isNotEmpty && !_loading) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (context.mounted) _loadMore();
-                  });
-                }
-                return Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Center(
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: _loading
-                          ? CircularProgressIndicator(
-                              color: kCobalt,
-                              strokeWidth: 2,
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                  ),
-                );
-              },
-            ),
           ],
         ),
       ),
@@ -242,24 +466,549 @@ class SchoolListScreenState extends State<SchoolListScreen>
   }
 }
 
-class _FilterPanel extends StatelessWidget{
+class _SchoolSortBar extends StatelessWidget {
+  final _SchoolSortKey sortKey;
+  final int? maxRank;
+  final int count;
+  final bool hasMore;
+  final VoidCallback onOpen;
+
+  const _SchoolSortBar({
+    required this.sortKey,
+    required this.maxRank,
+    required this.count,
+    required this.hasMore,
+    required this.onOpen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.66),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: context.artC.silver.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: onOpen,
+              child: Row(
+                children: [
+                  Text(
+                    '${_sortLabel(sortKey)} ▼',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: context.artC.ink,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      [
+                        '共 $count${hasMore ? '+' : ''} 所院校',
+                        if (maxRank != null) _rankRangeLabel(maxRank),
+                      ].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: context.artC.ink.withValues(alpha: 0.36),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            onPressed: onOpen,
+            icon: const Icon(Icons.tune_rounded, size: 18),
+            color: kCobalt,
+            tooltip: '筛选与排序',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SortQuickChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _SortQuickChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? kCobalt : Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected
+                ? kCobalt
+                : context.artC.silver.withValues(alpha: 0.34),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: selected
+                ? Colors.white
+                : context.artC.ink.withValues(alpha: 0.62),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SchoolQuickFilterRow extends StatelessWidget {
+  final String? selectedCountry;
+  final String? selectedSchoolType;
+  final int? maxRank;
+  final _SchoolSortKey sortKey;
+  final ValueChanged<String?> onCountryChanged;
+  final ValueChanged<String?> onSchoolTypeChanged;
+  final ValueChanged<int?> onRankChanged;
+  final ValueChanged<_SchoolSortKey> onSortChanged;
+
+  const _SchoolQuickFilterRow({
+    required this.selectedCountry,
+    required this.selectedSchoolType,
+    required this.maxRank,
+    required this.sortKey,
+    required this.onCountryChanged,
+    required this.onSchoolTypeChanged,
+    required this.onRankChanged,
+    required this.onSortChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <({String label, bool selected, VoidCallback onTap})>[
+      (
+        label: '英国',
+        selected: selectedCountry == '英国',
+        onTap: () => onCountryChanged(selectedCountry == '英国' ? null : '英国'),
+      ),
+      (
+        label: '美国',
+        selected: selectedCountry == '美国',
+        onTap: () => onCountryChanged(selectedCountry == '美国' ? null : '美国'),
+      ),
+      (
+        label: 'Top 30',
+        selected: maxRank == 30,
+        onTap: () => onRankChanged(maxRank == 30 ? null : 30),
+      ),
+      (
+        label: '设计学院',
+        selected: selectedSchoolType == 'design_school',
+        onTap: () => onSchoolTypeChanged(
+              selectedSchoolType == 'design_school' ? null : 'design_school',
+            ),
+      ),
+      (
+        label: '作品集友好',
+        selected: sortKey == _SchoolSortKey.difficultyLow,
+        onTap: () => onSortChanged(
+              sortKey == _SchoolSortKey.difficultyLow
+                  ? _SchoolSortKey.recommended
+                  : _SchoolSortKey.difficultyLow,
+            ),
+      ),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: items
+            .map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _SortQuickChip(
+                  label: item.label,
+                  selected: item.selected,
+                  onTap: item.onTap,
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+}
+
+class _SchoolDecisionFilterSheet extends StatelessWidget {
+  final _SchoolSortKey sortKey;
+  final int? maxRank;
+  final String? selectedCountry;
   final String? selectedRegionTag;
   final String? selectedSchoolType;
   final String? selectedAdvantageSubject;
+  final ValueChanged<_SchoolSortKey> onSortChanged;
+  final ValueChanged<int?> onRankChanged;
+  final ValueChanged<String?> onCountryChanged;
+  final ValueChanged<String?> onRegionTagChanged;
+  final ValueChanged<String?> onSchoolTypeChanged;
+  final ValueChanged<String?> onAdvantageSubjectChanged;
+  final VoidCallback onClear;
+
+  const _SchoolDecisionFilterSheet({
+    required this.sortKey,
+    required this.maxRank,
+    required this.selectedCountry,
+    required this.selectedRegionTag,
+    required this.selectedSchoolType,
+    required this.selectedAdvantageSubject,
+    required this.onSortChanged,
+    required this.onRankChanged,
+    required this.onCountryChanged,
+    required this.onRegionTagChanged,
+    required this.onSchoolTypeChanged,
+    required this.onAdvantageSubjectChanged,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final sortOptions = <({String label, _SchoolSortKey value})>[
+      (label: '默认排序', value: _SchoolSortKey.recommended),
+      (label: 'QS 艺术排名优先', value: _SchoolSortKey.qs),
+      (label: '平台热度优先', value: _SchoolSortKey.heat),
+      (label: '申请难度从低到高', value: _SchoolSortKey.difficultyLow),
+      (label: '性价比优先', value: _SchoolSortKey.value),
+      (label: '最新更新', value: _SchoolSortKey.updated),
+    ];
+    final rankOptions = <({String label, int? value})>[
+      (label: '不限', value: null),
+      (label: 'Top 10', value: 10),
+      (label: 'Top 30', value: 30),
+      (label: 'Top 50', value: 50),
+      (label: 'Top 100', value: 100),
+    ];
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 10,
+        right: 10,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 10,
+      ),
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.86,
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        decoration: BoxDecoration(
+          color: context.artC.porcelain,
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: context.artC.silver.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '筛选与排序',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: context.artC.ink,
+                        fontFamily: 'Noto Serif SC',
+                      ),
+                    ),
+                  ),
+                  TextButton(onPressed: onClear, child: const Text('重置')),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    _SheetSection(
+                      title: '排序方式',
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: sortOptions.map((item) {
+                          return _SheetChoiceChip(
+                            label: item.label,
+                            selected: sortKey == item.value,
+                            onTap: () => onSortChanged(item.value),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    _SheetSection(
+                      title: 'QS 艺术排名',
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: rankOptions.map((item) {
+                          return _SheetChoiceChip(
+                            label: item.label,
+                            selected: maxRank == item.value,
+                            onTap: () => onRankChanged(item.value),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    _SheetSection(
+                      title: '平台热度',
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: const ['热门申请', '收藏多', '近期咨询多']
+                            .map(
+                              (item) => _SheetChoiceChip(
+                                label: item,
+                                selected: sortKey == _SchoolSortKey.heat,
+                                onTap: () => onSortChanged(_SchoolSortKey.heat),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                    _SheetSection(
+                      title: '专业细分榜',
+                      child: _InlineFilterChoices(
+                        items: _FilterPanel.advantageSubjects,
+                        selectedValue: selectedAdvantageSubject,
+                        onChanged: onAdvantageSubjectChanged,
+                      ),
+                    ),
+                    _SheetSection(
+                      title: '国家 / 地区',
+                      child: _InlineFilterChoices(
+                        items: _FilterPanel.countryTags,
+                        selectedValue: selectedCountry,
+                        onChanged: onCountryChanged,
+                      ),
+                    ),
+                    _SheetSection(
+                      title: '院校类型',
+                      child: _InlineFilterChoices(
+                        items: _FilterPanel.schoolTypes,
+                        selectedValue: selectedSchoolType,
+                        onChanged: onSchoolTypeChanged,
+                      ),
+                    ),
+                    _SheetSection(
+                      title: '区域标签',
+                      child: _InlineFilterChoices(
+                        items: _FilterPanel.regionTags,
+                        selectedValue: selectedRegionTag,
+                        onChanged: onRegionTagChanged,
+                      ),
+                    ),
+                    _SheetSection(
+                      title: '申请难度',
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _SheetChoiceChip(
+                            label: '保底 / 难度低',
+                            selected: sortKey == _SchoolSortKey.difficultyLow,
+                            onTap: () =>
+                                onSortChanged(_SchoolSortKey.difficultyLow),
+                          ),
+                          _SheetChoiceChip(
+                            label: '匹配',
+                            selected: sortKey == _SchoolSortKey.recommended,
+                            onTap: () =>
+                                onSortChanged(_SchoolSortKey.recommended),
+                          ),
+                          _SheetChoiceChip(
+                            label: '冲刺',
+                            selected: maxRank == 30,
+                            onTap: () => onRankChanged(30),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '预算和语言要求将在接入真实学费、生活费、语言门槛字段后开放精确筛选。',
+                      style: TextStyle(
+                        fontSize: 11,
+                        height: 1.35,
+                        fontWeight: FontWeight.w700,
+                        color: context.artC.ink.withValues(alpha: 0.34),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SheetSection extends StatelessWidget {
+  final String title;
+  final Widget child;
+
+  const _SheetSection({required this.title, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              color: context.artC.ink.withValues(alpha: 0.48),
+            ),
+          ),
+          const SizedBox(height: 9),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineFilterChoices extends StatelessWidget {
+  final List<_FilterOption> items;
+  final String? selectedValue;
+  final ValueChanged<String?> onChanged;
+
+  const _InlineFilterChoices({
+    required this.items,
+    required this.selectedValue,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _SheetChoiceChip(
+          label: '不限',
+          selected: selectedValue == null,
+          onTap: () => onChanged(null),
+        ),
+        ...items.map(
+          (item) => _SheetChoiceChip(
+            label: item.label,
+            selected: selectedValue == item.value,
+            onTap: () => onChanged(item.value),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SheetChoiceChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _SheetChoiceChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+        decoration: BoxDecoration(
+          color: selected ? kCobalt : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected
+                ? kCobalt
+                : context.artC.silver.withValues(alpha: 0.36),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: selected
+                ? Colors.white
+                : context.artC.ink.withValues(alpha: 0.68),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterPanel extends StatelessWidget {
+  final String? selectedCountry;
+  final String? selectedRegionTag;
+  final String? selectedSchoolType;
+  final String? selectedAdvantageSubject;
+  final ValueChanged<String?> onCountryChanged;
   final ValueChanged<String?> onRegionTagChanged;
   final ValueChanged<String?> onSchoolTypeChanged;
   final ValueChanged<String?> onAdvantageSubjectChanged;
   final VoidCallback onClear;
 
   const _FilterPanel({
+    required this.selectedCountry,
     required this.selectedRegionTag,
     required this.selectedSchoolType,
     required this.selectedAdvantageSubject,
+    required this.onCountryChanged,
     required this.onRegionTagChanged,
     required this.onSchoolTypeChanged,
     required this.onAdvantageSubjectChanged,
     required this.onClear,
   });
+
+  static const countryTags = <_FilterOption>[
+    _FilterOption('英国', '英国'),
+    _FilterOption('美国', '美国'),
+  ];
 
   static const regionTags = <_FilterOption>[
     _FilterOption('us_midwest_flagship', '中西部旗舰'),
@@ -282,18 +1031,28 @@ class _FilterPanel extends StatelessWidget{
     _FilterOption('multi_disciplinary', '综合类'),
   ];
 
+  static const advantageSubjects = <_FilterOption>[
+    _FilterOption('纯艺', '纯艺强'),
+    _FilterOption('交互设计', '交互设计'),
+    _FilterOption('插画', '插画'),
+    _FilterOption('工业设计', '工业设计'),
+    _FilterOption('建筑', '建筑'),
+    _FilterOption('时尚', '时尚'),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final hasFilters = selectedRegionTag != null ||
+        selectedCountry != null ||
         selectedSchoolType != null ||
         selectedAdvantageSubject != null;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.64),
+        color: Colors.white.withValues(alpha: 0.64),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: context.artC.silver.withOpacity(0.32)),
+        border: Border.all(color: context.artC.silver.withValues(alpha: 0.32)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -305,7 +1064,8 @@ class _FilterPanel extends StatelessWidget{
                 onPressed: onClear,
                 style: TextButton.styleFrom(
                   foregroundColor: kCobalt,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
@@ -317,10 +1077,24 @@ class _FilterPanel extends StatelessWidget{
             ),
           if (hasFilters) const SizedBox(height: 8),
           _FilterSection(
+            label: '快捷筛选',
+            items: countryTags,
+            selectedValue: selectedCountry,
+            onChanged: onCountryChanged,
+          ),
+          const SizedBox(height: 10),
+          _FilterSection(
             label: '院校类型',
             items: schoolTypes,
             selectedValue: selectedSchoolType,
             onChanged: onSchoolTypeChanged,
+          ),
+          const SizedBox(height: 10),
+          _FilterSection(
+            label: '优势方向',
+            items: advantageSubjects,
+            selectedValue: selectedAdvantageSubject,
+            onChanged: onAdvantageSubjectChanged,
           ),
           const SizedBox(height: 10),
           _FilterSection(
@@ -358,7 +1132,7 @@ class _FilterSection extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w800,
-            color: context.artC.ink.withOpacity(0.42),
+            color: context.artC.ink.withValues(alpha: 0.42),
           ),
         ),
         const SizedBox(height: 7),
@@ -403,7 +1177,9 @@ class _FilterSection extends StatelessWidget {
           color: isSelected ? kCobalt : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? kCobalt : context.artC.silver.withOpacity(0.4),
+            color: isSelected
+                ? kCobalt
+                : context.artC.silver.withValues(alpha: 0.4),
             width: 1,
           ),
         ),
@@ -412,7 +1188,9 @@ class _FilterSection extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: isSelected ? Colors.white : context.artC.ink.withOpacity(0.7),
+            color: isSelected
+                ? Colors.white
+                : context.artC.ink.withValues(alpha: 0.7),
           ),
         ),
       ),
@@ -430,8 +1208,17 @@ class _FilterOption {
 class _SchoolCard extends StatelessWidget {
   final Map<String, dynamic> data;
   final VoidCallback? onTap;
+  final VoidCallback? onSaveTap;
+  final bool isSaved;
+  final bool isSaving;
 
-  const _SchoolCard({required this.data, this.onTap});
+  const _SchoolCard({
+    required this.data,
+    this.onTap,
+    this.onSaveTap,
+    this.isSaved = false,
+    this.isSaving = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -442,94 +1229,209 @@ class _SchoolCard extends StatelessWidget {
     final schoolType = data['school_type'] as String?;
     final qsRank = data['qs_art_rank'] as int?;
     final logoUrl = data['logo_url'] as String?;
+    final disciplines = _stringList(data['strength_disciplines']);
+    final featureTags = _stringList(data['feature_tags']);
+    final schoolTypeLabel = _schoolTypeLabel(schoolType);
+    final fitText = _fitSummary(
+      schoolType: schoolType,
+      disciplines: disciplines,
+      city: city,
+    );
+    final applicationTier = _applicationTier(qsRank);
+    final portfolioLevel = _portfolioLevel(qsRank);
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(kRadiusLarge),
+          borderRadius: BorderRadius.circular(18),
           boxShadow: [kShadowCard],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: context.artC.silver.withOpacity(0.35),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: logoUrl != null && logoUrl.isNotEmpty
-                    ? Image.network(
-                        logoUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            _SchoolCardLogoFallback(nameZh),
-                      )
-                    : Center(
-                        child: Text(
-                          nameZh.substring(0, 1),
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: kCobalt,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                      ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    nameZh,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: context.artC.ink,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: context.artC.silver.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  if (nameEn != null && nameEn.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      nameEn,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: context.artC.ink.withOpacity(0.4),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: logoUrl != null && logoUrl.isNotEmpty
+                        ? Image.network(
+                            logoUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                _SchoolCardLogoFallback(nameZh),
+                          )
+                        : Center(
+                            child: Text(
+                              nameZh.substring(0, 1),
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: kCobalt,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (country != null) _MetaChip(country),
-                      if (city != null) _MetaChip(city),
-                      if (schoolType != null && schoolType.isNotEmpty)
-                        _MetaChip(schoolType),
-                      if (qsRank != null)
-                        _MetaChip('QS #$qsRank', highlighted: true),
+                      Text(
+                        nameZh,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: context.artC.ink,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (nameEn != null && nameEn.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          nameEn,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: context.artC.ink.withValues(alpha: 0.38),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      const SizedBox(height: 6),
+                      Text(
+                        [
+                          if (city != null && city.isNotEmpty) city,
+                          if (country != null && country.isNotEmpty) country,
+                          schoolTypeLabel,
+                        ].join(' · '),
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 1.25,
+                          fontWeight: FontWeight.w700,
+                          color: context.artC.ink.withValues(alpha: 0.46),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: onSaveTap,
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    height: 34,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isSaved
+                          ? kCobalt.withValues(alpha: 0.1)
+                          : context.artC.silver.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: isSaving
+                        ? const SizedBox(
+                            width: 15,
+                            height: 15,
+                            child: CircularProgressIndicator(
+                              color: kCobalt,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Row(
+                            children: [
+                              Icon(
+                                isSaved
+                                    ? Icons.bookmark_rounded
+                                    : Icons.bookmark_add_outlined,
+                                size: 16,
+                                color: isSaved
+                                    ? kCobalt
+                                    : context.artC.ink.withValues(alpha: 0.42),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                isSaved ? '已在目标池' : '目标池',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color: isSaved
+                                      ? kCobalt
+                                      : context.artC.ink
+                                          .withValues(alpha: 0.46),
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              children: [
+                _MetaChip(qsRank == null ? 'QS 暂无' : 'QS 艺术 #$qsRank',
+                    highlighted: true),
+                _MetaChip(applicationTier,
+                    highlighted: applicationTier == '冲刺'),
+                _MetaChip(portfolioLevel,
+                    highlighted: portfolioLevel == '作品集要求高'),
+                if (disciplines.isNotEmpty)
+                  ...disciplines
+                      .take(2)
+                      .map((item) => _MetaChip(_displayLabel(item))),
+                if (featureTags.isNotEmpty)
+                  _MetaChip(_displayLabel(featureTags.first)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+              decoration: BoxDecoration(
+                color: context.artC.porcelain.withValues(alpha: 0.72),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.psychology_alt_outlined,
+                    size: 16,
+                    color: kCobalt.withValues(alpha: 0.72),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '推荐理由：${fitText.replaceFirst('适合：', '')}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        height: 1.25,
+                        fontWeight: FontWeight.w700,
+                        color: context.artC.ink.withValues(alpha: 0.58),
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              size: 20,
-              color: context.artC.ink.withOpacity(0.25),
             ),
           ],
         ),
@@ -559,6 +1461,129 @@ class _SchoolCardLogoFallback extends StatelessWidget {
   }
 }
 
+String _schoolTypeLabel(String? value) {
+  return switch (value) {
+    'art_academy' => '专业艺术学院',
+    'art_college' => '艺术学院',
+    'design_school' => '设计学院',
+    'university_art_dept' => '大学艺术院系',
+    'comprehensive_university' => '综合大学艺术方向',
+    'architecture_school' => '建筑学院',
+    'film_school' => '电影学院',
+    'performing_arts' => '表演艺术院校',
+    'multi_disciplinary' => '综合艺术设计院校',
+    'private_art_school' => '私立艺术院校',
+    'public_university' => '公立大学艺术方向',
+    null || '' => '艺术与设计院校',
+    _ => _displayLabel(value),
+  };
+}
+
+String _displayLabel(String value) {
+  final normalized = value.trim();
+  final key =
+      normalized.toLowerCase().replaceAll('-', '_').replaceAll(' ', '_');
+  return switch (key) {
+    'fine_art' || 'fine_arts' => '纯艺',
+    'painting' => '绘画',
+    'sculpture' => '雕塑',
+    'design' => '设计',
+    'graphic_design' || 'communication_design' => '平面设计',
+    'visual_communication' || 'visual_communications' => '视觉传达',
+    'interaction_design' || 'interactive_design' => '交互设计',
+    'service_design' => '服务设计',
+    'industrial_design' || 'product_design' => '工业设计',
+    'architecture' || 'architectural_design' => '建筑',
+    'interior_design' => '室内设计',
+    'fashion' || 'fashion_design' => '时尚',
+    'illustration' => '插画',
+    'animation' => '动画',
+    'film' || 'film_video' => '电影影像',
+    'photography' => '摄影',
+    'curating' || 'curatorial_studies' => '策展',
+    'art_history' => '艺术史',
+    'multi_disciplinary' => '跨学科',
+    'portfolio_friendly' => '作品集友好',
+    _ => normalized.contains('_')
+        ? normalized
+            .split('_')
+            .where((part) => part.isNotEmpty)
+            .map((part) => part[0].toUpperCase() + part.substring(1))
+            .join(' ')
+        : normalized,
+  };
+}
+
+String _fitSummary({
+  required String? schoolType,
+  required List<String> disciplines,
+  required String? city,
+}) {
+  final direction = disciplines.isNotEmpty
+      ? disciplines.take(2).map(_displayLabel).join(' / ')
+      : '艺术与设计';
+  if (schoolType == 'design_school') {
+    return '适合：希望围绕 $direction 做作品集和专业匹配的设计方向申请者。';
+  }
+  if (schoolType == 'art_academy') {
+    return '适合：重视作品表达、创作脉络和 studio 训练的艺术申请者。';
+  }
+  if (schoolType == 'university_art_dept') {
+    return '适合：想兼顾综合大学资源和 $direction 方向深造的申请者。';
+  }
+  if (city != null && city.isNotEmpty) {
+    return '适合：希望利用 $city 城市艺术资源，并继续比较预算和作品集难度的申请者。';
+  }
+  return '适合：正在建立目标院校池，需要继续比较排名、方向、预算和申请难度的申请者。';
+}
+
+String _sortLabel(_SchoolSortKey key) {
+  return switch (key) {
+    _SchoolSortKey.recommended => '综合推荐',
+    _SchoolSortKey.qs => 'QS 排名',
+    _SchoolSortKey.heat => '平台热度',
+    _SchoolSortKey.difficultyLow => '难度低',
+    _SchoolSortKey.value => '性价比',
+    _SchoolSortKey.updated => '最新更新',
+  };
+}
+
+String _rankRangeLabel(int? maxRank) {
+  if (maxRank == null) return '不限排名';
+  return 'QS Top $maxRank';
+}
+
+String _applicationTier(int? rank) {
+  if (rank == null) return '匹配';
+  if (rank <= 20) return '冲刺';
+  if (rank <= 80) return '匹配';
+  return '保底';
+}
+
+String _portfolioLevel(int? rank) {
+  if (rank == null) return '作品集要求中';
+  if (rank <= 20) return '作品集要求高';
+  if (rank <= 80) return '作品集要求中';
+  return '作品集友好';
+}
+
+List<String> _stringList(dynamic value) {
+  if (value is List) {
+    return value
+        .map((e) => e.toString().trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+  if (value is String && value.trim().isNotEmpty) {
+    return value
+        .split(RegExp(r'[,，、\n]'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+  return const [];
+}
+
 class _MetaChip extends StatelessWidget {
   final String text;
   final bool highlighted;
@@ -571,8 +1596,8 @@ class _MetaChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: highlighted
-            ? kCobalt.withOpacity(0.08)
-            : context.artC.silver.withOpacity(0.4),
+            ? kCobalt.withValues(alpha: 0.08)
+            : context.artC.silver.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -581,8 +1606,8 @@ class _MetaChip extends StatelessWidget {
           fontSize: 10,
           fontWeight: highlighted ? FontWeight.w700 : FontWeight.w500,
           color: highlighted
-              ? kCobalt.withOpacity(0.9)
-              : context.artC.ink.withOpacity(0.55),
+              ? kCobalt.withValues(alpha: 0.9)
+              : context.artC.ink.withValues(alpha: 0.55),
         ),
       ),
     );
