@@ -373,13 +373,14 @@ class CoreToolsGrid extends StatelessWidget {
 
     return GridView.builder(
       shrinkWrap: true,
+      padding: EdgeInsets.zero,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: coreTools.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.35,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 1.48,
       ),
       itemBuilder: (context, index) {
         final tool = coreTools[index];
@@ -413,10 +414,10 @@ class _CompactToolCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: context.artC.silver.withOpacity(0.38)),
       ),
       child: Column(
@@ -425,13 +426,13 @@ class _CompactToolCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 36,
-                height: 36,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(11),
                 ),
-                child: Icon(icon, color: color, size: 18),
+                child: Icon(icon, color: color, size: 17),
               ),
               const Spacer(),
               Container(
@@ -444,30 +445,39 @@ class _CompactToolCard extends StatelessWidget {
                 ),
                 child: Text(
                   status,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: isEmpty ? context.artC.ink.withOpacity(0.4) : color,
                     fontSize: 9,
+                    height: 1.1,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
             ],
           ),
-          const Spacer(),
+          const SizedBox(height: 14),
           Text(
             title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: context.artC.ink,
-              fontSize: 14,
+              fontSize: 13,
+              height: 1.1,
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(
             isEmpty ? '建议先添加目标院校' : '点击查看详情',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: context.artC.ink.withOpacity(0.35),
               fontSize: 10,
+              height: 1.1,
               fontWeight: FontWeight.w600,
             ),
           ),

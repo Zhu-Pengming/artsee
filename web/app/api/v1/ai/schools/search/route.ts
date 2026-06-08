@@ -3,6 +3,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/api/supabase-service";
 import { getUserFromBearer } from "@/lib/api/auth-user";
 import { loadUserProfile, formatFullProfile, rerankSchoolsWithProfile, fireRecordFromTurn } from "@/lib/memory";
+import { resolveSchoolAliasSlugs } from "@/lib/school-aliases";
+
+function mergeSchools(
+  primary: Array<Record<string, unknown>> = [],
+  secondary: Array<Record<string, unknown>> = []
+) {
+  const seen = new Set<string>();
+  const merged: Array<Record<string, unknown>> = [];
+  for (const school of [...primary, ...secondary]) {
+    const key = String(school.id ?? school.slug ?? "");
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    merged.push(school);
+  }
+  return merged;
+}
 
 /**
  * POST /api/v1/ai/schools/search
@@ -19,45 +35,6 @@ export async function POST(req: NextRequest) {
     if (!q) {
       return NextResponse.json({ success: false, error: "query 不能为空" }, { status: 400 });
     }
-
-    // 加载用户画像
-    const user = await getUserFromBearer(req);
-    const userProfile = user ? await loadUserProfile(user.id) : null;
-
-    const supabase = createServiceClient();
-    const { data: schools, error: se } = await supabase
-      .from("schools")
-      .select("*")
-      .eq("status", "active")
-      .order("qs_art_design_rank", { ascending: true })
-      .limit(Math.min(limitSchools, 80));
-
-    if (se) {
-      return NextResponse.json({ success: false, error: se.message }, { status: 500 });
-    }
-
-    // 基于用户画像 rerank 学校列表
-    const rerankResult = rerankSchoolsWithProfile(schools ?? [], userProfile);
-
-    const compact = rerankResult.items.map((s: Record<string, unknown>) => ({
-      id: s.id,
-      name_zh: s.name_zh,
-      name_en: s.name_en,
-      country: s.country,
-      city: s.city,
-      qs_art_design_rank: s.qs_art_design_rank,
-      qs_overall_rank: s.qs_overall_rank,
-      school_tier: s.school_tier,
-      school_type: s.school_type,
-      founded_year: s.founded_year,
-      description: (s.description as string)?.slice(0, 300) ?? "",
-      feature_tags: s.feature_tags,
-      strength_disciplines: s.strength_disciplines,
-      entry_score_requirements: s.entry_score_requirements,
-      application_deadline: s.application_deadline,
-      annual_intake: s.annual_intake,
-      notable_alumni: (s.notable_alumni as string)?.slice(0, 200) ?? "",
-    }));
 
     const apiKey = process.env.OPENAI_API_KEY || process.env.MOONSHOT_API_KEY;
     const baseURL =
@@ -76,6 +53,62 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 加载用户画像
+    const user = await getUserFromBearer(req);
+    const userProfile = user ? await loadUserProfile(user.id) : null;
+
+    const aliasSlugs = resolveSchoolAliasSlugs(q);
+    const supabase = createServiceClient();
+    let exactSchools: Array<Record<string, unknown>> = [];
+    if (aliasSlugs.length > 0) {
+      const { data, error } = await supabase
+        .from("schools")
+        .select("*")
+        .eq("status", "active")
+        .in("slug", aliasSlugs);
+
+      if (error) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      }
+      exactSchools = (data ?? []) as Array<Record<string, unknown>>;
+    }
+
+    const { data: schools, error: se } = await supabase
+      .from("schools")
+      .select("*")
+      .eq("status", "active")
+      .order("qs_art_design_rank", { ascending: true })
+      .limit(Math.min(limitSchools, 80));
+
+    if (se) {
+      return NextResponse.json({ success: false, error: se.message }, { status: 500 });
+    }
+
+    // 基于用户画像 rerank 学校列表
+    const rerankResult = rerankSchoolsWithProfile(schools ?? [], userProfile);
+    const schoolsForPrompt = mergeSchools(exactSchools, rerankResult.items);
+
+    const compact = schoolsForPrompt.map((s: Record<string, unknown>) => ({
+      id: s.id,
+      slug: s.slug,
+      name_zh: s.name_zh,
+      name_en: s.name_en,
+      country: s.country,
+      city: s.city,
+      qs_art_design_rank: s.qs_art_design_rank,
+      qs_overall_rank: s.qs_overall_rank,
+      school_tier: s.school_tier,
+      school_type: s.school_type,
+      founded_year: s.founded_year,
+      description: (s.description as string)?.slice(0, 300) ?? "",
+      feature_tags: s.feature_tags,
+      strength_disciplines: s.strength_disciplines,
+      entry_score_requirements: s.entry_score_requirements,
+      application_deadline: s.application_deadline,
+      annual_intake: s.annual_intake,
+      notable_alumni: (s.notable_alumni as string)?.slice(0, 200) ?? "",
+    }));
+
     const client = new OpenAI({ apiKey, baseURL });
 
     // 构建 system prompt,注入用户画像
@@ -86,6 +119,7 @@ export async function POST(req: NextRequest) {
 2. 如果涉及具体院校推荐，优先从数据中挑选最匹配的 3-6 所，并简要说明推荐理由（结合 QS 排名、优势学科、地理位置、申请要求等）。
 3. 回答结构清晰，可分段落，可包含小标题。
 4. 如果用户问题无法从数据中直接回答，给出合理的通用建议，并诚实说明哪些信息需要进一步确认。
+5. 如果用户使用 UAL/RCA/RISD/SVA/CSM/LCF/LCC 等缩写或中文俗称，必须按“确定性别名命中”理解，不要把 UAL 误当作 Visual 里的字母片段。
 
 输出严格为 JSON（不要 markdown），格式：
 {"summary":"对用户问题的直接回答（可分段）","recommendations":[{"school":"学校中文名","reason":"推荐理由（80字内）","tags":["标签1","标签2"]}],"tips":["建议1","建议2"]}`;
@@ -109,7 +143,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const userMsg = `用户问题：${q}\n\n院校数据（共 ${compact.length} 条）：${JSON.stringify(compact).slice(0, 12000)}`;
+    const exactMatchText = exactSchools.length
+      ? `\n\n确定性别名命中（必须优先理解为用户明确提到的院校）：${JSON.stringify(
+          exactSchools.map((school) => ({
+            slug: school.slug,
+            name_zh: school.name_zh,
+            name_en: school.name_en,
+          }))
+        )}`
+      : "";
+    const userMsg = `用户问题：${q}${exactMatchText}\n\n院校数据（共 ${compact.length} 条）：${JSON.stringify(compact).slice(0, 12000)}`;
 
     const completion = await client.chat.completions.create({
       model,
@@ -146,6 +189,7 @@ export async function POST(req: NextRequest) {
       model,
       result: parsed,
       source_count: compact.length,
+      exact_match_slugs: aliasSlugs,
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);

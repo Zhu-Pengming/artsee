@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api/require-admin";
 import { createServiceClient } from "@/lib/api/supabase-service";
+import { resolveSchoolAliasSlugs } from "@/lib/school-aliases";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -94,7 +95,12 @@ export async function GET(req: NextRequest) {
       query = query.eq("school_type", schoolType);
     }
     if (keyword) {
+      const aliasSlugs = resolveSchoolAliasSlugs(keyword);
+      if (aliasSlugs.length > 0) {
+        query = query.in("slug", aliasSlugs);
+      } else {
       query = query.or(`name_zh.ilike.%${keyword}%,name_en.ilike.%${keyword}%`);
+      }
     }
     if (minRank > 0) {
       query = query.gte("qs_art_rank", minRank);

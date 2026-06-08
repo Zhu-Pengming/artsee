@@ -260,7 +260,7 @@ class _ArtInterestOnboardingScreenState
   }
 
   bool get _isBusiness => _entryType == 'business';
-  int get _totalSteps => _isBusiness ? 5 : 4;
+  int get _totalSteps => 4;
   bool get _isLastStep => _step == _totalSteps - 1;
 
   bool get _canContinue {
@@ -279,8 +279,6 @@ class _ArtInterestOnboardingScreenState
         return _isBusiness
             ? _businessMaterials.isNotEmpty
             : _directions.isNotEmpty;
-      case 4:
-        return true;
       default:
         return false;
     }
@@ -462,7 +460,7 @@ class _ArtInterestOnboardingScreenState
             ? _buildBusinessMaterialsStep()
             : _buildPersonalDirectionStep();
       default:
-        return _buildBusinessPreviewStep();
+        return const SizedBox.shrink();
     }
   }
 
@@ -622,42 +620,6 @@ class _ArtInterestOnboardingScreenState
         selected: _businessMaterials,
         onTap: (item) => _toggle(_businessMaterials, item, max: 6),
         max: 6,
-      ),
-    );
-  }
-
-  Widget _buildBusinessPreviewStep() {
-    final typeLabel = _businessTypeChoices
-        .firstWhere((item) => item.id == _businessType,
-            orElse: () => const _Choice(id: '', title: '机构 / 商家'))
-        .title;
-    return _QuestionStep(
-      eyebrow: 'AI Preview',
-      title: 'AI 入驻页预览',
-      subtitle: '确认后提交入驻申请。审核通过后再开放主页、活动、课程和合作机会发布权限。',
-      child: Column(
-        children: [
-          _SummaryCard(
-            icon: Icons.storefront_outlined,
-            title: _businessNameCtrl.text.trim().isEmpty
-                ? typeLabel
-                : _businessNameCtrl.text.trim(),
-            text:
-                '$typeLabel · ${_businessCityCtrl.text.trim()}\n${_businessIntroCtrl.text.trim().isEmpty ? '等待 AI 根据资料生成一句话定位' : _businessIntroCtrl.text.trim()}',
-          ),
-          _SummaryCard(
-            icon: Icons.verified_outlined,
-            title: '审核材料',
-            text: _businessMaterials.take(4).join(' / '),
-          ),
-          _SummaryCard(
-            icon: Icons.lock_open_outlined,
-            title: '审核通过后可开通',
-            text: _businessNeeds.isEmpty
-                ? '机构主页 / 用户咨询 / 发布权限'
-                : _businessNeeds.take(4).join(' / '),
-          ),
-        ],
       ),
     );
   }
@@ -1154,79 +1116,6 @@ class _GhostButton extends StatelessWidget {
           fontSize: 13,
           fontWeight: FontWeight.w800,
           color: context.artC.ink.withValues(alpha: 0.42),
-        ),
-      ),
-    );
-  }
-}
-
-class _PorcelainPanel extends StatelessWidget {
-  final Widget child;
-
-  const _PorcelainPanel({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: context.artC.silver.withValues(alpha: 0.35)),
-        boxShadow: [kShadowCard],
-      ),
-      child: child,
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String text;
-
-  const _SummaryCard({
-    required this.icon,
-    required this.title,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: _PorcelainPanel(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: kCobalt, size: 22),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      color: context.artC.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    text,
-                    style: TextStyle(
-                      fontSize: 12,
-                      height: 1.5,
-                      color: context.artC.ink.withValues(alpha: 0.56),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ),
       ),
     );

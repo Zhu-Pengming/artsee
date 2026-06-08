@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../../services/backend_api_service.dart';
+import '../../services/supabase_service.dart';
 import '../../widgets/common.dart';
+import '../auth/login_screen.dart';
 import 'school_detail_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
@@ -191,6 +193,12 @@ class SchoolListScreenState extends State<SchoolListScreen>
   Future<void> _toggleSavedSchool(Map<String, dynamic> school) async {
     final id = school['id']?.toString();
     if (id == null || id.isEmpty || _savingSchoolIds.contains(id)) return;
+    if (!SupabaseService.isLoggedIn) {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+      );
+      if (!mounted || !SupabaseService.isLoggedIn) return;
+    }
     final wasSaved = _savedSchoolIds.contains(id);
     setState(() => _savingSchoolIds.add(id));
     try {

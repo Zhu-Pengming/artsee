@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'artsee-web',
-      script: './web/server.js',
+      script: './server.js',
       // 使用 PATH 中的 node（Ubuntu apt / NodeSource 与旧机 node24 均可）
       interpreter: 'node',
       cwd: '/root/website/artsee',

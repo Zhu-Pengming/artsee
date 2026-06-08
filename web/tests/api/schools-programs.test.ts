@@ -33,6 +33,11 @@ class QueryStub {
     return this;
   }
 
+  in(...args: unknown[]) {
+    this.operations.push({ method: "in", args });
+    return this;
+  }
+
   gte(...args: unknown[]) {
     this.operations.push({ method: "gte", args });
     return this;
@@ -150,6 +155,27 @@ describe("schools routes", () => {
     const req = new NextRequest("http://localhost/api/v1/schools?limit=0");
     const res = await getSchools(req);
     expect(res.status).toBe(400);
+  });
+
+  it("GET resolves short school aliases before fuzzy search", async () => {
+    const query = new QueryStub();
+    query.result = { data: [{ id: "ual-id", slug: "university-arts-london" }], error: null, count: 1 };
+    mocked.createServiceClient.mockReturnValue(buildClient({ schools: query }));
+
+    const req = new NextRequest("http://localhost/api/v1/schools?keyword=UAL");
+    const res = await getSchools(req);
+
+    expect(res.status).toBe(200);
+    expect(query.operations).toEqual(
+      expect.arrayContaining([
+        { method: "in", args: ["slug", ["university-arts-london"]] },
+      ])
+    );
+    expect(query.operations).not.toEqual(
+      expect.arrayContaining([
+        { method: "or", args: ["name_zh.ilike.%UAL%,name_en.ilike.%UAL%"] },
+      ])
+    );
   });
 
   it("GET include_inactive requires admin", async () => {

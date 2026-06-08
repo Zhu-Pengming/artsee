@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../data/mock_compare_schools.dart';
 import '../../services/backend_api_service.dart';
+import '../../services/supabase_service.dart';
 import '../../widgets/common.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
@@ -24,10 +25,11 @@ class AiConsultScreen extends StatefulWidget {
 class _AiConsultScreenState extends State<AiConsultScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
-  final List<Map<String, String>> _messages = [
+  final List<Map<String, dynamic>> _messages = [
     {
       'role': 'assistant',
       'text': '你好！我是 Artiqore AI 助手。可以问我选校、作品集与职业路径；也可切换到「对比选校」添加院校查看多维数据面板。',
+      'sources': <Map<String, dynamic>>[],
     },
   ];
   final TextEditingController _input = TextEditingController();
@@ -65,6 +67,7 @@ class _AiConsultScreenState extends State<AiConsultScreen>
   }
 
   Future<void> _loadConversations() async {
+    if (!SupabaseService.isLoggedIn) return;
     setState(() => _loadingHistory = true);
     try {
       final conversations = await BackendApiService.getAiConversations();
@@ -89,7 +92,9 @@ class _AiConsultScreenState extends State<AiConsultScreen>
         _messages.clear();
         _messages.add({
           'role': 'assistant',
-          'text': '你好！我是 Artiqore AI 助手。可以问我选校、作品集与职业路径；也可切换到「对比选校」添加院校查看多维数据面板。',
+          'text':
+              '你好！我是 Artiqore AI 助手。可以问我选校、作品集与职业路径；也可切换到「对比选校」添加院校查看多维数据面板。',
+          'sources': <Map<String, dynamic>>[],
         });
       });
       await _loadConversations();
@@ -106,9 +111,10 @@ class _AiConsultScreenState extends State<AiConsultScreen>
         _currentConversationId = conversationId;
         _messages.clear();
         _messages.addAll(messages.map((m) => {
-          'role': m['role'] as String,
-          'text': m['content'] as String,
-        }));
+              'role': m['role'] as String,
+              'text': m['content'] as String,
+              'sources': <Map<String, dynamic>>[],
+            }));
         _showHistory = false;
       });
     } catch (e) {
@@ -128,7 +134,9 @@ class _AiConsultScreenState extends State<AiConsultScreen>
           _messages.clear();
           _messages.add({
             'role': 'assistant',
-            'text': '你好！我是 Artiqore AI 助手。可以问我选校、作品集与职业路径；也可切换到「对比选校」添加院校查看多维数据面板。',
+            'text':
+                '你好！我是 Artiqore AI 助手。可以问我选校、作品集与职业路径；也可切换到「对比选校」添加院校查看多维数据面板。',
+            'sources': <Map<String, dynamic>>[],
           });
         });
       }
@@ -154,13 +162,16 @@ class _AiConsultScreenState extends State<AiConsultScreen>
     final text = (preset ?? _input.text).trim();
     if (text.isEmpty || _sending) return;
     setState(() {
-      _messages.add({'role': 'user', 'text': text});
+      _messages.add(
+          {'role': 'user', 'text': text, 'sources': <Map<String, dynamic>>[]});
       _sending = true;
     });
     _input.clear();
     _scrollBottom();
 
-    if (_currentConversationId == null) {
+    final canPersistConversation = SupabaseService.isLoggedIn;
+
+    if (canPersistConversation && _currentConversationId == null) {
       try {
         final conversation = await BackendApiService.createAiConversation(
           title: text.length > 30 ? '${text.substring(0, 30)}...' : text,
@@ -176,7 +187,7 @@ class _AiConsultScreenState extends State<AiConsultScreen>
       }
     }
 
-    if (_currentConversationId != null) {
+    if (canPersistConversation && _currentConversationId != null) {
       try {
         await BackendApiService.saveAiMessage(
           conversationId: _currentConversationId!,
@@ -190,10 +201,12 @@ class _AiConsultScreenState extends State<AiConsultScreen>
     }
 
     String reply;
+    List<Map<String, dynamic>> sources = const [];
     try {
       if (_useKnowledge) {
         final result = await BackendApiService.aiConsult(text, mode: 'chat');
         reply = _formatConsultReply(result);
+        sources = _extractSources(result);
       } else {
         final result = await BackendApiService.aiSchoolSearch(text);
         reply = _formatAiReply(result);
@@ -206,12 +219,13 @@ class _AiConsultScreenState extends State<AiConsultScreen>
       _messages.add({
         'role': 'assistant',
         'text': reply,
+        'sources': sources,
       });
       _sending = false;
     });
     _scrollBottom();
 
-    if (_currentConversationId != null) {
+    if (canPersistConversation && _currentConversationId != null) {
       try {
         await BackendApiService.saveAiMessage(
           conversationId: _currentConversationId!,
@@ -232,6 +246,18 @@ class _AiConsultScreenState extends State<AiConsultScreen>
     final result = response['result'];
     if (result is Map<String, dynamic>) return _formatAiReply(response);
     return result?.toString() ?? '我已经收到你的问题，但暂时没有生成可展示的建议。';
+  }
+
+  List<Map<String, dynamic>> _extractSources(Map<String, dynamic> response) {
+    final rawSources = response['sources'];
+    if (rawSources is! List) return const [];
+    return rawSources
+        .whereType<Map>()
+        .take(6)
+        .map((source) => source.map(
+              (key, value) => MapEntry(key.toString(), value),
+            ))
+        .toList();
   }
 
   String _formatAiReply(Map<String, dynamic> response) {
@@ -285,19 +311,130 @@ class _AiConsultScreenState extends State<AiConsultScreen>
           return line.replaceAll('|', ' | ');
         })
         .join('\n')
+        .replaceAll(RegExp(r'^\s*\*\s+', multiLine: true), '· ')
+        .replaceAll('*', '')
         .replaceAllMapped(
           RegExp(r'[A-Za-z0-9_./:#?=&%-]{24,}'),
           (match) => match.group(0)!.replaceAllMapped(
-            RegExp(r'.{1,16}'),
-            (part) => '${part.group(0)} ',
-          ),
+                RegExp(r'.{1,16}'),
+                (part) => '${part.group(0)} ',
+              ),
         );
-    
+
     if (text.length > 500 && result.length != text.length) {
       print('⚠️ _displayMessageText 改变了长度: ${text.length} → ${result.length}');
     }
-    
+
     return result;
+  }
+
+  Widget _buildSourceList(List<Map<String, dynamic>> sources) {
+    if (sources.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            '信息源',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.2,
+              color: context.artC.ink.withOpacity(0.38),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...sources.asMap().entries.map((entry) {
+            final index = entry.key + 1;
+            final source = entry.value;
+            final schoolName = source['schoolName']?.toString().trim();
+            final heading = source['heading']?.toString().trim();
+            final similarity = source['similarity'];
+            final score = similarity is num
+                ? '${(similarity * 100).clamp(0, 100).toStringAsFixed(0)}%'
+                : null;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 7),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: context.artC.porcelain.withOpacity(0.72),
+                borderRadius: BorderRadius.circular(14),
+                border:
+                    Border.all(color: context.artC.silver.withOpacity(0.36)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: kCobalt.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '[$index]',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: kCobalt,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          (schoolName == null || schoolName.isEmpty)
+                              ? '知识库条目'
+                              : schoolName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            color: context.artC.ink,
+                          ),
+                        ),
+                        if (heading != null && heading.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            heading,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              height: 1.35,
+                              fontWeight: FontWeight.w600,
+                              color: context.artC.ink.withOpacity(0.52),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (score != null) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      score,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: context.artC.ink.withOpacity(0.34),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
   }
 
   String _buildFallbackReply(String question, Object error) {
@@ -425,7 +562,8 @@ class _AiConsultScreenState extends State<AiConsultScreen>
               width: MediaQuery.of(context).size.width * 0.75,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.horizontal(right: Radius.circular(20)),
+                borderRadius:
+                    BorderRadius.horizontal(right: Radius.circular(20)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.2),
@@ -453,11 +591,14 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                           Spacer(),
                           IconButton(
                             onPressed: _createNewConversation,
-                            icon: Icon(Icons.add_circle_outline, color: kCobalt),
+                            icon:
+                                Icon(Icons.add_circle_outline, color: kCobalt),
                           ),
                           IconButton(
-                            onPressed: () => setState(() => _showHistory = false),
-                            icon: Icon(Icons.close, color: context.artC.ink.withOpacity(0.5)),
+                            onPressed: () =>
+                                setState(() => _showHistory = false),
+                            icon: Icon(Icons.close,
+                                color: context.artC.ink.withOpacity(0.5)),
                           ),
                         ],
                       ),
@@ -475,7 +616,9 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.chat_bubble_outline, size: 48, color: context.artC.ink.withOpacity(0.2)),
+                              Icon(Icons.chat_bubble_outline,
+                                  size: 48,
+                                  color: context.artC.ink.withOpacity(0.2)),
                               SizedBox(height: 12),
                               Text(
                                 '暂无历史对话',
@@ -495,24 +638,31 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                           itemCount: _conversations.length,
                           itemBuilder: (context, i) {
                             final conv = _conversations[i];
-                            final isActive = conv['id'] == _currentConversationId;
+                            final isActive =
+                                conv['id'] == _currentConversationId;
                             return InkWell(
                               onTap: () => _loadConversation(conv['id']),
                               child: Container(
-                                margin: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                margin: EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 4),
                                 padding: EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: isActive ? kCobalt.withOpacity(0.1) : Colors.transparent,
+                                  color: isActive
+                                      ? kCobalt.withOpacity(0.1)
+                                      : Colors.transparent,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: isActive ? kCobalt : context.artC.silver.withOpacity(0.3),
+                                    color: isActive
+                                        ? kCobalt
+                                        : context.artC.silver.withOpacity(0.3),
                                   ),
                                 ),
                                 child: Row(
                                   children: [
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             conv['title'] ?? '新对话',
@@ -524,13 +674,15 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
-                                          if (conv['last_message_preview'] != null) ...[
+                                          if (conv['last_message_preview'] !=
+                                              null) ...[
                                             SizedBox(height: 4),
                                             Text(
                                               conv['last_message_preview'],
                                               style: TextStyle(
                                                 fontSize: 12,
-                                                color: context.artC.ink.withOpacity(0.5),
+                                                color: context.artC.ink
+                                                    .withOpacity(0.5),
                                               ),
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
@@ -540,8 +692,11 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                                       ),
                                     ),
                                     IconButton(
-                                      onPressed: () => _deleteConversation(conv['id']),
-                                      icon: Icon(Icons.delete_outline, size: 20, color: Colors.red.withOpacity(0.6)),
+                                      onPressed: () =>
+                                          _deleteConversation(conv['id']),
+                                      icon: Icon(Icons.delete_outline,
+                                          size: 20,
+                                          color: Colors.red.withOpacity(0.6)),
                                     ),
                                   ],
                                 ),
@@ -641,7 +796,9 @@ class _AiConsultScreenState extends State<AiConsultScreen>
             children: [
               Icon(
                 Icons.auto_awesome,
-                color: _useKnowledge ? Color(0xFF22C55E) : Colors.white.withOpacity(0.3),
+                color: _useKnowledge
+                    ? Color(0xFF22C55E)
+                    : Colors.white.withOpacity(0.3),
                 size: 14,
               ),
               const SizedBox(height: 2),
@@ -681,81 +838,90 @@ class _AiConsultScreenState extends State<AiConsultScreen>
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               itemCount: _messages.length + 1,
               itemBuilder: (context, i) {
-              if (i == 0) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _suggestions.map((s) {
-                      return ActionChip(
-                        label: Text(
-                          s,
-                          style:
-                              TextStyle(fontSize: 11, color: context.artC.ink),
+                if (i == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _suggestions.map((s) {
+                        return ActionChip(
+                          label: Text(
+                            s,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: context.artC.ink,
+                            ),
+                          ),
+                          backgroundColor:
+                              context.artC.silver.withOpacity(0.35),
+                          side: BorderSide(
+                            color: context.artC.silver.withOpacity(0.6),
+                          ),
+                          onPressed: _sending ? null : () => _send(s),
+                        );
+                      }).toList(),
+                    ),
+                  );
+                }
+
+                final msg = _messages[i - 1];
+                final user = msg['role'] == 'user';
+                final text = msg['text']?.toString() ?? '';
+                final sources = (msg['sources'] as List<dynamic>? ?? const [])
+                    .whereType<Map<String, dynamic>>()
+                    .toList();
+                return Align(
+                  alignment:
+                      user ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.82,
+                    ),
+                    decoration: BoxDecoration(
+                      color: user ? context.artC.ink : Colors.white,
+                      borderRadius: BorderRadius.circular(20).copyWith(
+                        bottomRight: user ? const Radius.circular(4) : null,
+                        bottomLeft: !user ? const Radius.circular(4) : null,
+                      ),
+                      border: user
+                          ? null
+                          : Border.all(
+                              color: context.artC.silver.withOpacity(0.45),
+                            ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: context.artC.ink.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
                         ),
-                        backgroundColor: context.artC.silver.withOpacity(0.35),
-                        side: BorderSide(
-                            color: context.artC.silver.withOpacity(0.6)),
-                        onPressed: _sending ? null : () => _send(s),
-                      );
-                    }).toList(),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SelectableText(
+                          _displayMessageText(text),
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.45,
+                            color: user
+                                ? context.artC.porcelain
+                                : context.artC.ink.withOpacity(0.88),
+                          ),
+                        ),
+                        if (!user) _buildSourceList(sources),
+                      ],
+                    ),
                   ),
                 );
-              }
-              final msg = _messages[i - 1];
-              final user = msg['role'] == 'user';
-              final text = msg['text']!;
-              if (!user && text.length > 500) {
-                print('📝 长消息 #${i - 1}: ${text.length} 字符');
-              }
-              return Align(
-                alignment: user ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.82,
-                  ),
-                  decoration: BoxDecoration(
-                    color: user ? context.artC.ink : Colors.white,
-                    borderRadius: BorderRadius.circular(20).copyWith(
-                      bottomRight: user ? const Radius.circular(4) : null,
-                      bottomLeft: !user ? const Radius.circular(4) : null,
-                    ),
-                    border: user
-                        ? null
-                        : Border.all(
-                            color: context.artC.silver.withOpacity(0.45)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: context.artC.ink.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: 0,
-                      maxHeight: double.infinity,
-                    ),
-                    child: SelectableText(
-                      _displayMessageText(text),
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.45,
-                        color: user
-                            ? context.artC.porcelain
-                            : context.artC.ink.withOpacity(0.88),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
+              },
+            ),
           ),
         ),
         if (_sending)

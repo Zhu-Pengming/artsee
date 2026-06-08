@@ -18,6 +18,7 @@ class NewsScaffoldState extends State<NewsScaffold>
   late TabController _tabController;
   final GlobalKey<SchoolListScreenState> _schoolKey =
       GlobalKey<SchoolListScreenState>();
+  final GlobalKey<_ToolboxTabState> _toolboxKey = GlobalKey<_ToolboxTabState>();
 
   @override
   void initState() {
@@ -58,6 +59,15 @@ class NewsScaffoldState extends State<NewsScaffold>
   String get schoolSearchKeyword =>
       _schoolKey.currentState?.searchKeyword ?? '';
 
+  void openApplicationPlanTab() {
+    if (_tabController.index != 2) {
+      _tabController.animateTo(2);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _toolboxKey.currentState?.openApplicationPlan();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottom = mainTabBottomInset(context);
@@ -79,7 +89,16 @@ class NewsScaffoldState extends State<NewsScaffold>
                 children: [
                   SchoolListScreen(key: _schoolKey),
                   _CompareTab(bottom: bottom),
-                  _ToolboxTab(bottom: bottom),
+                  _ToolboxTab(
+                    key: _toolboxKey,
+                    bottom: bottom,
+                    onGoSchools: () {
+                      _tabController.animateTo(0);
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _schoolKey.currentState?.openDecisionFilterSheet();
+                      });
+                    },
+                  ),
                 ],
               ),
             ),
@@ -183,8 +202,13 @@ class _ArticlesTabState extends State<_ArticlesTab> {
 
 class _ToolboxTab extends StatefulWidget {
   final double bottom;
+  final VoidCallback onGoSchools;
 
-  const _ToolboxTab({required this.bottom});
+  const _ToolboxTab({
+    super.key,
+    required this.bottom,
+    required this.onGoSchools,
+  });
 
   @override
   State<_ToolboxTab> createState() => _ToolboxTabState();
@@ -192,9 +216,13 @@ class _ToolboxTab extends StatefulWidget {
 
 class _ToolboxTabState extends State<_ToolboxTab> {
   Map<String, dynamic>? _progress;
+  Map<String, dynamic>? _applicationPlan;
   List<Map<String, dynamic>> _tools = [];
   bool _loading = true;
+  bool _loadingApplicationPlan = false;
+  bool _generatingApplicationPlan = false;
   String? _error;
+  String? _applicationPlanError;
   int _targetSchoolCount = 0;
   int _materialCount = 0;
   int _completedMaterialCount = 0;
@@ -224,6 +252,7 @@ class _ToolboxTabState extends State<_ToolboxTab> {
               _progress?['completed_material_count'] as int? ?? 0;
           _loading = false;
         });
+        await _loadApplicationPlan(silent: true);
       }
     } catch (e) {
       if (mounted) {
@@ -233,6 +262,80 @@ class _ToolboxTabState extends State<_ToolboxTab> {
         });
       }
     }
+  }
+
+  void openApplicationPlan() {
+    _loadData();
+  }
+
+  Future<void> _loadApplicationPlan({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _loadingApplicationPlan = true;
+        _applicationPlanError = null;
+      });
+    }
+    try {
+      final data = await BackendApiService.fetchApplicationPlan();
+      if (!mounted) return;
+      setState(() {
+        _applicationPlan = data;
+        _targetSchoolCount = _countFromApplicationPlan(data);
+        _applicationPlanError = null;
+        _loadingApplicationPlan = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _applicationPlanError = e.toString();
+        _loadingApplicationPlan = false;
+      });
+    }
+  }
+
+  Future<void> _generateApplicationPlan() async {
+    if (_generatingApplicationPlan) return;
+    setState(() => _generatingApplicationPlan = true);
+    try {
+      final data = await BackendApiService.generateApplicationPlan();
+      if (!mounted) return;
+      setState(() {
+        _applicationPlan = data;
+        _targetSchoolCount = _countFromApplicationPlan(data);
+        _applicationPlanError = null;
+      });
+      await _loadData();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('生成失败：$e')),
+      );
+    } finally {
+      if (mounted) setState(() => _generatingApplicationPlan = false);
+    }
+  }
+
+  Future<void> _toggleApplicationPlanTask(Map<String, dynamic> task) async {
+    final id = task['id']?.toString();
+    if (id == null) return;
+    final next = task['status'] == 'done' ? 'todo' : 'done';
+    try {
+      await BackendApiService.updateApplicationPlanTask(id, next);
+      await _loadApplicationPlan();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('更新失败：$e')),
+      );
+    }
+  }
+
+  int _countFromApplicationPlan(Map<String, dynamic> data) {
+    final explicitCount = data['saved_school_count'];
+    if (explicitCount is num) return explicitCount.toInt();
+    final schools = data['saved_schools'];
+    if (schools is List) return schools.length;
+    return _targetSchoolCount;
   }
 
   @override
@@ -286,16 +389,30 @@ class _ToolboxTabState extends State<_ToolboxTab> {
             ),
             const SizedBox(height: 14),
 
+            _NewsSectionHeader(title: '申请计划', action: '目标院校驱动'),
+            const SizedBox(height: 6),
+            _InlineApplicationPlanPanel(
+              data: _applicationPlan,
+              loading: _loadingApplicationPlan,
+              error: _applicationPlanError,
+              generating: _generatingApplicationPlan,
+              onReload: _loadApplicationPlan,
+              onGenerate: _generateApplicationPlan,
+              onToggleTask: _toggleApplicationPlanTask,
+              onGoSchools: widget.onGoSchools,
+            ),
+            const SizedBox(height: 18),
+
             // 第二层：核心工具
             _NewsSectionHeader(title: '核心工具', action: ''),
-            const SizedBox(height: 6),
+            const SizedBox(height: 2),
             CoreToolsGrid(
               tools: _tools,
               materialCount: _materialCount,
               completedMaterialCount: _completedMaterialCount,
               hasTargetSchools: hasTargetSchools,
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
 
             // 第三层：下一步任务
             if (!hasTargetSchools) ...[
@@ -310,6 +427,498 @@ class _ToolboxTabState extends State<_ToolboxTab> {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _InlineApplicationPlanPanel extends StatelessWidget {
+  final Map<String, dynamic>? data;
+  final bool loading;
+  final bool generating;
+  final String? error;
+  final VoidCallback onReload;
+  final VoidCallback onGenerate;
+  final VoidCallback onGoSchools;
+  final ValueChanged<Map<String, dynamic>> onToggleTask;
+
+  const _InlineApplicationPlanPanel({
+    required this.data,
+    required this.loading,
+    required this.generating,
+    required this.error,
+    required this.onReload,
+    required this.onGenerate,
+    required this.onGoSchools,
+    required this.onToggleTask,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return _PlanCard(
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child:
+                  CircularProgressIndicator(color: kCobalt, strokeWidth: 2.4),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              '正在加载申请计划...',
+              style: TextStyle(
+                color: context.artC.ink.withValues(alpha: 0.54),
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (error != null) {
+      return _PlanEmptyState(
+        icon: Icons.error_outline_rounded,
+        title: '申请计划加载失败',
+        body: error!,
+        actionLabel: '重新加载',
+        onAction: onReload,
+      );
+    }
+
+    final payload = data ?? const <String, dynamic>{};
+    final state = payload['state']?.toString() ?? 'no_profile';
+    final tasks = (payload['tasks'] as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .toList();
+    final savedSchools = (payload['saved_schools'] as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .toList();
+    final savedSchoolCount = payload['saved_school_count'] is num
+        ? (payload['saved_school_count'] as num).toInt()
+        : savedSchools.length;
+
+    if (state == 'no_profile') {
+      return _PlanEmptyState(
+        icon: Icons.auto_awesome_outlined,
+        title: '还不能生成申请计划',
+        body: '请先完善申请画像，系统需要知道你的申请阶段、方向和目标城市。',
+        actionLabel: '重新加载',
+        onAction: onReload,
+      );
+    }
+
+    if (state == 'no_schools') {
+      return _PlanEmptyState(
+        icon: Icons.school_outlined,
+        title: '先加入目标院校',
+        body: '从院校详情页点击「申请计划」，学校会进入目标院校池，然后在这里生成时间线。',
+        actionLabel: '去选院校',
+        onAction: onGoSchools,
+      );
+    }
+
+    if (state == 'ready_to_generate') {
+      return _PlanCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _InlineTargetSchools(
+                schools: savedSchools, count: savedSchoolCount),
+            const SizedBox(height: 14),
+            _PlanNote(
+              icon: Icons.event_note_outlined,
+              text: '已具备生成条件，系统会根据当前目标院校和申请画像生成时间线。',
+            ),
+            const SizedBox(height: 14),
+            _PlanActionButton(
+              label: generating ? '生成中...' : '生成申请计划',
+              onTap: generating ? () {} : onGenerate,
+            ),
+          ],
+        ),
+      );
+    }
+
+    final summary =
+        (payload['plan'] as Map<String, dynamic>?)?['summary']?.toString() ??
+            '这是根据你的画像和目标院校生成的申请时间线。';
+
+    return _PlanCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _InlineTargetSchools(schools: savedSchools, count: savedSchoolCount),
+          const SizedBox(height: 14),
+          _PlanNote(icon: Icons.route_outlined, text: summary),
+          const SizedBox(height: 14),
+          _InlineTimeline(tasks: tasks, onToggle: onToggleTask),
+          const SizedBox(height: 14),
+          _PlanActionButton(
+            label: generating ? '重新生成中...' : '按当前目标院校重新生成',
+            onTap: generating ? () {} : onGenerate,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineTargetSchools extends StatelessWidget {
+  final List<Map<String, dynamic>> schools;
+  final int count;
+
+  const _InlineTargetSchools({required this.schools, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: kCobalt.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child:
+                  const Icon(Icons.school_outlined, color: kCobalt, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '目标院校池',
+                style: TextStyle(
+                  color: context.artC.ink,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            _PlanPill('$count 所'),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (schools.isEmpty)
+          Text(
+            '还没有读取到目标院校。',
+            style: TextStyle(
+              color: context.artC.ink.withValues(alpha: 0.46),
+              fontSize: 13,
+              height: 1.45,
+              fontWeight: FontWeight.w700,
+            ),
+          )
+        else
+          ...schools.take(5).map((school) {
+            final name = school['name_zh']?.toString().isNotEmpty == true
+                ? school['name_zh'].toString()
+                : (school['name_en']?.toString() ?? '目标院校');
+            final country = school['country']?.toString();
+            final city = school['city']?.toString();
+            final meta = [
+              if (city != null && city.isNotEmpty) city,
+              if (country != null && country.isNotEmpty) country,
+            ].join(' · ');
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    color: kCobalt,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      meta.isEmpty ? name : '$name · $meta',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: context.artC.ink.withValues(alpha: 0.68),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+      ],
+    );
+  }
+}
+
+class _InlineTimeline extends StatelessWidget {
+  final List<Map<String, dynamic>> tasks;
+  final ValueChanged<Map<String, dynamic>> onToggle;
+
+  const _InlineTimeline({required this.tasks, required this.onToggle});
+
+  @override
+  Widget build(BuildContext context) {
+    if (tasks.isEmpty) {
+      return _PlanNote(
+        icon: Icons.info_outline_rounded,
+        text: '计划已创建，但暂时没有任务。可以按当前目标院校重新生成。',
+      );
+    }
+    final grouped = <String, List<Map<String, dynamic>>>{};
+    for (final task in tasks) {
+      final month = task['month_label']?.toString() ?? '待安排';
+      grouped.putIfAbsent(month, () => []).add(task);
+    }
+    return Column(
+      children: grouped.entries
+          .map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 48,
+                    child: Text(
+                      entry.key,
+                      style: const TextStyle(
+                        color: kCobalt,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      children: entry.value
+                          .map(
+                            (task) => _PlanCheckRow(
+                              task: task,
+                              onTap: () => onToggle(task),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _PlanCheckRow extends StatelessWidget {
+  final Map<String, dynamic> task;
+  final VoidCallback onTap;
+
+  const _PlanCheckRow({required this.task, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final done = task['status'] == 'done';
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 9),
+        child: Row(
+          children: [
+            Icon(
+              done ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+              size: 18,
+              color: done ? kCobalt : context.artC.ink.withValues(alpha: 0.28),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                task['title']?.toString() ?? '任务',
+                style: TextStyle(
+                  color: done
+                      ? context.artC.ink.withValues(alpha: 0.34)
+                      : context.artC.ink.withValues(alpha: 0.66),
+                  fontSize: 13,
+                  height: 1.35,
+                  fontWeight: FontWeight.w800,
+                  decoration: done ? TextDecoration.lineThrough : null,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PlanEmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String body;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  const _PlanEmptyState({
+    required this.icon,
+    required this.title,
+    required this.body,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _PlanCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: kCobalt, size: 26),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: TextStyle(
+              color: context.artC.ink,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            body,
+            style: TextStyle(
+              color: context.artC.ink.withValues(alpha: 0.46),
+              fontSize: 13,
+              height: 1.45,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _PlanActionButton(label: actionLabel, onTap: onAction),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanNote extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _PlanNote({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: kCobalt.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: kCobalt.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: kCobalt),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: kCobalt,
+                fontSize: 12,
+                height: 1.35,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanActionButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _PlanActionButton({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        decoration: BoxDecoration(
+          color: kCobalt,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlanPill extends StatelessWidget {
+  final String label;
+
+  const _PlanPill(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: context.artC.silver.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: context.artC.ink.withValues(alpha: 0.5),
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _PlanCard extends StatelessWidget {
+  final Widget child;
+
+  const _PlanCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: context.artC.silver.withValues(alpha: 0.24)),
+        boxShadow: [
+          BoxShadow(
+            color: context.artC.ink.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: child,
     );
   }
 }

@@ -56,7 +56,11 @@ mkdir -p "${BUILD_DIR}/web/.next"
 rm -rf "${BUILD_DIR}/web/.next/static"
 cp -r "${WEB_DIR}/.next/static" "${BUILD_DIR}/web/.next/static"
 rm -rf "${BUILD_DIR}/public"
-cp -r "${WEB_DIR}/public" "${BUILD_DIR}/public"
+if [[ -d "${WEB_DIR}/public" ]]; then
+  cp -r "${WEB_DIR}/public" "${BUILD_DIR}/public"
+else
+  mkdir -p "${BUILD_DIR}/public"
+fi
 cp "${WEB_DIR}/package.json" "${BUILD_DIR}/package.json"
 [[ -f "${WEB_DIR}/package-lock.json" ]] && cp "${WEB_DIR}/package-lock.json" "${BUILD_DIR}/package-lock.json"
 [[ -f "${WEB_DIR}/ecosystem.config.js" ]] && cp "${WEB_DIR}/ecosystem.config.js" "${BUILD_DIR}/ecosystem.config.js"

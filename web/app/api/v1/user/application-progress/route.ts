@@ -54,6 +54,41 @@ export async function GET(req: NextRequest) {
       checks.portfolio_uploaded = true;
     }
 
+    const { count: targetSchoolCount, error: targetSchoolError } = await supabase
+      .from("saved_schools")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    if (targetSchoolError) {
+      return NextResponse.json(
+        { success: false, error: targetSchoolError.message },
+        { status: 500 }
+      );
+    }
+
+    const { count: materialCount, error: materialError } = await supabase
+      .from("application_plan_tasks")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    if (materialError) {
+      return NextResponse.json(
+        { success: false, error: materialError.message },
+        { status: 500 }
+      );
+    }
+
+    const { count: completedMaterialCount, error: completedMaterialError } =
+      await supabase
+        .from("application_plan_tasks")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "done");
+    if (completedMaterialError) {
+      return NextResponse.json(
+        { success: false, error: completedMaterialError.message },
+        { status: 500 }
+      );
+    }
+
     // 计算完成百分比
     const completedCount = Object.values(checks).filter(Boolean).length;
     const totalCount = Object.keys(checks).length;
@@ -77,6 +112,9 @@ export async function GET(req: NextRequest) {
         percentage,
         checks,
         suggestions,
+        target_school_count: targetSchoolCount ?? 0,
+        material_count: materialCount ?? 0,
+        completed_material_count: completedMaterialCount ?? 0,
         total_schools: 246,
         total_countries: 18,
         update_frequency: "周更",

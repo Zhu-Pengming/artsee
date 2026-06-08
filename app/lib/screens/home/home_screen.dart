@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:image_picker/image_picker.dart';
@@ -237,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _queryCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
-  final List<Map<String, String>> _messages = [];
+  List<Map<String, dynamic>> _messages = [];
   List<Map<String, dynamic>> _conversations = [];
   Map<String, dynamic>? _profile;
   _AiHomeProfileConfig _aiConfig = _AiHomeProfileConfig.general;
@@ -250,6 +249,10 @@ class _HomeScreenState extends State<HomeScreen> {
   late stt.SpeechToText _speech;
   bool _speechAvailable = false;
   String _recognizedText = '';
+  bool _recordingStopPending = false;
+  DateTime? _recordingStartedAt;
+  String? _speechLocaleId;
+  String? _lastSpeechError;
 
   @override
   void initState() {
@@ -263,20 +266,65 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       _speechAvailable = await _speech.initialize(
         onError: (error) {
+          _lastSpeechError = error.errorMsg;
           if (mounted) {
-            setState(() => _isRecording = false);
+            setState(() {
+              _isRecording = false;
+              _recordingStopPending = false;
+            });
           }
         },
         onStatus: (status) {
           if (status == 'done' || status == 'notListening') {
-            if (mounted && _isRecording) {
+            if (mounted && _isRecording && !_recordingStopPending) {
               _stopRecordingAndSend();
             }
           }
         },
       );
+      if (_speechAvailable) {
+        _speechLocaleId = await _resolveSpeechLocaleId();
+      }
     } catch (e) {
       _speechAvailable = false;
+    }
+  }
+
+  Future<String?> _resolveSpeechLocaleId() async {
+    try {
+      final locales = await _speech.locales();
+      const preferredLocaleIds = [
+        'zh_CN',
+        'zh-Hans-CN',
+        'zh_Hans_CN',
+        'zh-Hans',
+        'zh_TW',
+        'zh-Hant-TW',
+        'zh_HK',
+        'cmn_Hans_CN',
+      ];
+
+      for (final preferred in preferredLocaleIds) {
+        for (final locale in locales) {
+          if (locale.localeId == preferred) {
+            return locale.localeId;
+          }
+        }
+      }
+
+      for (final locale in locales) {
+        final normalized = locale.localeId.toLowerCase().replaceAll('_', '-');
+        if (normalized == 'zh' ||
+            normalized.startsWith('zh-') ||
+            normalized.startsWith('cmn-')) {
+          return locale.localeId;
+        }
+      }
+
+      final systemLocale = await _speech.systemLocale();
+      return systemLocale?.localeId;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -293,11 +341,11 @@ class _HomeScreenState extends State<HomeScreen> {
     List<Map<String, dynamic>> conversations = [];
     Map<String, dynamic>? profileData;
 
-    try {
-      conversations = await BackendApiService.getAiConversations();
-    } catch (_) {}
-
     if (SupabaseService.isLoggedIn) {
+      try {
+        conversations = await BackendApiService.getAiConversations();
+      } catch (_) {}
+
       try {
         final profileResponse = await BackendApiService.fetchAuthProfile();
         profileData = profileResponse['profile'] is Map<String, dynamic>
@@ -317,11 +365,31 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Map<String, String> _welcomeMessage() {
-    return {
+  Map<String, dynamic> _welcomeMessage() {
+    return <String, dynamic>{
       'role': 'assistant',
       'text': _aiConfig.welcomeText,
+      'sources': <Map<String, dynamic>>[],
     };
+  }
+
+  void _normalizeMessagesForHotReload() {
+    _messages = _messages
+        .map(
+          (message) => <String, dynamic>{
+            'role': message['role']?.toString() ?? 'assistant',
+            'text': message['text']?.toString() ?? '',
+            'sources': (message['sources'] as List<dynamic>? ?? const [])
+                .whereType<Map>()
+                .map(
+                  (source) => source.map(
+                    (key, value) => MapEntry(key.toString(), value),
+                  ),
+                )
+                .toList(),
+          },
+        )
+        .toList();
   }
 
   void _startConversation() {
@@ -329,6 +397,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _showChatInput();
       return;
     }
+    _normalizeMessagesForHotReload();
     setState(() {
       _conversationStarted = true;
       _chatInputVisible = true;
@@ -359,6 +428,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showMainNav() {
+    FocusScope.of(context).unfocus();
     if (mounted && (_chatInputVisible || _showEmojiPicker)) {
       setState(() {
         _chatInputVisible = false;
@@ -386,15 +456,17 @@ class _HomeScreenState extends State<HomeScreen> {
       final data = await BackendApiService.getAiConversation(id);
       final messages = data['messages'] as List<dynamic>? ?? [];
       if (!mounted) return;
+      _normalizeMessagesForHotReload();
       setState(() {
         _conversationStarted = true;
         _chatInputVisible = true;
         _currentConversationId = id;
         _messages
           ..clear()
-          ..addAll(messages.map((m) => {
+          ..addAll(messages.map((m) => <String, dynamic>{
                 'role': m['role']?.toString() ?? 'assistant',
                 'text': m['content']?.toString() ?? '',
+                'sources': <Map<String, dynamic>>[],
               }));
       });
       MainScaffold.globalKey.currentState?.setHomeNavHidden(true);
@@ -406,10 +478,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final query = (preset ?? _queryCtrl.text).trim();
     final text = query.isEmpty ? _aiConfig.defaultPrompt : query;
     if (_sending) return;
+    _normalizeMessagesForHotReload();
     setState(() {
       _conversationStarted = true;
       _chatInputVisible = true;
-      _messages.add({'role': 'user', 'text': text});
+      _messages.add(<String, dynamic>{
+        'role': 'user',
+        'text': text,
+        'sources': <Map<String, dynamic>>[],
+      });
       _sending = true;
     });
     MainScaffold.globalKey.currentState?.setHomeNavHidden(true);
@@ -420,6 +497,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await _saveMessage(role: 'user', content: text);
 
     String reply;
+    List<Map<String, dynamic>> sources = const [];
     try {
       final result = await BackendApiService.aiConsult(
         text,
@@ -430,13 +508,18 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       );
       reply = _formatConsultReply(result);
+      sources = _extractSources(result);
     } catch (e) {
       reply = _buildFallbackReply(text, e);
     }
 
     if (!mounted) return;
     setState(() {
-      _messages.add({'role': 'assistant', 'text': reply});
+      _messages.add(<String, dynamic>{
+        'role': 'assistant',
+        'text': reply,
+        'sources': sources,
+      });
       _sending = false;
     });
     _scrollBottom();
@@ -444,6 +527,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _ensureConversation(String firstMessage) async {
+    if (!SupabaseService.isLoggedIn) return;
     if (_currentConversationId != null) return;
     try {
       final conversation = await BackendApiService.createAiConversation(
@@ -471,6 +555,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required String role,
     required String content,
   }) async {
+    if (!SupabaseService.isLoggedIn) return;
     final conversationId = _currentConversationId;
     if (conversationId == null) return;
     try {
@@ -488,6 +573,18 @@ class _HomeScreenState extends State<HomeScreen> {
     final result = response['result'];
     if (result is Map<String, dynamic>) return _formatAiReply(response);
     return result?.toString() ?? '我已经收到你的问题，但暂时没有生成可展示的建议。';
+  }
+
+  List<Map<String, dynamic>> _extractSources(Map<String, dynamic> response) {
+    final rawSources = response['sources'];
+    if (rawSources is! List) return const [];
+    return rawSources
+        .whereType<Map>()
+        .take(6)
+        .map((source) => source.map(
+              (key, value) => MapEntry(key.toString(), value),
+            ))
+        .toList();
   }
 
   String _formatAiReply(Map<String, dynamic> response) {
@@ -541,6 +638,9 @@ class _HomeScreenState extends State<HomeScreen> {
           return line.replaceAll('|', ' | ');
         })
         .join('\n')
+        .replaceAll(RegExp(r'^\s*\*\s+', multiLine: true), '· ')
+        .replaceAll('*', '')
+        .replaceAll(RegExp(r'\s*\[\d+\]'), '')
         .replaceAllMapped(
           RegExp(r'[A-Za-z0-9_./:#?=&%-]{24,}'),
           (match) => match.group(0)!.replaceAllMapped(
@@ -621,13 +721,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _sendImage(String imagePath) async {
     if (_sending) return;
 
+    _normalizeMessagesForHotReload();
     setState(() {
       _conversationStarted = true;
       _chatInputVisible = true;
       _sending = true;
-      _messages.add({
+      _messages.add(<String, dynamic>{
         'role': 'user',
         'text': '[图片]',
+        'sources': <Map<String, dynamic>>[],
       });
     });
     MainScaffold.globalKey.currentState?.setHomeNavHidden(true);
@@ -652,7 +754,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!mounted) return;
     setState(() {
-      _messages.add({'role': 'assistant', 'text': reply});
+      _messages.add(<String, dynamic>{
+        'role': 'assistant',
+        'text': reply,
+        'sources': <Map<String, dynamic>>[],
+      });
       _sending = false;
     });
     _scrollBottom();
@@ -685,43 +791,97 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _startRecording() async {
-    if (!_speechAvailable) {
+    if (_isRecording || _recordingStopPending) return;
+
+    final micStatus = await Permission.microphone.request();
+    if (!micStatus.isGranted) {
       if (mounted) {
+        final permanentlyDenied = micStatus.isPermanentlyDenied;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('语音识别不可用，请检查设备设置')),
+          SnackBar(
+            content: Text(
+              permanentlyDenied
+                  ? '麦克风权限已关闭，请到系统设置中允许后再使用语音输入'
+                  : '需要麦克风权限才能使用语音输入',
+            ),
+            action: permanentlyDenied
+                ? const SnackBarAction(
+                    label: '去设置',
+                    onPressed: openAppSettings,
+                  )
+                : null,
+          ),
         );
       }
       return;
     }
 
-    final status = await Permission.microphone.request();
-    if (!status.isGranted) {
+    if (!mounted) return;
+    FocusScope.of(context).unfocus();
+
+    if (!_speechAvailable) {
+      await _initSpeech();
+    }
+
+    if (!_speechAvailable) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('需要麦克风权限才能使用语音输入')),
+          const SnackBar(
+            content: Text('语音识别不可用，请检查系统语音识别权限或设备设置'),
+            action: SnackBarAction(
+              label: '去设置',
+              onPressed: openAppSettings,
+            ),
+          ),
         );
       }
       return;
     }
+
+    _speechLocaleId ??= await _resolveSpeechLocaleId();
+
+    try {
+      if (_speech.isListening) {
+        await _speech.stop();
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
 
     setState(() {
       _isRecording = true;
       _recognizedText = '';
+      _recordingStopPending = false;
+      _recordingStartedAt = DateTime.now();
+      _lastSpeechError = null;
     });
 
     try {
       await _speech.listen(
         onResult: (result) {
+          if (!mounted) return;
+          final recognizedWords = result.recognizedWords.trim();
+          if (recognizedWords.isEmpty) return;
           setState(() {
-            _recognizedText = result.recognizedWords;
+            _recognizedText = recognizedWords;
           });
         },
-        localeId: 'zh_CN',
-        listenMode: stt.ListenMode.confirmation,
+        listenOptions: stt.SpeechListenOptions(
+          cancelOnError: true,
+          partialResults: true,
+          listenMode: stt.ListenMode.dictation,
+          listenFor: const Duration(seconds: 45),
+          pauseFor: const Duration(seconds: 3),
+          localeId: _speechLocaleId,
+          autoPunctuation: true,
+        ),
       );
     } catch (e) {
       if (mounted) {
-        setState(() => _isRecording = false);
+        setState(() {
+          _isRecording = false;
+          _recordingStopPending = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('语音识别失败: $e')),
         );
@@ -730,23 +890,50 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _stopRecordingAndSend() async {
-    if (!_isRecording) return;
+    if (!_isRecording || _recordingStopPending) return;
+
+    setState(() => _recordingStopPending = true);
+
+    final startedAt = _recordingStartedAt;
+    if (startedAt != null) {
+      final elapsed = DateTime.now().difference(startedAt);
+      const minimumListenDuration = Duration(milliseconds: 900);
+      if (elapsed < minimumListenDuration) {
+        await Future.delayed(minimumListenDuration - elapsed);
+      }
+    }
 
     try {
       await _speech.stop();
-      setState(() => _isRecording = false);
+      await Future.delayed(const Duration(milliseconds: 450));
 
-      if (_recognizedText.trim().isNotEmpty) {
-        await _runPrompt(_recognizedText);
+      final recognizedText = _recognizedText.trim();
+      if (!mounted) return;
+
+      setState(() {
+        _isRecording = false;
+        _recordingStopPending = false;
+        _recordingStartedAt = null;
+      });
+
+      if (recognizedText.isNotEmpty) {
+        await _runPrompt(recognizedText);
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('未识别到语音内容，请重试')),
-          );
-        }
+        final hint = _lastSpeechError == null
+            ? '没有听清语音内容，请按住说完后再松开'
+            : '语音识别没有返回内容，请检查系统语音识别设置后重试';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(hint)),
+        );
       }
     } catch (e) {
-      setState(() => _isRecording = false);
+      if (mounted) {
+        setState(() {
+          _isRecording = false;
+          _recordingStopPending = false;
+          _recordingStartedAt = null;
+        });
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('停止识别失败: $e')),
@@ -776,6 +963,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _startNewChat() {
+    _normalizeMessagesForHotReload();
     setState(() {
       _conversationStarted = true;
       _chatInputVisible = true;
@@ -1381,7 +1569,7 @@ class _ConversationDrawerState extends State<_ConversationDrawer> {
 }
 
 class _HomeChatView extends StatelessWidget {
-  final List<Map<String, String>> messages;
+  final List<Map<String, dynamic>> messages;
   final bool sending;
   final ScrollController scrollController;
   final double bottomPadding;
@@ -1424,10 +1612,14 @@ class _HomeChatView extends StatelessWidget {
         }
         final message = messages[index];
         final user = message['role'] == 'user';
-        final text = message['text'] ?? '';
+        final text = message['text']?.toString() ?? '';
+        final sources = (message['sources'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .toList();
         return _MessageBubble(
           user: user,
           text: displayText(text),
+          sources: user ? const [] : sources,
         );
       },
     );
@@ -1437,10 +1629,12 @@ class _HomeChatView extends StatelessWidget {
 class _MessageBubble extends StatelessWidget {
   final bool user;
   final String text;
+  final List<Map<String, dynamic>> sources;
 
   const _MessageBubble({
     required this.user,
     required this.text,
+    this.sources = const [],
   });
 
   @override
@@ -1467,13 +1661,21 @@ class _MessageBubble extends StatelessWidget {
           ),
         ],
       ),
-      child: SelectableText(
-        text,
-        style: TextStyle(
-          fontSize: 13.5,
-          height: 1.48,
-          color: user ? Colors.white : context.artC.ink.withValues(alpha: 0.88),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SelectableText(
+            text,
+            style: TextStyle(
+              fontSize: 13.5,
+              height: 1.48,
+              color: user
+                  ? Colors.white
+                  : context.artC.ink.withValues(alpha: 0.88),
+            ),
+          ),
+          if (!user && sources.isNotEmpty) _HomeSourceList(sources: sources),
+        ],
       ),
     );
 
@@ -1494,6 +1696,122 @@ class _MessageBubble extends StatelessWidget {
                 const SizedBox(width: 8),
                 bubble,
               ],
+      ),
+    );
+  }
+}
+
+class _HomeSourceList extends StatelessWidget {
+  final List<Map<String, dynamic>> sources;
+
+  const _HomeSourceList({required this.sources});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            '信息源',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.2,
+              color: context.artC.ink.withValues(alpha: 0.38),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...sources.asMap().entries.map((entry) {
+            final index = entry.key + 1;
+            final source = entry.value;
+            final schoolName = source['schoolName']?.toString().trim();
+            final heading = source['heading']?.toString().trim();
+            final similarity = source['similarity'];
+            final score = similarity is num
+                ? '${(similarity * 100).clamp(0, 100).toStringAsFixed(0)}%'
+                : null;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 7),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: context.artC.porcelain.withValues(alpha: 0.72),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: context.artC.silver.withValues(alpha: 0.36),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: kCobalt.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '[$index]',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: kCobalt,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          (schoolName == null || schoolName.isEmpty)
+                              ? '知识库条目'
+                              : schoolName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            color: context.artC.ink,
+                          ),
+                        ),
+                        if (heading != null && heading.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            heading,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              height: 1.35,
+                              fontWeight: FontWeight.w600,
+                              color: context.artC.ink.withValues(alpha: 0.52),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (score != null) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      score,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: context.artC.ink.withValues(alpha: 0.34),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -1808,9 +2126,14 @@ class _BottomAskBarState extends State<_BottomAskBar> {
                   Expanded(
                     child: _voiceMode
                         ? GestureDetector(
-                            onTapDown: (_) => widget.onRecordStart(),
-                            onTapUp: (_) => widget.onRecordEnd(),
-                            onTapCancel: () => widget.onRecordEnd(),
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('按住说话，松开发送')),
+                              );
+                            },
+                            onLongPressStart: (_) => widget.onRecordStart(),
+                            onLongPressEnd: (_) => widget.onRecordEnd(),
+                            onLongPressCancel: () => widget.onRecordEnd(),
                             child: Container(
                               height: 48,
                               alignment: Alignment.center,

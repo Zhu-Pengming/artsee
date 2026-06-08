@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/backend_api_service.dart';
 import '../../widgets/common.dart';
+import '../publish/publish_artist_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 class ExploreScreen extends StatefulWidget {
@@ -737,6 +738,13 @@ class _ArtistTabState extends State<_ArtistTab> {
     }
   }
 
+  Future<void> _openArtistOnboarding() async {
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(builder: (_) => const PublishArtistScreen()),
+    );
+    if (created == true) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return _LoadingState(bottom: widget.bottom);
@@ -764,7 +772,7 @@ class _ArtistTabState extends State<_ArtistTab> {
         padding: EdgeInsets.fromLTRB(20, 0, 20, widget.bottom + 88),
         children: [
           widget.searchKeyword.trim().isEmpty
-              ? _ArtistOnboardingPanel()
+              ? _ArtistOnboardingPanel(onStart: _openArtistOnboarding)
               : _EmptyPanel(
                   title: '没有匹配艺术家',
                   subtitle: '换一个艺术方向、城市或合作关键词试试。',
@@ -1980,6 +1988,10 @@ class _ArtistCard extends StatelessWidget {
 }
 
 class _ArtistOnboardingPanel extends StatelessWidget {
+  final VoidCallback onStart;
+
+  const _ArtistOnboardingPanel({required this.onStart});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -2053,11 +2065,7 @@ class _ArtistOnboardingPanel extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           FilledButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('点击右上角 +，选择“艺术家入驻”')),
-              );
-            },
+            onPressed: onStart,
             icon: const Icon(Icons.arrow_upward_rounded, size: 16),
             label: const Text('立即入驻'),
           ),

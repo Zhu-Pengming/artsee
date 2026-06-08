@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../services/backend_api_service.dart';
+import '../../services/supabase_service.dart';
 import '../../widgets/common.dart';
+import '../auth/login_screen.dart';
+import '../main_scaffold.dart';
 import '../profile/application_workspace_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
@@ -60,8 +63,17 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
     }
   }
 
-  Future<void> _toggleSaved() async {
-    if (_saving) return;
+  Future<bool> _ensureLoggedIn() async {
+    if (SupabaseService.isLoggedIn) return true;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+    );
+    return mounted && SupabaseService.isLoggedIn;
+  }
+
+  Future<bool> _toggleSaved() async {
+    if (_saving) return false;
+    if (!await _ensureLoggedIn()) return false;
     setState(() => _saving = true);
     try {
       if (_saved) {
@@ -69,16 +81,19 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
       } else {
         await BackendApiService.saveSchool(widget.id);
       }
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() => _saved = !_saved);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(_saved ? '已加入目标院校池' : '已移出目标院校池')),
       );
+      return true;
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('操作失败：$e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('操作失败：$e')),
+        );
+      }
+      return false;
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -86,7 +101,8 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
 
   Future<void> _openCompareWorkspace() async {
     if (!_saved) {
-      await _toggleSaved();
+      final saved = await _toggleSaved();
+      if (!saved) return;
     }
     if (!mounted) return;
     Navigator.of(context).push(
@@ -96,6 +112,21 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openApplicationPlanWorkspace() async {
+    if (!_saved) {
+      final saved = await _toggleSaved();
+      if (!saved) return;
+    }
+    if (!mounted) return;
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      MainScaffold.globalKey.currentState?.openSchoolApplicationPlanTab();
+    });
   }
 
   Future<void> _openConsultationSheet(String targetName) async {
@@ -198,7 +229,7 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
               saved: _saved,
               saving: _saving,
               onSave: _toggleSaved,
-              onCompare: _openCompareWorkspace,
+              onPlan: _openApplicationPlanWorkspace,
               onConsult: () => _openConsultationSheet(
                 _data?['name_zh']?.toString() ?? '目标院校',
               ),
@@ -445,10 +476,10 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
                     const SizedBox(width: 9),
                     Expanded(
                       child: _PrimaryDecisionButton(
-                        icon: Icons.compare_arrows_rounded,
-                        label: '加入对比',
+                        icon: Icons.event_note_outlined,
+                        label: '申请计划',
                         outlined: true,
-                        onTap: _openCompareWorkspace,
+                        onTap: _openApplicationPlanWorkspace,
                       ),
                     ),
                     const SizedBox(width: 9),
@@ -1066,14 +1097,14 @@ class _SchoolActionBar extends StatelessWidget {
   final bool saved;
   final bool saving;
   final VoidCallback onSave;
-  final VoidCallback onCompare;
+  final VoidCallback onPlan;
   final VoidCallback onConsult;
 
   const _SchoolActionBar({
     required this.saved,
     required this.saving,
     required this.onSave,
-    required this.onCompare,
+    required this.onPlan,
     required this.onConsult,
   });
 
@@ -1111,10 +1142,10 @@ class _SchoolActionBar extends StatelessWidget {
               const SizedBox(width: 9),
               Expanded(
                 child: _PrimaryDecisionButton(
-                  icon: Icons.compare_arrows_rounded,
-                  label: saved ? '查看对比' : '加入对比',
+                  icon: Icons.event_note_outlined,
+                  label: '申请计划',
                   outlined: true,
-                  onTap: onCompare,
+                  onTap: onPlan,
                 ),
               ),
               const SizedBox(width: 9),

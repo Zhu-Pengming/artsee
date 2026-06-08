@@ -12,7 +12,12 @@ export function parsePagination(searchParams: URLSearchParams) {
 }
 
 export function errorResponse(error: unknown, status = 500) {
-  const message = error instanceof Error ? error.message : String(error);
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null
+        ? JSON.stringify(error)
+        : String(error);
   return NextResponse.json({ success: false, error: message }, { status });
 }
 

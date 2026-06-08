@@ -32,7 +32,7 @@ class MainScaffold extends StatefulWidget {
 }
 
 class _MainScaffoldState extends State<MainScaffold> {
-  static const double _headerHeight = 54;
+  static const double _headerHeight = 64;
   int _currentIndex = 0;
   bool _homeNavHidden = false;
   final GlobalKey<NewsScaffoldState> _newsKey = GlobalKey<NewsScaffoldState>();
@@ -47,6 +47,17 @@ class _MainScaffoldState extends State<MainScaffold> {
         if (index != 0) _homeNavHidden = false;
       });
     }
+  }
+
+  void openSchoolApplicationPlanTab() {
+    if (!mounted) return;
+    setState(() {
+      _currentIndex = 1;
+      _homeNavHidden = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _newsKey.currentState?.openApplicationPlanTab();
+    });
   }
 
   void setHomeNavHidden(bool hidden) {
@@ -1544,52 +1555,31 @@ class _TopHeaderState extends State<_TopHeader> {
       ),
       child: Row(
         children: [
-          SizedBox(
-            width: 82,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'artiqore',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 16,
-                    height: 0.95,
-                    fontWeight: FontWeight.w900,
-                    fontStyle: FontStyle.italic,
-                    letterSpacing: -0.8,
-                    color: context.artC.ink,
-                    fontFamily: 'Noto Serif SC',
-                  ),
-                ),
-                Text(
-                  '艺见心',
-                  style: TextStyle(
-                    fontSize: 7,
-                    height: 1,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 3,
-                    color: context.artC.ink.withOpacity(0.34),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
           Expanded(
             child: Container(
-              height: 34,
-              padding: const EdgeInsets.only(left: 12, right: 4),
+              height: 42,
+              padding: const EdgeInsets.only(left: 14, right: 4),
               decoration: BoxDecoration(
-                color: context.artC.silver.withOpacity(0.34),
-                borderRadius: BorderRadius.circular(999),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: context.artC.silver.withOpacity(0.42),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: context.artC.ink.withOpacity(0.035),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
-                  Icon(Icons.search,
-                      size: 16, color: context.artC.ink.withOpacity(0.35)),
+                  Icon(
+                    Icons.search_rounded,
+                    size: 18,
+                    color: kCobalt.withOpacity(0.9),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
@@ -1598,15 +1588,16 @@ class _TopHeaderState extends State<_TopHeader> {
                       onSubmitted: _handleSubmit,
                       textInputAction: TextInputAction.search,
                       style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
                         color: context.artC.ink,
                       ),
                       decoration: InputDecoration(
                         hintText: widget.searchHint,
                         hintStyle: TextStyle(
                           fontSize: 12,
-                          color: context.artC.ink.withOpacity(0.35),
+                          fontWeight: FontWeight.w700,
+                          color: context.artC.ink.withOpacity(0.34),
                         ),
                         border: InputBorder.none,
                         isDense: true,
@@ -1621,7 +1612,7 @@ class _TopHeaderState extends State<_TopHeader> {
                       return GestureDetector(
                         onTap: _clearSearch,
                         child: Padding(
-                          padding: const EdgeInsets.all(6),
+                          padding: const EdgeInsets.all(7),
                           child: Icon(
                             Icons.close_rounded,
                             size: 16,
@@ -1630,6 +1621,22 @@ class _TopHeaderState extends State<_TopHeader> {
                         ),
                       );
                     },
+                  ),
+                  GestureDetector(
+                    onTap: () => _handleSubmit(_searchController.text),
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: kCobalt,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1641,24 +1648,22 @@ class _TopHeaderState extends State<_TopHeader> {
               onTap: widget.onActionTap,
               child: Container(
                 width: widget.actionLabel == null ? 34 : 54,
-                height: 34,
+                height: 42,
                 decoration: BoxDecoration(
-                  color: context.artC.silver.withOpacity(0.34),
-                  borderRadius: BorderRadius.circular(10),
+                  color: context.artC.ink,
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: widget.actionLabel == null
                     ? Icon(
                         widget.actionIcon,
                         size: widget.showCreateIcon ? 23 : 18,
-                        color: widget.showCreateIcon
-                            ? kCobalt
-                            : context.artC.ink.withOpacity(0.48),
+                        color: Colors.white,
                       )
                     : Center(
                         child: Text(
                           widget.actionLabel!,
                           style: const TextStyle(
-                            color: kCobalt,
+                            color: Colors.white,
                             fontSize: 12,
                             fontWeight: FontWeight.w900,
                           ),

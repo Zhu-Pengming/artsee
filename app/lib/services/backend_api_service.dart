@@ -453,10 +453,13 @@ class BackendApiService {
         int? count,
         int limit,
         int offset
-      })> fetchSavedSchools({
+  })> fetchSavedSchools({
     int limit = 50,
     int offset = 0,
   }) async {
+    if (Supabase.instance.client.auth.currentUser == null) {
+      return (data: <Map<String, dynamic>>[], count: 0, limit: limit, offset: offset);
+    }
     final decoded = await _requestJson(
       'GET',
       '/api/v1/me/saved-schools',

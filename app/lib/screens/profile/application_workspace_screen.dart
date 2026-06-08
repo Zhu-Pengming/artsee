@@ -34,6 +34,7 @@ class _ApplicationWorkspaceScreenState
   bool _loadingApplicationPlan = false;
   bool _loadingPortfolioTasks = false;
   bool _loadingConsultations = false;
+  bool _generatingApplicationPlan = false;
   String? _schoolError;
   String? _applicationPlanError;
   String? _portfolioTaskError;
@@ -306,7 +307,13 @@ class _ApplicationWorkspaceScreenState
               const SizedBox(width: 8),
               _MiniAction(
                 label: '加入计划',
-                onTap: () => _showToast('已在目标院校池中，可前往申请计划生成时间线'),
+                onTap: () => Navigator.of(context).pushReplacement(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const ApplicationWorkspaceScreen(
+                      kind: ApplicationWorkspaceKind.applicationPlan,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -520,6 +527,12 @@ class _ApplicationWorkspaceScreenState
     final tasks = (data['tasks'] as List<dynamic>? ?? [])
         .whereType<Map<String, dynamic>>()
         .toList();
+    final savedSchools = (data['saved_schools'] as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .toList();
+    final savedSchoolCount = data['saved_school_count'] is num
+        ? (data['saved_school_count'] as num).toInt()
+        : savedSchools.length;
 
     if (state == 'no_profile') {
       return _EmptyWorkspaceCard(
@@ -546,18 +559,34 @@ class _ApplicationWorkspaceScreenState
       );
     }
     if (state == 'ready_to_generate') {
-      return _EmptyWorkspaceCard(
-        icon: Icons.event_note_outlined,
-        title: '已具备生成条件',
-        body: '系统会根据你的画像和目标院校生成申请时间线。',
-        actionLabel: '生成申请计划',
-        onAction: _generateApplicationPlan,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _TargetSchoolsCard(
+            schools: savedSchools,
+            count: savedSchoolCount,
+          ),
+          const SizedBox(height: 14),
+          _EmptyWorkspaceCard(
+            icon: Icons.event_note_outlined,
+            title: '已具备生成条件',
+            body: '系统会根据你的画像和目标院校生成申请时间线。',
+            actionLabel: _generatingApplicationPlan ? '生成中...' : '生成申请计划',
+            onAction:
+                _generatingApplicationPlan ? () {} : _generateApplicationPlan,
+          ),
+        ],
       );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _TargetSchoolsCard(
+          schools: savedSchools,
+          count: savedSchoolCount,
+        ),
+        const SizedBox(height: 14),
         _SectionNote(
           text:
               (data['plan'] as Map<String, dynamic>?)?['summary']?.toString() ??
@@ -568,6 +597,12 @@ class _ApplicationWorkspaceScreenState
         _TimelinePreview(
           tasks: tasks,
           onToggle: _toggleApplicationPlanTask,
+        ),
+        const SizedBox(height: 14),
+        _MiniAction(
+          label: _generatingApplicationPlan ? '重新生成中...' : '按当前目标院校重新生成',
+          primary: true,
+          onTap: _generatingApplicationPlan ? () {} : _generateApplicationPlan,
         ),
       ],
     );
@@ -655,12 +690,16 @@ class _ApplicationWorkspaceScreenState
   }
 
   Future<void> _generateApplicationPlan() async {
+    if (_generatingApplicationPlan) return;
+    setState(() => _generatingApplicationPlan = true);
     try {
       final data = await BackendApiService.generateApplicationPlan();
       if (!mounted) return;
       setState(() => _applicationPlan = data);
     } catch (e) {
       if (mounted) _showToast('生成失败：$e');
+    } finally {
+      if (mounted) setState(() => _generatingApplicationPlan = false);
     }
   }
 
@@ -903,6 +942,115 @@ class _InsightCard extends StatelessWidget {
             runSpacing: 8,
             children: items.map(_Tag.new).toList(),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TargetSchoolsCard extends StatelessWidget {
+  final List<Map<String, dynamic>> schools;
+  final int count;
+
+  const _TargetSchoolsCard({required this.schools, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: kCobalt.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.school_outlined,
+                  color: kCobalt,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '目标院校池',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: context.artC.ink,
+                  ),
+                ),
+              ),
+              _Tag('$count 所'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (schools.isEmpty)
+            Text(
+              '还没有读取到目标院校。请先从院校详情页加入目标院校池。',
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.45,
+                fontWeight: FontWeight.w700,
+                color: context.artC.ink.withValues(alpha: 0.44),
+              ),
+            )
+          else
+            ...schools.take(5).map((school) {
+              final name = school['name_zh']?.toString().isNotEmpty == true
+                  ? school['name_zh'].toString()
+                  : (school['name_en']?.toString() ?? '目标院校');
+              final country = school['country']?.toString();
+              final city = school['city']?.toString();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle_rounded,
+                      size: 16,
+                      color: kCobalt.withValues(alpha: 0.88),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        [
+                          name,
+                          if (city != null || country != null)
+                            [
+                              if (city != null) city,
+                              if (country != null) country
+                            ].join(' · '),
+                        ].join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: context.artC.ink.withValues(alpha: 0.68),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          if (schools.length > 5)
+            Text(
+              '另有 ${schools.length - 5} 所目标院校已纳入计划。',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: context.artC.ink.withValues(alpha: 0.38),
+              ),
+            ),
         ],
       ),
     );

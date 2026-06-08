@@ -33,6 +33,7 @@ class CompareSchool {
         '1' => [90, 85, 60, 95, 98],
         '2' => [85, 90, 70, 85, 95],
         '3' => [95, 80, 50, 90, 92],
+        '4' => [92, 82, 64, 94, 96],
         _ => [75, 75, 75, 75, 75],
       };
 }
@@ -79,5 +80,19 @@ const List<CompareSchool> kMockCompareSchools = [
     gpa: '3.2+',
     employmentRate: '85%',
     avgSalary: '£38k',
+  ),
+  CompareSchool(
+    id: '4',
+    name: '伦敦艺术大学',
+    enName: 'University of the Arts London (UAL)',
+    cityCountry: '伦敦, 英国',
+    tuition: '£30,890',
+    language: '雅思 6.5-7.0',
+    difficulty: '冲刺',
+    tags: ['时尚', '传媒', '设计'],
+    image: 'https://picsum.photos/seed/ual/800/600',
+    gpa: '3.3+',
+    employmentRate: '89%',
+    avgSalary: '£32k',
   ),
 ];
