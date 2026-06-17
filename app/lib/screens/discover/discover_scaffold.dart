@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import '../../services/backend_api_service.dart';
 import '../../data/mock_data.dart';
@@ -36,17 +37,17 @@ class DiscoverScaffoldState extends State<DiscoverScaffold>
         child: Column(
           children: [
             const SizedBox(height: 28),
-            TabBar(
-              controller: _tabController,
-              isScrollable: false,
-              labelColor: context.artC.ink,
-              unselectedLabelColor: context.artC.ink.withOpacity(0.4),
-              indicatorColor: kCobalt,
-              tabs: const [
-                Tab(text: '合作'),
-                Tab(text: '艺术家'),
-                Tab(text: '作品'),
-              ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: ArtseeSegmentedTabs(
+                controller: _tabController,
+                tabs: const [
+                  ArtseeSegmentTab(label: '合作', icon: Icons.handshake_outlined),
+                  ArtseeSegmentTab(label: '艺术家', icon: Icons.palette_outlined),
+                  ArtseeSegmentTab(label: '作品', icon: Icons.grid_view_rounded),
+                ],
+                labelFontSize: 12,
+              ),
             ),
             Expanded(
               child: TabBarView(
@@ -95,16 +96,19 @@ class _OpportunitiesTabState extends State<_OpportunitiesTab> {
       try {
         final result = await BackendApiService.fetchOpportunities(limit: 30);
         if (mounted) {
-          final oppList = result.data.map((item) => Opportunity(
-            id: item['id'] as String? ?? '',
-            type: item['type'] as String? ?? '',
-            title: item['title'] as String? ?? '',
-            organization: item['organization'] as String? ?? '',
-            location: item['location'] as String? ?? '',
-            description: item['description'] as String? ?? '',
-            requirements: (item['requirements'] as List?)?.cast<String>() ?? [],
-            publishedAt: item['publishedAt'] as String? ?? '',
-          )).toList();
+          final oppList = result.data
+              .map((item) => Opportunity(
+                    id: item['id'] as String? ?? '',
+                    type: item['type'] as String? ?? '',
+                    title: item['title'] as String? ?? '',
+                    organization: item['organization'] as String? ?? '',
+                    location: item['location'] as String? ?? '',
+                    description: item['description'] as String? ?? '',
+                    requirements:
+                        (item['requirements'] as List?)?.cast<String>() ?? [],
+                    publishedAt: item['publishedAt'] as String? ?? '',
+                  ))
+              .toList();
           setState(() => _opportunities = oppList);
         }
       } catch (apiError) {
@@ -153,21 +157,18 @@ class _OpportunitiesTabState extends State<_OpportunitiesTab> {
         final typeColor = _getTypeColor(opp.type);
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: Container(
+          child: ArtseeSurface(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: context.artC.silver.withOpacity(0.3)),
-            ),
+            radius: 18,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: typeColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     _getTypeLabel(opp.type),
@@ -238,13 +239,9 @@ class _ArtistsTabState extends State<_ArtistsTab> {
         final name = artist['name'] as String? ?? '艺术家';
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: Container(
+          child: ArtseeSurface(
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: context.artC.silver.withOpacity(0.3)),
-            ),
+            radius: 18,
             child: Text(
               name,
               style: TextStyle(

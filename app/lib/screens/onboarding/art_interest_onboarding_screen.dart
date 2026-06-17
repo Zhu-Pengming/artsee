@@ -374,6 +374,12 @@ class _ArtInterestOnboardingScreenState
         eventPreferences: _isBusiness ? _businessNeeds.toList() : const [],
         currentStage: _isBusiness ? 'pending_business_review' : _stage,
         verificationIntent: _isBusiness ? 'business_review' : 'later',
+        businessName: _isBusiness ? _businessNameCtrl.text.trim() : null,
+        businessCity: _isBusiness ? _businessCityCtrl.text.trim() : null,
+        businessContact: _isBusiness ? _businessContactCtrl.text.trim() : null,
+        businessChannel: _isBusiness ? _businessChannelCtrl.text.trim() : null,
+        businessIntro: _isBusiness ? _businessIntroCtrl.text.trim() : null,
+        businessMaterials: _isBusiness ? _businessMaterials.toList() : const [],
       );
       widget.onCompleted();
     } catch (e) {
@@ -700,7 +706,7 @@ class _QuestionStep extends StatelessWidget {
             color: kCobalt,
             fontSize: 11,
             fontWeight: FontWeight.w900,
-            letterSpacing: 1.6,
+            letterSpacing: 0,
           ),
         ),
         const SizedBox(height: 12),
@@ -854,14 +860,25 @@ class _SelectableCard extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: EdgeInsets.all(compact ? 14 : 18),
         decoration: BoxDecoration(
-          color: selected ? kCobalt.withValues(alpha: 0.08) : Colors.white,
+          color: selected
+              ? kCobalt.withValues(alpha: 0.08)
+              : context.artC.cardIconBg,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color:
-                selected ? kCobalt : context.artC.silver.withValues(alpha: 0.5),
-            width: selected ? 1.5 : 1,
+            color: selected
+                ? kCobalt.withValues(alpha: 0.28)
+                : context.artC.silver.withValues(alpha: 0.5),
+            width: 1,
           ),
-          boxShadow: selected ? [kShadowCard] : null,
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: context.artC.ink.withValues(alpha: 0.026),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           children: [
@@ -870,12 +887,14 @@ class _SelectableCard extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: selected ? kCobalt : context.artC.porcelain,
+                  color: selected
+                      ? kCobalt.withValues(alpha: 0.08)
+                      : context.artC.porcelain,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
                   icon,
-                  color: selected ? Colors.white : kCobalt,
+                  color: kCobalt,
                   size: 21,
                 ),
               ),
@@ -938,11 +957,13 @@ class _Pill extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? kCobalt : Colors.white,
+          color: selected
+              ? kCobalt.withValues(alpha: 0.08)
+              : context.artC.cardIconBg,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: selected
-                ? kCobalt
+                ? kCobalt.withValues(alpha: 0.28)
                 : context.artC.silver.withValues(alpha: 0.55),
           ),
         ),
@@ -951,9 +972,8 @@ class _Pill extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w800,
-            color: selected
-                ? Colors.white
-                : context.artC.ink.withValues(alpha: 0.72),
+            color:
+                selected ? kCobalt : context.artC.ink.withValues(alpha: 0.72),
           ),
         ),
       ),
@@ -990,7 +1010,7 @@ class _TextInputField extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: context.artC.cardIconBg,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           border: OutlineInputBorder(

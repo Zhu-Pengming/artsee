@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../services/backend_api_service.dart';
 import '../../widgets/common.dart';
+import 'consultation_detail_screen.dart';
+import 'service_booking_detail_screen.dart';
 import '../schools/school_detail_screen.dart';
 import 'school_comparison_result_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
@@ -16,8 +18,17 @@ enum ApplicationWorkspaceKind {
 
 class ApplicationWorkspaceScreen extends StatefulWidget {
   final ApplicationWorkspaceKind kind;
+  final VoidCallback? onOpenSchools;
+  final VoidCallback? onOpenExplore;
+  final VoidCallback? onOpenProfileSetup;
 
-  const ApplicationWorkspaceScreen({super.key, required this.kind});
+  const ApplicationWorkspaceScreen({
+    super.key,
+    required this.kind,
+    this.onOpenSchools,
+    this.onOpenExplore,
+    this.onOpenProfileSetup,
+  });
 
   @override
   State<ApplicationWorkspaceScreen> createState() =>
@@ -30,6 +41,7 @@ class _ApplicationWorkspaceScreenState
   Map<String, dynamic>? _applicationPlan;
   Map<String, dynamic>? _portfolioTaskData;
   List<Map<String, dynamic>> _consultations = [];
+  List<Map<String, dynamic>> _serviceBookings = [];
   bool _loadingSchools = false;
   bool _loadingApplicationPlan = false;
   bool _loadingPortfolioTasks = false;
@@ -39,6 +51,7 @@ class _ApplicationWorkspaceScreenState
   String? _applicationPlanError;
   String? _portfolioTaskError;
   String? _consultationError;
+  String? _serviceBookingError;
 
   @override
   void initState() {
@@ -121,12 +134,23 @@ class _ApplicationWorkspaceScreenState
     setState(() {
       _loadingConsultations = true;
       _consultationError = null;
+      _serviceBookingError = null;
     });
     try {
       final data = await BackendApiService.fetchConsultations();
+      var bookings = <Map<String, dynamic>>[];
+      String? bookingError;
+      try {
+        final bookingData = await BackendApiService.fetchMyServiceBookings();
+        bookings = bookingData.data;
+      } catch (e) {
+        bookingError = e.toString();
+      }
       if (!mounted) return;
       setState(() {
         _consultations = data.data;
+        _serviceBookings = bookings;
+        _serviceBookingError = bookingError;
         _loadingConsultations = false;
       });
     } catch (e) {
@@ -174,6 +198,46 @@ class _ApplicationWorkspaceScreenState
     };
   }
 
+  void _openSchoolsOrHint() {
+    final onOpenSchools = widget.onOpenSchools;
+    if (onOpenSchools != null) {
+      onOpenSchools();
+      return;
+    }
+    _showToast('可从院校页搜索并收藏目标学校');
+  }
+
+  void _openExploreOrHint() {
+    final onOpenExplore = widget.onOpenExplore;
+    if (onOpenExplore != null) {
+      onOpenExplore();
+      return;
+    }
+    _showToast('可从发现页查看合作机会、展览活动和艺术家');
+  }
+
+  void _openProfileSetupOrHint() {
+    final onOpenProfileSetup = widget.onOpenProfileSetup;
+    if (onOpenProfileSetup != null) {
+      onOpenProfileSetup();
+      return;
+    }
+    _showToast('请回到我的页点击调整申请画像');
+  }
+
+  void _replaceWithKind(ApplicationWorkspaceKind kind) {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => ApplicationWorkspaceScreen(
+          kind: kind,
+          onOpenSchools: widget.onOpenSchools,
+          onOpenExplore: widget.onOpenExplore,
+          onOpenProfileSetup: widget.onOpenProfileSetup,
+        ),
+      ),
+    );
+  }
+
   Widget _buildSavedSchools() {
     if (_loadingSchools) {
       return const _LoadingCard(text: '正在加载院校...');
@@ -190,10 +254,10 @@ class _ApplicationWorkspaceScreenState
     if (_schools.isEmpty) {
       return _EmptyWorkspaceCard(
         icon: Icons.school_outlined,
-        title: '还没有收藏院校',
+        title: '还没有目标院校',
         body: '先去发现适合你的艺术院校，加入目标院校池后再做对比和计划。',
         actionLabel: '去搜索院校',
-        onAction: () => _showToast('可从院校页搜索并收藏目标学校'),
+        onAction: _openSchoolsOrHint,
       );
     }
 
@@ -307,13 +371,8 @@ class _ApplicationWorkspaceScreenState
               const SizedBox(width: 8),
               _MiniAction(
                 label: '加入计划',
-                onTap: () => Navigator.of(context).pushReplacement(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const ApplicationWorkspaceScreen(
-                      kind: ApplicationWorkspaceKind.applicationPlan,
-                    ),
-                  ),
-                ),
+                onTap: () =>
+                    _replaceWithKind(ApplicationWorkspaceKind.applicationPlan),
               ),
             ],
           ),
@@ -335,16 +394,16 @@ class _ApplicationWorkspaceScreenState
           children: [
             _EmptyWorkspaceCard(
               icon: Icons.compare_arrows_rounded,
-              title: '还没有生成项目对比',
+              title: '还没有生成院校对比',
               body: '第一版先基于目标院校做多维比较，专业项目对比将在数据完善后开放。',
-              actionLabel: '从收藏院校中选择',
+              actionLabel: '从目标池中选择',
               onAction: () {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  _showToast('正在加载收藏院校');
+                  _showToast('正在加载目标院校');
                   return;
                 }
                 if (!canCompare) {
-                  _showToast('至少收藏 2 所院校后再生成对比');
+                  _showToast('目标池至少加入 2 所院校后再生成对比');
                   return;
                 }
                 _showSchoolCompareSheet(saved);
@@ -411,9 +470,15 @@ class _ApplicationWorkspaceScreenState
 
             return Container(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              decoration: BoxDecoration(
+                color: context.artC.cardIconBg,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(22)),
+                border: Border(
+                  top: BorderSide(
+                    color: context.artC.silver.withValues(alpha: 0.38),
+                  ),
+                ),
               ),
               child: SafeArea(
                 top: false,
@@ -540,22 +605,16 @@ class _ApplicationWorkspaceScreenState
         title: '还不能生成申请计划',
         body: '请先完善申请画像，系统需要知道你的申请阶段、方向和目标城市。',
         actionLabel: '完善申请画像',
-        onAction: () => _showToast('请回到我的页点击调整申请画像'),
+        onAction: _openProfileSetupOrHint,
       );
     }
     if (state == 'no_schools') {
       return _EmptyWorkspaceCard(
         icon: Icons.school_outlined,
         title: '还不能生成申请计划',
-        body: '请先收藏至少 1 所目标院校。',
-        actionLabel: '去收藏院校',
-        onAction: () => Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(
-            builder: (_) => const ApplicationWorkspaceScreen(
-              kind: ApplicationWorkspaceKind.savedSchools,
-            ),
-          ),
-        ),
+        body: '请先把至少 1 所学校加入目标院校池。',
+        actionLabel: '去目标院校池',
+        onAction: () => _replaceWithKind(ApplicationWorkspaceKind.savedSchools),
       );
     }
     if (state == 'ready_to_generate') {
@@ -633,7 +692,7 @@ class _ApplicationWorkspaceScreenState
         title: '还不能拆解作品集任务',
         body: '请先完善申请方向，系统需要知道你要申请的艺术方向。',
         actionLabel: '完善申请方向',
-        onAction: () => _showToast('请回到我的页点击调整申请画像'),
+        onAction: _openProfileSetupOrHint,
       );
     }
     if (state == 'ready_to_generate') {
@@ -675,17 +734,79 @@ class _ApplicationWorkspaceScreenState
         onAction: _loadConsultations,
       );
     }
-    if (_consultations.isEmpty) {
+    if (_consultations.isEmpty && _serviceBookings.isEmpty) {
       return _EmptyWorkspaceCard(
         icon: Icons.chat_bubble_outline_rounded,
         title: '还没有咨询记录',
         body: '你可以在院校、机构或活动页面发起咨询，之后会在这里统一管理。',
-        actionLabel: '去看看推荐机构',
-        onAction: () => _showToast('推荐机构入口待接入'),
+        actionLabel: '去发现机会',
+        onAction: _openExploreOrHint,
       );
     }
     return Column(
-      children: _consultations.map(_buildConsultationCard).toList(),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_serviceBookings.isNotEmpty) ...[
+          _buildServiceBookingSection(),
+          const SizedBox(height: 16),
+        ] else if (_serviceBookingError != null) ...[
+          _SectionNote(
+            text: '预约服务加载失败：$_serviceBookingError',
+            icon: Icons.error_outline,
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (_consultations.isNotEmpty)
+          ..._consultations.map(_buildConsultationCard)
+        else
+          const _SectionNote(
+            text: '预约服务已从咨询转出，原咨询会话同步后会显示在这里。',
+            icon: Icons.forum_outlined,
+          ),
+      ],
+    );
+  }
+
+  Widget _buildServiceBookingSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _cardDecoration(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: kCobalt.withValues(alpha: 0.09),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: const Icon(
+                  Icons.event_available_outlined,
+                  color: kCobalt,
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '预约服务',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: context.artC.ink,
+                  ),
+                ),
+              ),
+              _Tag('${_serviceBookings.length} 条'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ..._serviceBookings.map(_buildServiceBookingCard),
+        ],
+      ),
     );
   }
 
@@ -738,36 +859,157 @@ class _ApplicationWorkspaceScreenState
   }
 
   Widget _buildConsultationCard(Map<String, dynamic> item) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: _cardDecoration(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            item['target_name']?.toString() ?? '咨询对象',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              color: context.artC.ink,
-            ),
+    final status = item['status']?.toString() ?? 'pending';
+    final topicLabel = _consultationTopicLabel(item['topic']?.toString());
+    final updatedAt = _formatConsultationTime(item['updated_at']);
+    final createdAt = _formatConsultationTime(item['created_at']);
+    final unread = _intValue(item['unread_count']);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () async {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => ConsultationDetailScreen(consultation: item),
           ),
-          const SizedBox(height: 8),
-          Text(
-            item['last_message']?.toString() ?? '暂无消息',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 13,
-              height: 1.4,
-              fontWeight: FontWeight.w700,
-              color: context.artC.ink.withValues(alpha: 0.48),
+        );
+        if (mounted) _loadConsultations();
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: _cardDecoration(context),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    item['target_name']?.toString() ?? '咨询对象',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: context.artC.ink,
+                    ),
+                  ),
+                ),
+                if (unread > 0) ...[
+                  const SizedBox(width: 8),
+                  _UnreadBadge(count: unread),
+                ],
+              ],
             ),
+            const SizedBox(height: 8),
+            Text(
+              item['last_message']?.toString() ?? '暂无消息',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                fontWeight: FontWeight.w700,
+                color: context.artC.ink.withValues(alpha: 0.48),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _Tag(_consultationStatusLabel(status)),
+                if (topicLabel != null) _Tag(topicLabel),
+                if (updatedAt != null) _Tag('更新 $updatedAt'),
+                if (createdAt != null) _Tag('创建 $createdAt'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildServiceBookingCard(Map<String, dynamic> item) {
+    final consultation = _consultationFromServiceBooking(item);
+    final title = item['title']?.toString() ?? '预约服务';
+    final status = item['status']?.toString() ?? 'requested';
+    final scheduledAt = _formatConsultationTime(item['scheduled_at']);
+    final updatedAt =
+        _formatConsultationTime(item['updated_at'] ?? item['created_at']);
+    final targetName = consultation?['target_name']?.toString() ??
+        item['service_type']?.toString();
+
+    Future<void> openBooking() async {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ServiceBookingDetailScreen(booking: item),
+        ),
+      );
+      if (mounted) _loadConsultations();
+    }
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: openBooking,
+      child: Container(
+        margin: const EdgeInsets.only(top: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: context.artC.porcelain,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: context.artC.silver.withValues(alpha: 0.24),
           ),
-          const SizedBox(height: 10),
-          _Tag(item['status']?.toString() ?? 'pending'),
-        ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      color: context.artC.ink,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: context.artC.ink.withValues(alpha: 0.3),
+                ),
+              ],
+            ),
+            if (targetName != null && targetName.isNotEmpty) ...[
+              const SizedBox(height: 5),
+              Text(
+                targetName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: context.artC.ink.withValues(alpha: 0.48),
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _Tag(_serviceBookingStatusLabel(status)),
+                if (scheduledAt != null) _Tag('排期 $scheduledAt'),
+                if (updatedAt != null) _Tag('更新 $updatedAt'),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -775,6 +1017,75 @@ class _ApplicationWorkspaceScreenState
   void _showToast(String text) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
+}
+
+String _consultationStatusLabel(String status) {
+  switch (status) {
+    case 'new':
+      return '新咨询';
+    case 'pending':
+      return '等待回复';
+    case 'active':
+      return '沟通中';
+    case 'closed':
+      return '已结束';
+    case 'converted':
+      return '已转化';
+    default:
+      return status;
+  }
+}
+
+String _serviceBookingStatusLabel(String status) {
+  switch (status) {
+    case 'requested':
+      return '待确认';
+    case 'confirmed':
+      return '已确认';
+    case 'scheduled':
+      return '已排期';
+    case 'completed':
+      return '已完成';
+    case 'canceled':
+      return '已取消';
+    default:
+      return status;
+  }
+}
+
+Map<String, dynamic>? _consultationFromServiceBooking(
+  Map<String, dynamic> booking,
+) {
+  final consultation = booking['consultation'];
+  return consultation is Map<String, dynamic> ? consultation : null;
+}
+
+String? _consultationTopicLabel(String? topic) {
+  switch (topic) {
+    case 'portfolio':
+      return '作品集';
+    case 'major':
+      return '专业选择';
+    case 'timeline':
+      return '申请时间线';
+    case 'budget':
+      return '费用预算';
+    case 'language':
+      return '语言要求';
+    default:
+      return topic == null || topic.isEmpty ? null : topic;
+  }
+}
+
+String? _formatConsultationTime(dynamic raw) {
+  final value = raw?.toString();
+  if (value == null || value.isEmpty) return null;
+  final parsed = DateTime.tryParse(value);
+  if (parsed == null) return value;
+  final local = parsed.toLocal();
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${local.year}-${two(local.month)}-${two(local.day)} '
+      '${two(local.hour)}:${two(local.minute)}';
 }
 
 class _WorkspaceHeader extends StatelessWidget {
@@ -793,9 +1104,11 @@ class _WorkspaceHeader extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.artC.cardIconBg,
               shape: BoxShape.circle,
-              boxShadow: [kShadowCard],
+              border: Border.all(
+                color: context.artC.silver.withValues(alpha: 0.42),
+              ),
             ),
             child: Icon(
               Icons.arrow_back_ios_new_rounded,
@@ -1303,6 +1616,38 @@ class _Tag extends StatelessWidget {
   }
 }
 
+class _UnreadBadge extends StatelessWidget {
+  final int count;
+
+  const _UnreadBadge({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 22),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE11D48),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        count > 99 ? '99+' : '$count',
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+int _intValue(dynamic value) {
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
 class _LoadingCard extends StatelessWidget {
   final String text;
 
@@ -1346,12 +1691,12 @@ class _WorkspaceMeta {
 _WorkspaceMeta _meta(ApplicationWorkspaceKind kind) {
   return switch (kind) {
     ApplicationWorkspaceKind.savedSchools => const _WorkspaceMeta(
-        '收藏院校',
-        '你关注的院校会在这里统一管理',
+        '目标院校池',
+        '加入目标池的院校会在这里统一管理',
         Icons.school_outlined,
       ),
     ApplicationWorkspaceKind.programCompare => const _WorkspaceMeta(
-        '项目对比',
+        '院校对比',
         '先基于目标院校做多维比较',
         Icons.compare_arrows_rounded,
       ),
@@ -1375,14 +1720,14 @@ _WorkspaceMeta _meta(ApplicationWorkspaceKind kind) {
 
 BoxDecoration _cardDecoration(BuildContext context) {
   return BoxDecoration(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(24),
-    border: Border.all(color: context.artC.silver.withValues(alpha: 0.22)),
+    color: context.artC.cardIconBg,
+    borderRadius: BorderRadius.circular(18),
+    border: Border.all(color: context.artC.silver.withValues(alpha: 0.26)),
     boxShadow: [
       BoxShadow(
-        color: context.artC.ink.withValues(alpha: 0.04),
-        blurRadius: 18,
-        offset: const Offset(0, 8),
+        color: context.artC.ink.withValues(alpha: 0.026),
+        blurRadius: 12,
+        offset: const Offset(0, 4),
       ),
     ],
   );

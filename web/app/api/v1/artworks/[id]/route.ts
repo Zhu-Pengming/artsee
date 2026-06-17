@@ -1,9 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromBearer } from "@/lib/api/auth-user";
+import {
+  isAdminProfile,
+  requireUser,
+} from "@/lib/api/authz";
 import { createServiceClient } from "@/lib/api/supabase-service";
 import { errorResponse, notFoundResponse } from "@/lib/api/route-helpers";
 
 type Ctx = { params: Promise<{ id: string }> };
+const OWNER_EDITABLE_STATUSES = new Set(["draft", "reviewing", "archived"]);
+
+function artworkPatchForUser(body: Record<string, unknown>, admin: boolean) {
+  const patch = { ...body };
+  delete patch.id;
+  delete patch.user_id;
+  delete patch.created_at;
+  delete patch.updated_at;
+
+  const status = typeof patch.status === "string" ? patch.status.trim() : "";
+  if (!admin && status && !OWNER_EDITABLE_STATUSES.has(status)) {
+    patch.status = "reviewing";
+  }
+  return patch;
+}
 
 export async function GET(_req: NextRequest, ctx: Ctx) {
   try {
@@ -25,15 +43,16 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
 
 export async function PUT(req: NextRequest, ctx: Ctx) {
   try {
-    const user = await getUserFromBearer(req);
-    if (!user) return NextResponse.json({ success: false, error: "未授权" }, { status: 401 });
+    const auth = await requireUser(req);
+    if ("response" in auth) return auth.response;
     const { id } = await ctx.params;
     const body = await req.json();
+    const patch = artworkPatchForUser(body, isAdminProfile(auth.profile));
     const { data, error } = await createServiceClient()
       .from("artworks")
-      .update(body)
+      .update(patch)
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", auth.user.id)
       .select()
       .single();
     if (error) return errorResponse(error);
@@ -45,14 +64,14 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 
 export async function DELETE(req: NextRequest, ctx: Ctx) {
   try {
-    const user = await getUserFromBearer(req);
-    if (!user) return NextResponse.json({ success: false, error: "未授权" }, { status: 401 });
+    const auth = await requireUser(req);
+    if ("response" in auth) return auth.response;
     const { id } = await ctx.params;
     const { data, error } = await createServiceClient()
       .from("artworks")
       .update({ status: "archived" })
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", auth.user.id)
       .select()
       .single();
     if (error) return errorResponse(error);

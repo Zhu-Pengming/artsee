@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../services/backend_api_service.dart';
+import '../../utils/auth_gate.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
@@ -69,6 +71,7 @@ class _AskQuestionScreenState extends State<AskQuestionScreen> {
   }
 
   Future<void> _submit() async {
+    if (!await ensureLoggedIn(context, message: '请先登录后发布问题')) return;
     final title = _titleCtrl.text.trim();
     if (title.length < 8) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -199,11 +202,13 @@ class _AskQuestionScreenState extends State<AskQuestionScreen> {
                             vertical: 9,
                           ),
                           decoration: BoxDecoration(
-                            color: _category == item ? kCobalt : Colors.white,
+                            color: _category == item
+                                ? kCobalt.withOpacity(0.08)
+                                : context.artC.cardIconBg,
                             borderRadius: BorderRadius.circular(999),
                             border: Border.all(
                               color: _category == item
-                                  ? kCobalt
+                                  ? kCobalt.withOpacity(0.28)
                                   : context.artC.silver.withOpacity(0.65),
                             ),
                           ),
@@ -211,7 +216,7 @@ class _AskQuestionScreenState extends State<AskQuestionScreen> {
                             item,
                             style: TextStyle(
                               color: _category == item
-                                  ? Colors.white
+                                  ? kCobalt
                                   : context.artC.ink.withOpacity(0.64),
                               fontSize: 12,
                               fontWeight: FontWeight.w900,
@@ -268,14 +273,9 @@ class _AskQuestionScreenState extends State<AskQuestionScreen> {
               ),
             ),
             const SizedBox(height: 14),
-            Container(
+            ArtseeSurface(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(22),
-                border:
-                    Border.all(color: context.artC.silver.withOpacity(0.36)),
-              ),
+              radius: 18,
               child: Row(
                 children: [
                   Icon(Icons.visibility_off_outlined,
@@ -353,13 +353,9 @@ class _QuestionFieldCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ArtseeSurface(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: context.artC.silver.withOpacity(0.36)),
-      ),
+      radius: 18,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -406,8 +402,9 @@ class _CompactInput extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: context.artC.silver.withOpacity(0.26),
+        color: context.artC.silver.withOpacity(0.18),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.artC.silver.withOpacity(0.32)),
       ),
       child: Row(
         children: [

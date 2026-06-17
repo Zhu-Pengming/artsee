@@ -20,7 +20,10 @@
     "seed:events": "node scripts/seed-events-opportunities.mjs",
     "e2e:admin": "node scripts/browser-admin-e2e.mjs",
     "postinstall:playwright": "npx playwright install chromium",
-    "deploy:web": "bash scripts/deploy-web.sh"
+    "deploy:web": "bash scripts/deploy-web.sh",
+    "deploy:tencent": "bash scripts/deploy-tencent.sh",
+    "deploy:flutter-web": "bash scripts/deploy-flutter-web-tencent.sh",
+    "update:nginx": "bash scripts/update-nginx-flutter-web.sh"
   },
   "repository": {
     "type": "git",

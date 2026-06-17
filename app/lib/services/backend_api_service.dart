@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/api_config.dart';
 import '../models/models.dart';
+import 'local_school_csv_service.dart';
 
 class ApiException implements Exception {
   final int code;
@@ -218,6 +219,30 @@ class BackendApiService {
         .toList();
   }
 
+  static Future<List<AppCommunityHotTopic>> fetchCommunityHotTopics({
+    int limit = 10,
+    int offset = 0,
+    String? category,
+    bool? pinned,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/community/hot-topics',
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {
+          'category': category,
+          if (pinned != null) 'pinned': pinned ? 'true' : 'false',
+        },
+      ),
+    );
+    final list = decoded['data'] as List<dynamic>? ?? [];
+    return list
+        .map((e) => AppCommunityHotTopic.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   static Future<AppCommunityPost?> fetchCommunityPost(String id) async {
     final r = await http.get(
       _api('/api/v1/community/posts/$id'),
@@ -392,6 +417,36 @@ class BackendApiService {
     return _paginated(decoded, limit: limit, offset: offset);
   }
 
+  static Future<Map<String, dynamic>> fetchWorkbenchServiceBooking(
+    String id,
+  ) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/workbench/service-bookings/$id',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> updateWorkbenchServiceBooking({
+    required String id,
+    String? status,
+    String? scheduledAt,
+    String? notes,
+  }) async {
+    final decoded = await _requestJson(
+      'PATCH',
+      '/api/v1/me/workbench/service-bookings/$id',
+      body: {
+        if (status != null) 'status': status,
+        if (scheduledAt != null) 'scheduled_at': scheduledAt,
+        if (notes != null) 'notes': notes,
+      },
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
   static Future<
       ({
         List<Map<String, dynamic>> data,
@@ -427,24 +482,54 @@ class BackendApiService {
     if (minRank != null) params['min_rank'] = '$minRank';
     if (maxRank != null) params['max_rank'] = '$maxRank';
 
-    final r = await http.get(
-      _api('/api/v1/schools', params),
-      headers: await _headers(),
-    );
-    final body = jsonDecode(r.body) as Map<String, dynamic>;
-    if (r.statusCode != 200 || body['success'] != true) {
-      throw Exception(body['error'] ?? 'schools ${r.statusCode}');
+    Future<
+        ({
+          List<Map<String, dynamic>> data,
+          int? count,
+          int limit,
+          int offset
+        })> localFallback() {
+      return LocalSchoolCsvService.fetchSchools(
+        limit: limit,
+        offset: offset,
+        keyword: keyword,
+        country: country,
+        regionTag: regionTag,
+        schoolType: schoolType,
+        advantageSubject: advantageSubject,
+        minRank: minRank,
+        maxRank: maxRank,
+      );
     }
-    final list =
-        (body['data'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
-    final count = body['count'] as int?;
-    final pagination = body['pagination'] as Map<String, dynamic>?;
-    return (
-      data: list,
-      count: count,
-      limit: pagination?['limit'] as int? ?? limit,
-      offset: pagination?['offset'] as int? ?? offset,
-    );
+
+    if (ApiConfig.forceLocalSchoolsData) return localFallback();
+
+    try {
+      final r = await http.get(
+        _api('/api/v1/schools', params),
+        headers: await _headers(),
+      );
+      final body = jsonDecode(r.body) as Map<String, dynamic>;
+      if (r.statusCode != 200 || body['success'] != true) {
+        return localFallback();
+      }
+      final list =
+          (body['data'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
+      if (list.isEmpty && (keyword?.trim().isNotEmpty ?? false)) {
+        final local = await localFallback();
+        if (local.data.isNotEmpty) return local;
+      }
+      final count = body['count'] as int?;
+      final pagination = body['pagination'] as Map<String, dynamic>?;
+      return (
+        data: list,
+        count: count,
+        limit: pagination?['limit'] as int? ?? limit,
+        offset: pagination?['offset'] as int? ?? offset,
+      );
+    } catch (_) {
+      return localFallback();
+    }
   }
 
   static Future<
@@ -453,12 +538,17 @@ class BackendApiService {
         int? count,
         int limit,
         int offset
-  })> fetchSavedSchools({
+      })> fetchSavedSchools({
     int limit = 50,
     int offset = 0,
   }) async {
     if (Supabase.instance.client.auth.currentUser == null) {
-      return (data: <Map<String, dynamic>>[], count: 0, limit: limit, offset: offset);
+      return (
+        data: <Map<String, dynamic>>[],
+        count: 0,
+        limit: limit,
+        offset: offset
+      );
     }
     final decoded = await _requestJson(
       'GET',
@@ -591,12 +681,267 @@ class BackendApiService {
     return _paginated(decoded, limit: limit, offset: offset);
   }
 
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchNearbyOrganizations({
+    int limit = 30,
+    int offset = 0,
+    String? city,
+    String? province,
+    String? focusArea,
+    String? serviceMode,
+    String? schoolId,
+    String? schoolName,
+    double? latitude,
+    double? longitude,
+    String sort = 'comprehensive',
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/organizations/nearby',
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {
+          'city': city?.trim(),
+          'province': province?.trim(),
+          'focus_area': focusArea?.trim(),
+          'service_mode': serviceMode?.trim(),
+          'school_id': schoolId?.trim(),
+          'school_name': schoolName?.trim(),
+          'latitude': latitude?.toString(),
+          'longitude': longitude?.toString(),
+          'sort': sort,
+        },
+      ),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> fetchOrganization(String id) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/organizations/$id',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> fetchMembership() async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/membership',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createMembershipUpgrade({
+    String plan = 'yearly',
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/membership/upgrade',
+      body: {'plan': plan},
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchMyContracts({
+    int limit = 50,
+    int offset = 0,
+    String? status,
+    String? organizationId,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/contracts',
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {
+          'status': status?.trim(),
+          'organization_id': organizationId?.trim(),
+        },
+      ),
+      withAuth: true,
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> createContractArchive({
+    required String organizationId,
+    String? consultationId,
+    String? fileUrl,
+    String? signedAt,
+    String status = 'pending',
+    String? notes,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/contracts',
+      withAuth: true,
+      body: {
+        'organization_id': organizationId.trim(),
+        if (consultationId != null && consultationId.trim().isNotEmpty)
+          'consultation_id': consultationId.trim(),
+        if (fileUrl != null && fileUrl.trim().isNotEmpty)
+          'file_url': fileUrl.trim(),
+        if (signedAt != null && signedAt.trim().isNotEmpty)
+          'signed_at': signedAt.trim(),
+        'status': status,
+        if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchWorkbenchContracts({
+    int limit = 50,
+    int offset = 0,
+    String? status,
+    String? organizationId,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/workbench/contracts',
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {
+          'status': status?.trim(),
+          'organization_id': organizationId?.trim(),
+        },
+      ),
+      withAuth: true,
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> updateWorkbenchContractStatus({
+    required String contractId,
+    required String status,
+    String? notes,
+  }) async {
+    final decoded = await _requestJson(
+      'PATCH',
+      '/api/v1/me/workbench/contracts/${contractId.trim()}',
+      withAuth: true,
+      body: {
+        'status': status.trim(),
+        if (notes != null) 'notes': notes.trim(),
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> resubmitMyContentSubmission({
+    required String type,
+    required String id,
+    String? note,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/content-submissions/$type/$id/resubmit',
+      withAuth: true,
+      body: {
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> updateMyContentSubmission({
+    required String type,
+    required String id,
+    required Map<String, dynamic> fields,
+    String? note,
+    List<String> supplementalMaterials = const [],
+    bool submit = true,
+  }) async {
+    final decoded = await _requestJson(
+      'PATCH',
+      '/api/v1/me/content-submissions/$type/$id',
+      withAuth: true,
+      body: {
+        'fields': fields,
+        'submit': submit,
+        if (supplementalMaterials.isNotEmpty)
+          'supplemental_materials': supplementalMaterials,
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchMyServiceBookings({
+    int limit = 50,
+    int offset = 0,
+    String? status,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/service-bookings',
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {'status': status},
+      ),
+      withAuth: true,
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> fetchMyServiceBooking(String id) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/service-bookings/$id',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
   static Future<Map<String, dynamic>> createConsultation({
     required String targetType,
     String? targetId,
     required String targetName,
     required String message,
+    String? source,
+    String? topic,
+    String? targetMajor,
+    String? intake,
+    String? stage,
+    String? organizationId,
+    String? channel,
+    Map<String, dynamic>? metadata,
   }) async {
+    final cleanTopic = topic?.trim();
+    final cleanTargetMajor = targetMajor?.trim();
+    final cleanIntake = intake?.trim();
+    final cleanStage = stage?.trim();
     final decoded = await _requestJson(
       'POST',
       '/api/v1/me/consultations',
@@ -604,8 +949,523 @@ class BackendApiService {
         'target_type': targetType,
         if (targetId != null) 'target_id': targetId,
         'target_name': targetName,
+        if (source != null && source.trim().isNotEmpty) 'source': source.trim(),
+        if (cleanTopic != null && cleanTopic.isNotEmpty) 'topic': cleanTopic,
+        if (cleanTargetMajor != null && cleanTargetMajor.isNotEmpty)
+          'target_major': cleanTargetMajor,
+        if (cleanIntake != null && cleanIntake.isNotEmpty)
+          'intake': cleanIntake,
+        if (cleanStage != null && cleanStage.isNotEmpty) 'stage': cleanStage,
+        if (organizationId != null && organizationId.trim().isNotEmpty)
+          'organization_id': organizationId.trim(),
+        if (channel != null && channel.trim().isNotEmpty)
+          'channel': channel.trim(),
+        if (metadata != null && metadata.isNotEmpty) 'metadata': metadata,
         'message': message,
       },
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> fetchConsultation(String id) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/consultations/$id',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchConsultationMessages({
+    required String consultationId,
+    int limit = 100,
+    int offset = 0,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/consultations/$consultationId/messages',
+      query: _params(limit: limit, offset: offset),
+      withAuth: true,
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>?> fetchConsultationAssessment(
+    String id,
+  ) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/consultations/$id/assessment',
+      withAuth: true,
+    );
+    final data = decoded['data'];
+    return data is Map<String, dynamic> ? data : null;
+  }
+
+  static Future<Map<String, dynamic>?> fetchConsultationRecommendation(
+    String id,
+  ) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/consultations/$id/recommendation',
+      withAuth: true,
+    );
+    final data = decoded['data'];
+    return data is Map<String, dynamic> ? data : null;
+  }
+
+  static Future<Map<String, dynamic>> fetchConsultationConversion(
+    String id,
+  ) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/consultations/$id/conversion',
+      withAuth: true,
+    );
+    final data = decoded['data'];
+    return data is Map<String, dynamic> ? data : {};
+  }
+
+  static Future<Map<String, dynamic>?> fetchConsultationReview(
+      String id) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/consultations/$id/review',
+      withAuth: true,
+    );
+    final data = decoded['data'];
+    return data is Map<String, dynamic> ? data : null;
+  }
+
+  static Future<Map<String, dynamic>> reviewConsultation({
+    required String consultationId,
+    required int rating,
+    String? body,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/consultations/$consultationId/review',
+      withAuth: true,
+      body: {
+        'rating': rating,
+        if (body != null && body.trim().isNotEmpty) 'body': body.trim(),
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> sendConsultationMessage({
+    required String consultationId,
+    required String body,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/consultations/$consultationId/messages',
+      body: {'body': body},
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>?> fetchWorkbenchConsultationAssessment(
+    String id,
+  ) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/workbench/consultations/$id/assessment',
+      withAuth: true,
+    );
+    final data = decoded['data'];
+    return data is Map<String, dynamic> ? data : null;
+  }
+
+  static Future<Map<String, dynamic>> saveWorkbenchConsultationAssessment({
+    required String id,
+    String? backgroundSummary,
+    String? matchLevel,
+    String? riskLevel,
+    String? notes,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/workbench/consultations/$id/assessment',
+      body: {
+        if (backgroundSummary != null) 'background_summary': backgroundSummary,
+        if (matchLevel != null) 'match_level': matchLevel,
+        if (riskLevel != null) 'risk_level': riskLevel,
+        if (notes != null) 'notes': notes,
+      },
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>?> fetchWorkbenchConsultationRecommendation(
+    String id,
+  ) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/workbench/consultations/$id/recommendation',
+      withAuth: true,
+    );
+    final data = decoded['data'];
+    return data is Map<String, dynamic> ? data : null;
+  }
+
+  static Future<Map<String, dynamic>> saveWorkbenchConsultationRecommendation({
+    required String id,
+    List<Map<String, dynamic>> schoolList = const [],
+    String? timeline,
+    String? portfolioStrategy,
+    List<Map<String, dynamic>> recommendedServices = const [],
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/workbench/consultations/$id/recommendation',
+      body: {
+        'school_list': schoolList,
+        if (timeline != null) 'timeline': timeline,
+        if (portfolioStrategy != null) 'portfolio_strategy': portfolioStrategy,
+        'recommended_services': recommendedServices,
+      },
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchWorkbenchConsultations({
+    int limit = 50,
+    int offset = 0,
+    String? status,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/workbench/consultations',
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {'status': status},
+      ),
+      withAuth: true,
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> fetchWorkbenchConsultation(
+    String id,
+  ) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/workbench/consultations/$id',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+      })> fetchWorkbenchTeam({String status = 'active'}) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/workbench/team',
+      query: _params(extra: {'status': status == 'active' ? null : status}),
+      withAuth: true,
+    );
+    final list = decoded['data'] as List<dynamic>? ?? [];
+    return (
+      data: list.map((e) => e as Map<String, dynamic>).toList(),
+      count: decoded['count'] as int?,
+    );
+  }
+
+  static Future<Map<String, dynamic>> addWorkbenchTeamMember({
+    String? organizationId,
+    String? email,
+    String? userId,
+    String role = 'advisor',
+    String? displayName,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/workbench/team',
+      body: {
+        if (organizationId != null && organizationId.trim().isNotEmpty)
+          'organization_id': organizationId.trim(),
+        if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+        if (userId != null && userId.trim().isNotEmpty)
+          'user_id': userId.trim(),
+        'role': role,
+        if (displayName != null && displayName.trim().isNotEmpty)
+          'display_name': displayName.trim(),
+      },
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> updateWorkbenchTeamMember({
+    required String memberId,
+    String? role,
+    String? status,
+    String? displayName,
+  }) async {
+    final decoded = await _requestJson(
+      'PATCH',
+      '/api/v1/me/workbench/team/$memberId',
+      body: {
+        if (role != null) 'role': role,
+        if (status != null) 'status': status,
+        if (displayName != null) 'display_name': displayName,
+      },
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+      })> fetchWorkbenchTeamInvitations() async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/workbench/team-invitations',
+      withAuth: true,
+    );
+    final list = decoded['data'] as List<dynamic>? ?? [];
+    return (
+      data: list.map((e) => e as Map<String, dynamic>).toList(),
+      count: decoded['count'] as int?,
+    );
+  }
+
+  static Future<Map<String, dynamic>> respondWorkbenchTeamInvitation({
+    required String memberId,
+    required String action,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/workbench/team-invitations/$memberId/respond',
+      body: {'action': action},
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> assignWorkbenchConsultation({
+    required String id,
+    String? memberId,
+    String? memberUserId,
+    bool clear = false,
+    String? note,
+  }) async {
+    final body = <String, dynamic>{
+      if (clear) 'member_id': null,
+      if (!clear && memberId != null) 'member_id': memberId,
+      if (!clear && memberUserId != null) 'member_user_id': memberUserId,
+      if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+    };
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/workbench/consultations/$id/assign',
+      body: body,
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> updateWorkbenchConsultationCollaborators({
+    required String id,
+    String mode = 'replace',
+    List<String> memberIds = const [],
+    List<String> memberUserIds = const [],
+    String? note,
+  }) async {
+    final decoded = await _requestJson(
+      'PATCH',
+      '/api/v1/me/workbench/consultations/$id/collaborators',
+      body: {
+        'mode': mode,
+        'member_ids': memberIds,
+        'member_user_ids': memberUserIds,
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      },
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> updateWorkbenchConsultation({
+    required String id,
+    String? status,
+    String? action,
+    int? orderAmountTotal,
+    String? orderSubject,
+  }) async {
+    final decoded = await _requestJson(
+      'PATCH',
+      '/api/v1/me/workbench/consultations/$id',
+      body: {
+        if (status != null) 'status': status,
+        if (action != null) 'action': action,
+        if (orderAmountTotal != null) 'order_amount_total': orderAmountTotal,
+        if (orderSubject != null && orderSubject.trim().isNotEmpty)
+          'order_subject': orderSubject.trim(),
+      },
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchWorkbenchConsultationMessages({
+    required String consultationId,
+    int limit = 100,
+    int offset = 0,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/workbench/consultations/$consultationId/messages',
+      query: _params(limit: limit, offset: offset),
+      withAuth: true,
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> sendWorkbenchConsultationMessage({
+    required String consultationId,
+    required String body,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/workbench/consultations/$consultationId/messages',
+      body: {'body': body},
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchWorkbenchServiceBookings({
+    int limit = 50,
+    int offset = 0,
+    String? status,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/workbench/service-bookings',
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {'status': status},
+      ),
+      withAuth: true,
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchMyOrganizations({
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/organizations',
+      query: _params(limit: limit, offset: offset),
+      withAuth: true,
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> createOrganization({
+    required String name,
+    String? type,
+    Map<String, dynamic>? metadata,
+  }) async {
+    final cleanType = type?.trim();
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/organizations',
+      body: {
+        'name': name,
+        if (cleanType != null && cleanType.isNotEmpty) 'type': cleanType,
+        if (metadata != null && metadata.isNotEmpty) 'metadata': metadata,
+      },
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> updateOrganizationProfile({
+    required String organizationId,
+    String? name,
+    String? type,
+    String? city,
+    String? province,
+    String? latitude,
+    String? longitude,
+    List<String>? focusAreas,
+    bool? supportsOnline,
+    bool? supportsOffline,
+    Map<String, dynamic>? metadata,
+  }) async {
+    final decoded = await _requestJson(
+      'PATCH',
+      '/api/v1/me/organizations/${organizationId.trim()}',
+      body: {
+        if (name != null) 'name': name.trim(),
+        if (type != null) 'type': type.trim(),
+        if (city != null) 'city': city.trim(),
+        if (province != null) 'province': province.trim(),
+        if (latitude != null) 'latitude': latitude.trim(),
+        if (longitude != null) 'longitude': longitude.trim(),
+        if (focusAreas != null) 'focus_areas': focusAreas,
+        if (supportsOnline != null) 'supports_online': supportsOnline,
+        if (supportsOffline != null) 'supports_offline': supportsOffline,
+        if (metadata != null) 'metadata': metadata,
+      },
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> createOrganizationSubscriptionUpgrade({
+    required String organizationId,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/organizations/${organizationId.trim()}/subscription/upgrade',
       withAuth: true,
     );
     return decoded['data'] as Map<String, dynamic>;
@@ -634,14 +1494,38 @@ class BackendApiService {
   }
 
   static Future<Map<String, dynamic>> fetchSchool(String id) async {
-    final r =
-        await http.get(_api('/api/v1/schools/$id'), headers: await _headers());
-    final body = jsonDecode(r.body) as Map<String, dynamic>;
-    if (r.statusCode == 404) throw Exception('学校未找到');
-    if (r.statusCode != 200 || body['success'] != true) {
-      throw Exception(body['error'] ?? 'school ${r.statusCode}');
+    Future<Map<String, dynamic>?> localFallback() {
+      return LocalSchoolCsvService.findSchoolById(id);
     }
-    return body['data'] as Map<String, dynamic>;
+
+    if (ApiConfig.forceLocalSchoolsData || id.startsWith('aux-')) {
+      final local = await localFallback();
+      if (local != null) return local;
+      throw Exception('学校未找到');
+    }
+
+    try {
+      final r = await http.get(
+        _api('/api/v1/schools/$id'),
+        headers: await _headers(),
+      );
+      final body = jsonDecode(r.body) as Map<String, dynamic>;
+      if (r.statusCode == 404) {
+        final local = await localFallback();
+        if (local != null) return local;
+        throw Exception('学校未找到');
+      }
+      if (r.statusCode != 200 || body['success'] != true) {
+        final local = await localFallback();
+        if (local != null) return local;
+        throw Exception(body['error'] ?? 'school ${r.statusCode}');
+      }
+      return body['data'] as Map<String, dynamic>;
+    } catch (_) {
+      final local = await localFallback();
+      if (local != null) return local;
+      rethrow;
+    }
   }
 
   static Future<Map<String, dynamic>> aiSchoolConsult(String query,
@@ -938,6 +1822,7 @@ class BackendApiService {
     final decoded = await _requestJson(
       'GET',
       '/api/v1/community/circles',
+      withAuth: Supabase.instance.client.auth.currentUser != null,
       query: _params(
         limit: limit,
         offset: offset,
@@ -958,6 +1843,15 @@ class BackendApiService {
       '/api/v1/community/circles',
       withAuth: true,
       body: body,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> joinCommunityCircle(String id) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/community/circles/$id/join',
+      withAuth: true,
     );
     return decoded['data'] as Map<String, dynamic>;
   }
@@ -1421,6 +2315,339 @@ class BackendApiService {
     return decoded['data'] as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> fetchCreatorCenter() async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/creator-center',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchMyContentSubmissions({
+    int limit = 50,
+    int offset = 0,
+    String type = 'all',
+    String status = 'all',
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/content-submissions',
+      withAuth: true,
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {
+          'type': type == 'all' ? null : type,
+          'status': status == 'all' ? null : status,
+        },
+      ),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchMentors({
+    int limit = 20,
+    int offset = 0,
+    String? keyword,
+    String? university,
+    String? major,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/mentors',
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {
+          'keyword': keyword,
+          'university': university,
+          'major': major,
+        },
+      ),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> fetchMentor(String id) async {
+    final decoded = await _requestJson('GET', '/api/v1/mentors/$id');
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>?> fetchMyMentorApplication() async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/mentor-applications',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>?;
+  }
+
+  static Future<Map<String, dynamic>> submitMentorApplication(
+    Map<String, dynamic> body,
+  ) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/mentor-applications',
+      withAuth: true,
+      body: body,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchMyMentorServices({
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/mentor/services',
+      withAuth: true,
+      query: _params(limit: limit, offset: offset),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> createMentorService({
+    required String title,
+    required int durationMinutes,
+    required int priceAmount,
+    String? description,
+    String serviceType = 'portfolio_review',
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/mentor/services',
+      withAuth: true,
+      body: {
+        'title': title,
+        'duration_minutes': durationMinutes,
+        'price_amount': priceAmount,
+        'service_type': serviceType,
+        if (description != null && description.trim().isNotEmpty)
+          'description': description.trim(),
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> bookMentorService({
+    required String mentorId,
+    required String serviceId,
+    String? scheduledAt,
+    String? availabilitySlotId,
+    String? studentNote,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/mentors/$mentorId/bookings',
+      withAuth: true,
+      body: {
+        'service_id': serviceId,
+        if (scheduledAt != null) 'scheduled_at': scheduledAt,
+        if (availabilitySlotId != null)
+          'availability_slot_id': availabilitySlotId,
+        if (studentNote != null && studentNote.trim().isNotEmpty)
+          'student_note': studentNote.trim(),
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchMentorAvailability({
+    required String mentorId,
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/mentors/$mentorId/availability',
+      query: _params(limit: limit, offset: offset),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchMyMentorAvailability({
+    int limit = 50,
+    int offset = 0,
+    String? status,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/mentor/availability',
+      withAuth: true,
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {'status': status},
+      ),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> createMentorAvailability({
+    required String startsAt,
+    required String endsAt,
+    String timezone = 'Asia/Shanghai',
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/mentor/availability',
+      withAuth: true,
+      body: {
+        'starts_at': startsAt,
+        'ends_at': endsAt,
+        'timezone': timezone,
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> updateMentorAvailability({
+    required String slotId,
+    String? status,
+    String? startsAt,
+    String? endsAt,
+  }) async {
+    final decoded = await _requestJson(
+      'PATCH',
+      '/api/v1/me/mentor/availability/$slotId',
+      withAuth: true,
+      body: {
+        if (status != null) 'status': status,
+        if (startsAt != null) 'starts_at': startsAt,
+        if (endsAt != null) 'ends_at': endsAt,
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<
+      ({
+        List<Map<String, dynamic>> data,
+        int? count,
+        int limit,
+        int offset
+      })> fetchMyMentorBookings({
+    int limit = 50,
+    int offset = 0,
+    String role = 'all',
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/mentor/bookings',
+      withAuth: true,
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {'role': role},
+      ),
+    );
+    return _paginated(decoded, limit: limit, offset: offset);
+  }
+
+  static Future<Map<String, dynamic>> updateMentorBooking({
+    required String bookingId,
+    String? status,
+    String? scheduledAt,
+    String? studentNote,
+    String? advisorNote,
+  }) async {
+    final decoded = await _requestJson(
+      'PATCH',
+      '/api/v1/me/mentor/bookings/$bookingId',
+      withAuth: true,
+      body: {
+        if (status != null) 'status': status,
+        if (scheduledAt != null) 'scheduled_at': scheduledAt,
+        if (studentNote != null) 'student_note': studentNote,
+        if (advisorNote != null) 'advisor_note': advisorNote,
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> fetchMyMentorEarnings({
+    int limit = 50,
+    int offset = 0,
+    String? status,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/mentor/earnings',
+      withAuth: true,
+      query: _params(
+        limit: limit,
+        offset: offset,
+        extra: {'status': status},
+      ),
+    );
+    return decoded;
+  }
+
+  static Future<Map<String, dynamic>> requestMentorWithdrawal({
+    required int amount,
+    String currency = 'cny',
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/mentor/withdrawals',
+      withAuth: true,
+      body: {
+        'amount': amount,
+        'currency': currency,
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> reviewMentorBooking({
+    required String bookingId,
+    required int rating,
+    String? body,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/mentor/bookings/$bookingId/review',
+      withAuth: true,
+      body: {
+        'rating': rating,
+        if (body != null && body.trim().isNotEmpty) 'body': body.trim(),
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
   static Future<
       ({
         List<Map<String, dynamic>> data,
@@ -1503,7 +2730,7 @@ class BackendApiService {
     List<String> images = const [],
     String? description,
     String visibility = 'public',
-    String status = 'published',
+    String status = 'reviewing',
     Map<String, dynamic>? metadata,
   }) async {
     final decoded = await _requestJson(
@@ -1646,6 +2873,21 @@ class BackendApiService {
     return _paginated(decoded, limit: limit, offset: offset);
   }
 
+  static Future<int> fetchUnreadNotificationCount() async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/notifications/unread-count',
+      withAuth: true,
+    );
+    final data = decoded['data'];
+    if (data is Map<String, dynamic>) {
+      final count = data['count'];
+      if (count is num) return count.toInt();
+      return int.tryParse(count?.toString() ?? '') ?? 0;
+    }
+    return 0;
+  }
+
   static Future<Map<String, dynamic>> markNotificationRead(String id) async {
     final decoded = await _requestJson(
       'POST',
@@ -1685,6 +2927,18 @@ class BackendApiService {
     return _decodeBody(r);
   }
 
+  static Future<String> signSubmissionMaterial(String material) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/uploads/materials/sign',
+      withAuth: true,
+      body: {'url': material},
+    );
+    final signedUrl = decoded['signed_url']?.toString() ?? '';
+    if (signedUrl.isEmpty) throw Exception('材料签名链接生成失败');
+    return signedUrl;
+  }
+
   static MediaType _mediaType(String raw) {
     final parts = raw.split('/');
     if (parts.length != 2) return MediaType('application', 'octet-stream');
@@ -1705,6 +2959,58 @@ class BackendApiService {
     }
     return (decoded['data'] as List<dynamic>? ?? [])
         .cast<Map<String, dynamic>>();
+  }
+
+  static Future<Map<String, dynamic>> fetchMyOrder(String id) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/orders/$id',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchOrderRefunds(String id) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/orders/$id/refunds',
+      withAuth: true,
+    );
+    return (decoded['data'] as List<dynamic>? ?? [])
+        .cast<Map<String, dynamic>>();
+  }
+
+  static Future<Map<String, dynamic>> requestOrderRefund({
+    required String id,
+    String? reason,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/orders/$id/refunds',
+      withAuth: true,
+      body: {
+        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> checkoutExistingOrder(String id) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/orders/$id/checkout',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> confirmExistingOrder(String id) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/orders/$id/confirm',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
   }
 
   /// 首页内容（`home_contents` 表，经 Next `/api/v1/home-contents`）
@@ -1902,6 +3208,12 @@ class BackendApiService {
     List<String>? eventPreferences,
     String? currentStage,
     String? verificationIntent,
+    String? businessName,
+    String? businessCity,
+    String? businessContact,
+    String? businessChannel,
+    String? businessIntro,
+    List<String>? businessMaterials,
   }) async {
     final url = _api('/api/v1/auth/complete-onboarding');
     final body = jsonEncode({
@@ -1918,6 +3230,12 @@ class BackendApiService {
       if (eventPreferences != null) 'eventPreferences': eventPreferences,
       if (currentStage != null) 'currentStage': currentStage,
       if (verificationIntent != null) 'verificationIntent': verificationIntent,
+      if (businessName != null) 'businessName': businessName,
+      if (businessCity != null) 'businessCity': businessCity,
+      if (businessContact != null) 'businessContact': businessContact,
+      if (businessChannel != null) 'businessChannel': businessChannel,
+      if (businessIntro != null) 'businessIntro': businessIntro,
+      if (businessMaterials != null) 'businessMaterials': businessMaterials,
     });
     final headers = await _headers(withAuth: true);
     final r = await http.post(url, headers: headers, body: body);

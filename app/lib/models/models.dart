@@ -127,6 +127,75 @@ class AppCommunityPost {
   }
 }
 
+/// 社区「热议」议题（`community_hot_topics` 表，经 Next `/api/v1/community/hot-topics`）
+class AppCommunityHotTopic {
+  final String id;
+  final String slug;
+  final String tag;
+  final String title;
+  final String category;
+  final int participantCount;
+  final int sortOrder;
+  final bool isPinned;
+  final List<AppCommunityHotTopicAnswer> answers;
+  final Map<String, dynamic> metadata;
+  final String createdAt;
+
+  const AppCommunityHotTopic({
+    required this.id,
+    required this.slug,
+    required this.tag,
+    required this.title,
+    required this.category,
+    required this.participantCount,
+    required this.sortOrder,
+    required this.isPinned,
+    required this.answers,
+    required this.metadata,
+    required this.createdAt,
+  });
+
+  factory AppCommunityHotTopic.fromJson(Map<String, dynamic> json) {
+    final rawAnswers = json['answers'];
+    final rawMetadata = json['metadata'];
+    return AppCommunityHotTopic(
+      id: json['id'] as String,
+      slug: json['slug'] as String? ?? '',
+      tag: json['tag'] as String? ?? '🔥 争议',
+      title: json['title'] as String? ?? '',
+      category: json['category'] as String? ?? '艺术留学',
+      participantCount: json['participant_count'] as int? ?? 0,
+      sortOrder: json['sort_order'] as int? ?? 0,
+      isPinned: json['is_pinned'] as bool? ?? false,
+      answers: rawAnswers is List
+          ? rawAnswers
+              .whereType<Map<String, dynamic>>()
+              .map(AppCommunityHotTopicAnswer.fromJson)
+              .toList()
+          : const [],
+      metadata: rawMetadata is Map<String, dynamic> ? rawMetadata : {},
+      createdAt: json['created_at'] as String? ?? '',
+    );
+  }
+}
+
+class AppCommunityHotTopicAnswer {
+  final String stance;
+  final String content;
+
+  const AppCommunityHotTopicAnswer({
+    required this.stance,
+    required this.content,
+  });
+
+  factory AppCommunityHotTopicAnswer.fromJson(Map<String, dynamic> json) {
+    return AppCommunityHotTopicAnswer(
+      stance: json['stance'] as String? ?? '',
+      content: json['content'] as String? ?? '',
+    );
+  }
+}
+
 class AppCommunityComment {
   final String id;
   final String body;

@@ -9,6 +9,8 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../data/mock_compare_schools.dart';
 import '../../services/backend_api_service.dart';
 import '../../services/supabase_service.dart';
+import '../../utils/auth_gate.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import '../../theme/artsee_ui_colors.dart';
 import '../main_scaffold.dart';
@@ -697,6 +699,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openPhotoPicker() async {
+    if (!await ensureLoggedIn(context, message: '请先登录后上传图片分析')) return;
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(
@@ -1150,12 +1153,15 @@ class _HeroIntro extends StatelessWidget {
             height: 88,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white,
+              color: context.artC.cardIconBg,
+              border: Border.all(
+                color: context.artC.silver.withValues(alpha: 0.22),
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: kCobalt.withValues(alpha: 0.16),
-                  blurRadius: 52,
-                  offset: const Offset(0, 24),
+                  color: kCobalt.withValues(alpha: 0.1),
+                  blurRadius: 28,
+                  offset: const Offset(0, 12),
                 ),
               ],
             ),
@@ -1645,8 +1651,8 @@ class _MessageBubble extends StatelessWidget {
         maxWidth: MediaQuery.sizeOf(context).width * 0.68,
       ),
       decoration: BoxDecoration(
-        color: user ? context.artC.ink : Colors.white,
-        borderRadius: BorderRadius.circular(20).copyWith(
+        color: user ? context.artC.deepPanel : context.artC.cardIconBg,
+        borderRadius: BorderRadius.circular(17).copyWith(
           bottomRight: user ? const Radius.circular(4) : null,
           bottomLeft: !user ? const Radius.circular(4) : null,
         ),
@@ -1655,9 +1661,9 @@ class _MessageBubble extends StatelessWidget {
             : Border.all(color: context.artC.silver.withValues(alpha: 0.45)),
         boxShadow: [
           BoxShadow(
-            color: context.artC.ink.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: context.artC.ink.withValues(alpha: 0.035),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -1718,7 +1724,7 @@ class _HomeSourceList extends StatelessWidget {
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w900,
-              letterSpacing: 1.2,
+              letterSpacing: 0,
               color: context.artC.ink.withValues(alpha: 0.38),
             ),
           ),
@@ -1999,21 +2005,9 @@ class _PromptPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: ArtseeSurface(
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.96),
-          borderRadius: BorderRadius.circular(15),
-          border:
-              Border.all(color: context.artC.silver.withValues(alpha: 0.42)),
-          boxShadow: [
-            BoxShadow(
-              color: context.artC.ink.withValues(alpha: 0.05),
-              blurRadius: 22,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
+        radius: 14,
         child: Row(
           children: [
             Icon(icon, size: 18, color: kCobalt.withValues(alpha: 0.62)),
@@ -2104,18 +2098,18 @@ class _BottomAskBarState extends State<_BottomAskBar> {
           ),
           boxShadow: [
             BoxShadow(
-              color: context.artC.ink.withValues(alpha: 0.05),
-              blurRadius: 18,
-              offset: const Offset(0, -6),
+              color: context.artC.ink.withValues(alpha: 0.035),
+              blurRadius: 14,
+              offset: const Offset(0, -4),
             ),
           ],
         ),
         child: SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 7),
             child: SizedBox(
-              height: 52,
+              height: 50,
               child: Row(
                 children: [
                   _ComposerCircleButton(
@@ -2135,13 +2129,13 @@ class _BottomAskBarState extends State<_BottomAskBar> {
                             onLongPressEnd: (_) => widget.onRecordEnd(),
                             onLongPressCancel: () => widget.onRecordEnd(),
                             child: Container(
-                              height: 48,
+                              height: 46,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
                                 color: widget.isRecording
                                     ? kCobalt.withValues(alpha: 0.1)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(18),
+                                    : context.artC.cardIconBg,
+                                borderRadius: BorderRadius.circular(15),
                                 border: Border.all(
                                   color: widget.isRecording
                                       ? kCobalt
@@ -2177,10 +2171,10 @@ class _BottomAskBarState extends State<_BottomAskBar> {
                             ),
                           )
                         : Container(
-                            height: 48,
+                            height: 46,
                             decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(18),
+                              color: context.artC.cardIconBg,
+                              borderRadius: BorderRadius.circular(15),
                               border: Border.all(
                                 color:
                                     context.artC.silver.withValues(alpha: 0.48),
@@ -2217,8 +2211,8 @@ class _BottomAskBarState extends State<_BottomAskBar> {
                       ? GestureDetector(
                           onTap: widget.sending ? null : widget.onSubmit,
                           child: Container(
-                            width: 46,
-                            height: 46,
+                            width: 44,
+                            height: 44,
                             decoration: BoxDecoration(
                               color: widget.sending
                                   ? context.artC.silver.withValues(alpha: 0.5)
@@ -2264,10 +2258,10 @@ class _ComposerCircleButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 46,
-        height: 46,
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.artC.cardIconBg,
           shape: BoxShape.circle,
           border: Border.all(
             color: context.artC.silver.withValues(alpha: 0.58),
@@ -2275,9 +2269,9 @@ class _ComposerCircleButton extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: context.artC.ink.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+              color: context.artC.ink.withValues(alpha: 0.025),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),

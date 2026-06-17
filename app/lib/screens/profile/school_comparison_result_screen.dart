@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
@@ -36,9 +37,11 @@ class SchoolComparisonResultScreen extends StatelessWidget {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: context.artC.cardIconBg,
                           shape: BoxShape.circle,
-                          boxShadow: [kShadowCard],
+                          border: Border.all(
+                            color: context.artC.silver.withValues(alpha: 0.42),
+                          ),
                         ),
                         child: Icon(
                           Icons.arrow_back_ios_new_rounded,
@@ -132,28 +135,26 @@ class _ResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [kShadowCard],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: context.artC.ink,
+      child: ArtseeSurface(
+        padding: const EdgeInsets.all(18),
+        radius: 18,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                color: context.artC.ink,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          child,
-        ],
+            const SizedBox(height: 12),
+            child,
+          ],
+        ),
       ),
     );
   }

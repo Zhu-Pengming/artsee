@@ -54,10 +54,10 @@ class EmojiPicker extends StatelessWidget {
             child: Container(
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
+                color: context.artC.cardIconBg,
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: context.artC.silver.withValues(alpha: 0.3),
+                  color: context.artC.silver.withValues(alpha: 0.34),
                 ),
               ),
               child: Text(

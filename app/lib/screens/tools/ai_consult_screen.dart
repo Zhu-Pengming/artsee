@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../data/mock_compare_schools.dart';
 import '../../services/backend_api_service.dart';
 import '../../services/supabase_service.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
@@ -340,7 +341,7 @@ class _AiConsultScreenState extends State<AiConsultScreen>
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w900,
-              letterSpacing: 1.2,
+              letterSpacing: 0,
               color: context.artC.ink.withOpacity(0.38),
             ),
           ),
@@ -510,25 +511,21 @@ class _AiConsultScreenState extends State<AiConsultScreen>
           Column(
             children: [
               _buildTopBar(context),
-              Material(
-                color: Colors.white,
-                child: TabBar(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                child: ArtseeSegmentedTabs(
                   controller: _tabCtrl,
-                  indicatorColor: kCobalt,
-                  indicatorWeight: 3,
-                  labelColor: context.artC.ink,
-                  unselectedLabelColor: context.artC.ink.withOpacity(0.38),
-                  labelStyle: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                  unselectedLabelStyle: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  labelFontSize: 12,
+                  height: 40,
                   tabs: const [
-                    Tab(text: '智能问答'),
-                    Tab(text: '对比选校'),
+                    ArtseeSegmentTab(
+                      label: '智能问答',
+                      icon: Icons.smart_toy_outlined,
+                    ),
+                    ArtseeSegmentTab(
+                      label: '对比选校',
+                      icon: Icons.compare_arrows_rounded,
+                    ),
                   ],
                 ),
               ),
@@ -561,7 +558,7 @@ class _AiConsultScreenState extends State<AiConsultScreen>
             child: Container(
               width: MediaQuery.of(context).size.width * 0.75,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.artC.cardIconBg,
                 borderRadius:
                     BorderRadius.horizontal(right: Radius.circular(20)),
                 boxShadow: [
@@ -748,7 +745,6 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
-                    fontStyle: FontStyle.italic,
                     color: Colors.white,
                   ),
                 ),
@@ -770,7 +766,7 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                         style: TextStyle(
                           fontSize: 8,
                           fontWeight: FontWeight.w600,
-                          letterSpacing: 0.8,
+                          letterSpacing: 0,
                           color: Colors.white.withOpacity(0.45),
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -854,9 +850,9 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                             ),
                           ),
                           backgroundColor:
-                              context.artC.silver.withOpacity(0.35),
+                              context.artC.cardIconBg.withOpacity(0.82),
                           side: BorderSide(
-                            color: context.artC.silver.withOpacity(0.6),
+                            color: context.artC.silver.withOpacity(0.45),
                           ),
                           onPressed: _sending ? null : () => _send(s),
                         );
@@ -884,7 +880,7 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                       maxWidth: MediaQuery.of(context).size.width * 0.82,
                     ),
                     decoration: BoxDecoration(
-                      color: user ? context.artC.ink : Colors.white,
+                      color: user ? context.artC.ink : context.artC.cardIconBg,
                       borderRadius: BorderRadius.circular(20).copyWith(
                         bottomRight: user ? const Radius.circular(4) : null,
                         bottomLeft: !user ? const Radius.circular(4) : null,
@@ -939,7 +935,7 @@ class _AiConsultScreenState extends State<AiConsultScreen>
         Container(
           padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.artC.cardIconBg,
             border: Border(
                 top: BorderSide(color: context.artC.silver.withOpacity(0.5))),
           ),
@@ -1014,7 +1010,7 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                   style: TextStyle(
                     fontSize: 8,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
+                    letterSpacing: 0,
                     color: context.artC.ink.withOpacity(0.22),
                   ),
                 ),
@@ -1059,7 +1055,7 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                         fontSize: 12,
                         color: context.artC.ink.withOpacity(0.28)),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: context.artC.cardIconBg,
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 12),
                     border: OutlineInputBorder(
@@ -1074,7 +1070,7 @@ class _AiConsultScreenState extends State<AiConsultScreen>
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.artC.cardIconBg,
                   borderRadius: BorderRadius.circular(16),
                   border:
                       Border.all(color: context.artC.silver.withOpacity(0.55)),
@@ -1103,8 +1099,8 @@ class _AiConsultScreenState extends State<AiConsultScreen>
             Container(
               padding: const EdgeInsets.symmetric(vertical: 36),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(28),
+                color: context.artC.cardIconBg,
+                borderRadius: BorderRadius.circular(18),
                 border:
                     Border.all(color: context.artC.silver.withOpacity(0.45)),
               ),
@@ -1118,7 +1114,6 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      fontStyle: FontStyle.italic,
                       color: context.artC.ink.withOpacity(0.45),
                       fontFamily: 'Noto Serif SC',
                     ),
@@ -1143,8 +1138,8 @@ class _AiConsultScreenState extends State<AiConsultScreen>
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
+                color: context.artC.cardIconBg,
+                borderRadius: BorderRadius.circular(18),
                 border:
                     Border.all(color: context.artC.silver.withOpacity(0.45)),
               ),
@@ -1156,7 +1151,7 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      letterSpacing: 1.6,
+                      letterSpacing: 0,
                       color: context.artC.ink,
                     ),
                   ),
@@ -1165,8 +1160,7 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w500,
-                      fontStyle: FontStyle.italic,
-                      letterSpacing: 1.2,
+                      letterSpacing: 0,
                       color: context.artC.ink.withOpacity(0.28),
                     ),
                   ),
@@ -1238,8 +1232,8 @@ class _CompareSchoolRow extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        color: context.artC.cardIconBg,
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: context.artC.silver.withOpacity(0.45)),
       ),
       child: Column(
@@ -1249,7 +1243,7 @@ class _CompareSchoolRow extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(22)),
+                    const BorderRadius.vertical(top: Radius.circular(18)),
                 child: AspectRatio(
                   aspectRatio: 16 / 10,
                   child: Image.network(
@@ -1272,13 +1266,16 @@ class _CompareSchoolRow extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.92),
                         borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: context.artC.silver.withOpacity(0.38),
+                        ),
                       ),
                       child: Text(
                         t,
                         style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: 0.2,
+                          letterSpacing: 0,
                           color: context.artC.ink,
                         ),
                       ),
@@ -1337,7 +1334,7 @@ class _CompareSchoolRow extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.w600,
-                              letterSpacing: 1,
+                              letterSpacing: 0,
                               color: context.artC.ink.withOpacity(0.32),
                             ),
                           ),
@@ -1382,7 +1379,7 @@ class _CompareSchoolRow extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
-                            letterSpacing: 0.8,
+                            letterSpacing: 0,
                             color: context.artC.ink.withOpacity(0.38),
                           ),
                         ),
@@ -1538,7 +1535,6 @@ class _CompareTable extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
-                  fontStyle: FontStyle.italic,
                 ),
               ),
             ),

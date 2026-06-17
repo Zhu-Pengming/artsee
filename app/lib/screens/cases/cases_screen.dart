@@ -208,9 +208,15 @@ class _CaseCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: context.artC.cardIconBg,
-          borderRadius: BorderRadius.circular(kRadiusLarge),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: context.artC.silver.withOpacity(0.55)),
-          boxShadow: [kShadowCard],
+          boxShadow: [
+            BoxShadow(
+              color: context.artC.ink.withValues(alpha: 0.035),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -221,7 +227,7 @@ class _CaseCard extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: resultGradient(item.result),
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(kRadiusLarge),
+                  top: Radius.circular(18),
                 ),
               ),
               child: Column(

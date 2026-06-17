@@ -113,7 +113,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
         ),
         title: Text(
           '编辑资料',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: context.artC.ink),
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: context.artC.ink),
         ),
         actions: [
           TextButton(
@@ -122,7 +125,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                 ? const SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(color: kCobalt, strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                        color: kCobalt, strokeWidth: 2),
                   )
                 : Text(
                     '保存',
@@ -152,7 +156,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                         decoration: BoxDecoration(
                           color: context.artC.silver.withOpacity(0.35),
                           shape: BoxShape.circle,
-                          border: Border.all(color: context.artC.porcelain, width: 4),
+                          border: Border.all(
+                              color: context.artC.porcelain, width: 4),
                           boxShadow: [
                             BoxShadow(
                               color: context.artC.ink.withOpacity(0.08),
@@ -166,7 +171,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                               ? Image.network(
                                   _avatarUrl!,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => _avatarFallback(),
+                                  errorBuilder: (_, __, ___) =>
+                                      _avatarFallback(),
                                 )
                               : _avatarFallback(),
                         ),
@@ -192,7 +198,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                           decoration: BoxDecoration(
                             color: kCobalt,
                             shape: BoxShape.circle,
-                            border: Border.all(color: context.artC.porcelain, width: 3),
+                            border: Border.all(
+                                color: context.artC.porcelain, width: 3),
                           ),
                           child: Icon(
                             Icons.camera_alt,
@@ -290,19 +297,20 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
           color: context.artC.ink.withOpacity(0.35),
         ),
         filled: true,
-        fillColor: context.artC.silver.withOpacity(0.35),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        fillColor: context.artC.cardIconBg,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: context.artC.silver.withOpacity(0.34)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: kCobalt.withOpacity(0.45)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: context.artC.silver.withOpacity(0.34)),
         ),
       ),
       style: TextStyle(fontSize: 15, color: context.artC.ink),

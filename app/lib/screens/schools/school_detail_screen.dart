@@ -3,7 +3,7 @@ import '../../services/backend_api_service.dart';
 import '../../services/supabase_service.dart';
 import '../../widgets/common.dart';
 import '../auth/login_screen.dart';
-import '../main_scaffold.dart';
+import '../consultation/organization_list_screen.dart';
 import '../profile/application_workspace_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
@@ -23,11 +23,20 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
   bool _saving = false;
   String? _error;
 
+  bool get _isAuxiliarySchool =>
+      widget.id.startsWith('aux-') || _data?['is_auxiliary_display'] == true;
+
+  String? get _schoolActionId {
+    final remoteId = _data?['remote_school_id']?.toString();
+    if (remoteId != null && remoteId.isNotEmpty) return remoteId;
+    if (_isAuxiliarySchool) return null;
+    return widget.id;
+  }
+
   @override
   void initState() {
     super.initState();
     _load();
-    _loadSavedState();
   }
 
   Future<void> _load() async {
@@ -39,6 +48,8 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
           _loading = false;
         });
       }
+      final actionId = _schoolActionId;
+      if (actionId != null) await _loadSavedState(actionId);
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -49,13 +60,13 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
     }
   }
 
-  Future<void> _loadSavedState() async {
+  Future<void> _loadSavedState(String schoolId) async {
     try {
       final saved = await BackendApiService.fetchSavedSchools(limit: 100);
       if (!mounted) return;
       setState(() {
         _saved = saved.data.any(
-          (item) => (item['id'] ?? item['school_id'])?.toString() == widget.id,
+          (item) => (item['id'] ?? item['school_id'])?.toString() == schoolId,
         );
       });
     } catch (_) {
@@ -73,13 +84,20 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
 
   Future<bool> _toggleSaved() async {
     if (_saving) return false;
+    final actionId = _schoolActionId;
+    if (actionId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('本地补充院校暂不支持加入目标池')),
+      );
+      return false;
+    }
     if (!await _ensureLoggedIn()) return false;
     setState(() => _saving = true);
     try {
       if (_saved) {
-        await BackendApiService.removeSavedSchool(widget.id);
+        await BackendApiService.removeSavedSchool(actionId);
       } else {
-        await BackendApiService.saveSchool(widget.id);
+        await BackendApiService.saveSchool(actionId);
       }
       if (!mounted) return false;
       setState(() => _saved = !_saved);
@@ -114,126 +132,24 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
     );
   }
 
-  Future<void> _openApplicationPlanWorkspace() async {
-    if (!_saved) {
-      final saved = await _toggleSaved();
-      if (!saved) return;
-    }
-    if (!mounted) return;
-    final navigator = Navigator.of(context);
-    if (navigator.canPop()) {
-      navigator.pop();
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      MainScaffold.globalKey.currentState?.openSchoolApplicationPlanTab();
-    });
-  }
+  Future<void> _openOrganizationConsultation(String targetName) async {
+    final actionId = _schoolActionId;
+    if (actionId == null) return;
 
-  Future<void> _openConsultationSheet(String targetName) async {
-    final controller = TextEditingController();
-    var submitting = false;
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          Future<void> submit() async {
-            final message = controller.text.trim();
-            if (message.isEmpty || submitting) return;
-            setSheetState(() => submitting = true);
-            try {
-              await BackendApiService.createConsultation(
-                targetType: 'school',
-                targetId: widget.id,
-                targetName: targetName,
-                message: message,
-              );
-              if (!mounted || !sheetContext.mounted) return;
-              Navigator.of(sheetContext).pop();
-              ScaffoldMessenger.of(this.context).showSnackBar(
-                const SnackBar(content: Text('咨询已提交，可在咨询记录中查看')),
-              );
-            } catch (e) {
-              if (!mounted || !context.mounted) return;
-              setSheetState(() => submitting = false);
-              ScaffoldMessenger.of(this.context).showSnackBar(
-                SnackBar(content: Text('提交失败：$e')),
-              );
-            }
-          }
-
-          return Container(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              18,
-              20,
-              MediaQuery.of(context).viewInsets.bottom + 24,
-            ),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-            ),
-            child: SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '咨询 $targetName',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: context.artC.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: controller,
-                    minLines: 3,
-                    maxLines: 5,
-                    decoration: InputDecoration(
-                      hintText: '你想咨询什么？例如作品集要求、申请时间线、语言要求...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: kCobalt),
-                      onPressed: submitting ? null : submit,
-                      child: Text(submitting ? '提交中...' : '提交咨询'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => OrganizationListScreen(
+          schoolId: actionId,
+          schoolName: targetName,
+        ),
       ),
     );
-    controller.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.artC.porcelain,
-      bottomNavigationBar: _data == null || _loading || _error != null
-          ? null
-          : _SchoolActionBar(
-              saved: _saved,
-              saving: _saving,
-              onSave: _toggleSaved,
-              onPlan: _openApplicationPlanWorkspace,
-              onConsult: () => _openConsultationSheet(
-                _data?['name_zh']?.toString() ?? '目标院校',
-              ),
-            ),
       body: SafeArea(
         child: _loading
             ? const Center(
@@ -256,6 +172,7 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
 
   Widget _buildContent() {
     final d = _data!;
+    final canUseActions = _schoolActionId != null;
     final nameZh = d['name_zh'] as String? ?? '—';
     final nameEn = d['name_en'] as String?;
     final country = d['country'] as String?;
@@ -309,47 +226,6 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
                     ),
                   ),
                 ),
-                const Spacer(),
-                _HeaderActionButton(
-                  tooltip: _saved ? '已在目标池' : '加入目标池',
-                  onTap: _toggleSaved,
-                  child: _saving
-                      ? const SizedBox(
-                          width: 15,
-                          height: 15,
-                          child: CircularProgressIndicator(
-                            color: kCobalt,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : Icon(
-                          _saved
-                              ? Icons.bookmark_rounded
-                              : Icons.bookmark_add_outlined,
-                          size: 19,
-                          color: kCobalt,
-                        ),
-                ),
-                const SizedBox(width: 8),
-                _HeaderActionButton(
-                  tooltip: '加入对比',
-                  onTap: _openCompareWorkspace,
-                  child: const Icon(
-                    Icons.compare_arrows_rounded,
-                    size: 19,
-                    color: kCobalt,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _HeaderActionButton(
-                  tooltip: '咨询申请',
-                  onTap: () => _openConsultationSheet(nameZh),
-                  child: const Icon(
-                    Icons.support_agent_outlined,
-                    size: 19,
-                    color: kCobalt,
-                  ),
-                ),
               ],
             ),
           ),
@@ -366,12 +242,21 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
                       width: 88,
                       height: 88,
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [kShadowCard],
+                        color: context.artC.cardIconBg,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: context.artC.silver.withOpacity(0.48),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: context.artC.ink.withOpacity(0.035),
+                            blurRadius: 14,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(20),
                         child: logoUrl != null && logoUrl.isNotEmpty
                             ? Image.network(
                                 logoUrl,
@@ -386,7 +271,7 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
                                     fontSize: 36,
                                     fontWeight: FontWeight.w700,
                                     color: kCobalt,
-                                    letterSpacing: 2,
+                                    letterSpacing: 0,
                                   ),
                                 ),
                               ),
@@ -460,39 +345,39 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _PrimaryDecisionButton(
-                        icon: _saved
-                            ? Icons.bookmark_rounded
-                            : Icons.bookmark_add_outlined,
-                        label: _saved ? '已在目标池' : '加入目标池',
-                        loading: _saving,
-                        onTap: _toggleSaved,
+                if (canUseActions) ...[
+                  const SizedBox(height: 18),
+                  _PrimaryDecisionButton(
+                    icon: _saved
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_add_outlined,
+                    label: _saved ? '已在目标池' : '加入目标池',
+                    loading: _saving,
+                    onTap: _toggleSaved,
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _PrimaryDecisionButton(
+                          icon: Icons.compare_arrows_rounded,
+                          label: '加入对比',
+                          outlined: true,
+                          onTap: _openCompareWorkspace,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: _PrimaryDecisionButton(
-                        icon: Icons.event_note_outlined,
-                        label: '申请计划',
-                        outlined: true,
-                        onTap: _openApplicationPlanWorkspace,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _PrimaryDecisionButton(
+                          icon: Icons.support_agent_outlined,
+                          label: '开始咨询',
+                          outlined: true,
+                          onTap: () => _openOrganizationConsultation(nameZh),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: _PrimaryDecisionButton(
-                        icon: Icons.support_agent_outlined,
-                        label: '咨询申请',
-                        outlined: true,
-                        onTap: () => _openConsultationSheet(nameZh),
-                      ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
                 if (campusImages.isNotEmpty) ...[
                   const SizedBox(height: 24),
                   ClipRRect(
@@ -713,7 +598,7 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 120),
+                const SizedBox(height: 40),
               ],
             ),
           ),
@@ -752,9 +637,16 @@ class _SchoolDetailScreenState extends State<SchoolDetailScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(kRadiusLarge),
-        boxShadow: [kShadowCard],
+        color: context.artC.cardIconBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: context.artC.silver.withValues(alpha: 0.28)),
+        boxShadow: [
+          BoxShadow(
+            color: context.artC.ink.withValues(alpha: 0.026),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: child,
     );
@@ -871,44 +763,7 @@ class _SchoolLogoFallback extends StatelessWidget {
           fontSize: 36,
           fontWeight: FontWeight.w700,
           color: kCobalt,
-          letterSpacing: 2,
-        ),
-      ),
-    );
-  }
-}
-
-class _HeaderActionButton extends StatelessWidget {
-  final String tooltip;
-  final VoidCallback onTap;
-  final Widget child;
-
-  const _HeaderActionButton({
-    required this.tooltip,
-    required this.onTap,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: Semantics(
-        button: true,
-        label: tooltip,
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [kShadowCard],
-            ),
-            child: child,
-          ),
+          letterSpacing: 0,
         ),
       ),
     );
@@ -972,8 +827,9 @@ class _PrimaryDecisionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fg = outlined ? kCobalt : Colors.white;
+    final bg = outlined ? context.artC.cardIconBg : kCobalt;
     return Material(
-      color: outlined ? Colors.white : kCobalt,
+      color: bg,
       borderRadius: BorderRadius.circular(13),
       child: InkWell(
         onTap: loading ? null : onTap,
@@ -1088,78 +944,6 @@ class _FitColumn extends StatelessWidget {
             }).toList(),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _SchoolActionBar extends StatelessWidget {
-  final bool saved;
-  final bool saving;
-  final VoidCallback onSave;
-  final VoidCallback onPlan;
-  final VoidCallback onConsult;
-
-  const _SchoolActionBar({
-    required this.saved,
-    required this.saving,
-    required this.onSave,
-    required this.onPlan,
-    required this.onConsult,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.96),
-        border:
-            Border(top: BorderSide(color: context.artC.ink.withOpacity(0.06))),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 18,
-            offset: const Offset(0, -8),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: _PrimaryDecisionButton(
-                  icon: saved
-                      ? Icons.bookmark_rounded
-                      : Icons.bookmark_add_outlined,
-                  label: saved ? '已在目标池' : '加入目标池',
-                  loading: saving,
-                  onTap: onSave,
-                ),
-              ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: _PrimaryDecisionButton(
-                  icon: Icons.event_note_outlined,
-                  label: '申请计划',
-                  outlined: true,
-                  onTap: onPlan,
-                ),
-              ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: _PrimaryDecisionButton(
-                  icon: Icons.support_agent_outlined,
-                  label: '咨询申请',
-                  outlined: true,
-                  onTap: onConsult,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

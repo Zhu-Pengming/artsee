@@ -267,7 +267,7 @@ export async function POST(req: NextRequest) {
       const { data: profile } = await supabase
         .from("user_profiles")
         .select("target_majors, budget_range")
-        .eq("user_id", user.id)
+        .eq("id", user.id)
         .single();
       
       if (profile) {

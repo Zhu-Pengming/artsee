@@ -3,6 +3,11 @@ import { getUserFromBearer } from "@/lib/api/auth-user";
 import { createServiceClient } from "@/lib/api/supabase-service";
 
 const VALID_CURRENCY_RE = /^[a-z]{3}$/;
+const RESERVED_PRODUCT_TYPES = new Set([
+  "membership_monthly",
+  "membership_yearly",
+  "org_subscription",
+]);
 
 function normalizeAmount(value: unknown) {
   const num = Number(value);
@@ -30,7 +35,23 @@ export async function POST(req: NextRequest) {
     const subject = normalizeText(body.subject, "");
     const amountTotal = normalizeAmount(body.amountTotal ?? body.amount_total);
     const currency = normalizeText(body.currency, "cny").toLowerCase();
-    const itemType = normalizeText(body.itemType ?? body.item_type, "service");
+    const productType = normalizeText(
+      body.productType ?? body.product_type,
+      ""
+    );
+    const itemType = normalizeText(
+      body.itemType ?? body.item_type,
+      productType || "service"
+    );
+    if (
+      RESERVED_PRODUCT_TYPES.has(productType) ||
+      RESERVED_PRODUCT_TYPES.has(itemType)
+    ) {
+      return NextResponse.json(
+        { success: false, error: "该商品类型必须通过专用购买接口创建订单" },
+        { status: 400 }
+      );
+    }
     const rawItemId = body.itemId ?? body.item_id;
     const itemId = typeof rawItemId === "string" && rawItemId.trim() ? rawItemId.trim() : null;
     const metadata = body.metadata && typeof body.metadata === "object" && !Array.isArray(body.metadata)
@@ -55,6 +76,7 @@ export async function POST(req: NextRequest) {
         order_no: makeOrderNo(),
         subject,
         item_type: itemType,
+        product_type: productType || itemType,
         item_id: itemId,
         amount_total: amountTotal,
         currency,

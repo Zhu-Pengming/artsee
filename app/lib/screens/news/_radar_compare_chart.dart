@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../theme/artsee_ui_colors.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 
 class RadarCompareChart extends StatelessWidget {
@@ -15,13 +16,9 @@ class RadarCompareChart extends StatelessWidget {
     final schools = report['schools'] as List<dynamic>? ?? [];
 
     if (dimensions.isEmpty || scores.isEmpty) {
-      return Container(
+      return ArtseeSurface(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: context.artC.silver.withValues(alpha: 0.34)),
-        ),
+        radius: 18,
         child: const Center(
           child: Text('暂无雷达图数据'),
         ),
@@ -37,13 +34,9 @@ class RadarCompareChart extends StatelessWidget {
       const Color(0xFF9B59B6),
     ];
 
-    return Container(
+    return ArtseeSurface(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: context.artC.silver.withValues(alpha: 0.34)),
-      ),
+      radius: 18,
       child: Column(
         children: [
           // 图例
@@ -119,7 +112,8 @@ class RadarCompareChart extends StatelessWidget {
                   color: context.artC.ink.withValues(alpha: 0.72),
                 ),
                 getTitle: (index, angle) {
-                  if (index >= dimensions.length) return RadarChartTitle(text: '');
+                  if (index >= dimensions.length)
+                    return RadarChartTitle(text: '');
                   return RadarChartTitle(
                     text: dimensions[index].toString(),
                     angle: angle,
@@ -130,9 +124,10 @@ class RadarCompareChart extends StatelessWidget {
                   (index) {
                     final score = scores[index] as Map<String, dynamic>;
                     final values = score['values'] as List<dynamic>? ?? [];
-                    
+
                     return RadarDataSet(
-                      fillColor: colors[index % colors.length].withValues(alpha: 0.1),
+                      fillColor:
+                          colors[index % colors.length].withValues(alpha: 0.1),
                       borderColor: colors[index % colors.length],
                       borderWidth: 2,
                       entryRadius: 3,
@@ -158,7 +153,8 @@ class DimensionExplanations extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final explanations = report['dimension_explanations'] as List<dynamic>? ?? [];
+    final explanations =
+        report['dimension_explanations'] as List<dynamic>? ?? [];
 
     if (explanations.isEmpty) {
       return const SizedBox.shrink();
@@ -174,15 +170,9 @@ class DimensionExplanations extends StatelessWidget {
         final label = explanation['label']?.toString() ?? '';
         final summary = explanation['summary']?.toString() ?? '';
 
-        return Container(
+        return ArtseeSurface(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: context.artC.silver.withValues(alpha: 0.42),
-            ),
-          ),
+          radius: 16,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

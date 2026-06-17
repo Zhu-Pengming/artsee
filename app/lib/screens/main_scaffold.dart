@@ -12,8 +12,13 @@ import 'profile/profile_screen.dart';
 import 'publish/publish_exhibition_screen.dart';
 import 'publish/publish_opportunity_screen.dart';
 import 'publish/publish_artist_screen.dart';
+import 'workspace/gallery_workspace_screen.dart';
+import 'workspace/general_business_workspace_screen.dart';
+import 'workspace/institution_workspace_screen.dart';
 import '../services/supabase_service.dart';
 import '../services/backend_api_service.dart';
+import '../utils/auth_gate.dart';
+import '../utils/submission_review_feedback.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 /// ═══════════════════════════════════════════════════════════════
@@ -22,7 +27,9 @@ import 'package:artsee_app/theme/artsee_ui_colors.dart';
 /// ═══════════════════════════════════════════════════════════════
 
 class MainScaffold extends StatefulWidget {
-  const MainScaffold({super.key});
+  final Map<String, dynamic>? initialProfile;
+
+  const MainScaffold({super.key, this.initialProfile});
 
   static final GlobalKey<_MainScaffoldState> globalKey =
       GlobalKey<_MainScaffoldState>();
@@ -35,10 +42,57 @@ class _MainScaffoldState extends State<MainScaffold> {
   static const double _headerHeight = 64;
   int _currentIndex = 0;
   bool _homeNavHidden = false;
+  bool _hasOrganizationMembership = false;
+  Map<String, dynamic>? _profile;
   final GlobalKey<NewsScaffoldState> _newsKey = GlobalKey<NewsScaffoldState>();
   final GlobalKey<ExploreScreenState> _exploreKey =
       GlobalKey<ExploreScreenState>();
   final GlobalKey<ForumScreenState> _forumKey = GlobalKey<ForumScreenState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _profile = widget.initialProfile;
+    _loadProfile();
+  }
+
+  @override
+  void didUpdateWidget(covariant MainScaffold oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialProfile != oldWidget.initialProfile) {
+      _profile = widget.initialProfile;
+      _loadProfile();
+    }
+  }
+
+  Future<void> _loadProfile() async {
+    if (!SupabaseService.isLoggedIn) {
+      if (mounted && (_profile != null || _hasOrganizationMembership)) {
+        setState(() {
+          _profile = null;
+          _hasOrganizationMembership = false;
+        });
+      }
+      return;
+    }
+    try {
+      final profile = await SupabaseService.fetchProfile();
+      var hasOrganizationMembership = false;
+      try {
+        final organizations =
+            await BackendApiService.fetchMyOrganizations(limit: 1);
+        hasOrganizationMembership =
+            (organizations.count ?? organizations.data.length) > 0;
+      } catch (_) {}
+      if (!mounted) return;
+      setState(() {
+        _profile = profile;
+        _hasOrganizationMembership = hasOrganizationMembership;
+      });
+    } catch (_) {
+      // Navigation should not block the app if profile fetch is temporarily unavailable.
+    }
+  }
 
   void switchToTab(int index) {
     if (mounted) {
@@ -65,35 +119,108 @@ class _MainScaffoldState extends State<MainScaffold> {
     setState(() => _homeNavHidden = hidden);
   }
 
-  final List<_NavItem> _navItems = const [
-    _NavItem(
-      icon: Icons.home_outlined,
-      activeIcon: Icons.home_rounded,
-      label: '首页',
-    ),
-    _NavItem(
-      icon: Icons.school_outlined,
-      activeIcon: Icons.school_rounded,
-      label: '院校',
-    ),
-    _NavItem(
-      icon: Icons.explore_outlined,
-      activeIcon: Icons.explore_rounded,
-      label: '发现',
-    ),
-    _NavItem(
-      icon: Icons.forum_outlined,
-      activeIcon: Icons.forum_rounded,
-      label: '社区',
-    ),
-    _NavItem(
-      icon: Icons.person_outline,
-      activeIcon: Icons.person_rounded,
-      label: '我的',
-    ),
-  ];
+  List<_NavItem> get _navItems => [
+        const _NavItem(
+          icon: Icons.home_outlined,
+          activeIcon: Icons.home_rounded,
+          label: '首页',
+        ),
+        _usesWorkspaceTab
+            ? const _NavItem(
+                icon: Icons.dashboard_customize_outlined,
+                activeIcon: Icons.dashboard_customize_rounded,
+                label: '工作台',
+              )
+            : const _NavItem(
+                icon: Icons.school_outlined,
+                activeIcon: Icons.school_rounded,
+                label: '院校',
+              ),
+        const _NavItem(
+          icon: Icons.explore_outlined,
+          activeIcon: Icons.explore_rounded,
+          label: '发现',
+        ),
+        const _NavItem(
+          icon: Icons.forum_outlined,
+          activeIcon: Icons.forum_rounded,
+          label: '社区',
+        ),
+        const _NavItem(
+          icon: Icons.person_outline,
+          activeIcon: Icons.person_rounded,
+          label: '我的',
+        ),
+      ];
+
+  bool get _usesWorkspaceTab {
+    final userType = _profile?['user_type']?.toString();
+    final userRole = _profile?['user_role']?.toString();
+    final systemRole = _profile?['role']?.toString();
+    const businessRoles = {
+      'study_abroad_agency',
+      'portfolio_training',
+      'gallery_exhibition',
+      'event_organizer',
+      'hotel_culture_space',
+      'brand_partner',
+      'art_media_community',
+      'other_service',
+      'institution',
+      'institution_user',
+      'advisor',
+    };
+    return userType == 'business' ||
+        userType == 'institution' ||
+        _hasOrganizationMembership ||
+        businessRoles.contains(userRole) ||
+        systemRole == 'institution_user' ||
+        systemRole == 'advisor';
+  }
+
+  String get _workspaceRole {
+    final userRole = _profile?['user_role']?.toString();
+    if (userRole != null && userRole.isNotEmpty) return userRole;
+    final systemRole = _profile?['role']?.toString();
+    if (systemRole != null && systemRole.isNotEmpty) return systemRole;
+    final userType = _profile?['user_type']?.toString();
+    return userType ?? '';
+  }
+
+  bool get _usesInstitutionWorkspace {
+    const institutionRoles = {
+      'study_abroad_agency',
+      'portfolio_training',
+      'institution',
+      'institution_user',
+      'advisor',
+    };
+    return institutionRoles.contains(_workspaceRole);
+  }
+
+  Widget _buildWorkspaceScreen() {
+    final role = _workspaceRole;
+    if (role == 'gallery_exhibition') {
+      return GalleryWorkspaceScreen(profile: _profile);
+    }
+    if (_usesInstitutionWorkspace) {
+      return InstitutionWorkspaceScreen(profile: _profile);
+    }
+    return GeneralBusinessWorkspaceScreen(profile: _profile);
+  }
+
+  String get _workspaceSearchHint {
+    if (_workspaceRole == 'gallery_exhibition') {
+      return '搜索展览、艺术家、合作机会';
+    }
+    if (_usesInstitutionWorkspace) {
+      return '搜索线索、预约、订单';
+    }
+    return '搜索合作机会、活动、品牌项目';
+  }
 
   Future<void> _openCreatePost() async {
+    if (!await ensureLoggedIn(context, message: '请先登录后发布图文')) return;
     await Future.delayed(const Duration(milliseconds: 150));
     if (!mounted) return;
     final created = await Navigator.of(context).push<bool>(
@@ -103,6 +230,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   Future<void> _openCommunityDialog(_CommunityCreateKind kind) async {
+    if (!await ensureLoggedIn(context, message: '请先登录后发布社区内容')) return;
     if (kind == _CommunityCreateKind.circle) {
       await _openCreateCircleSheet();
       return;
@@ -258,6 +386,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   Future<void> _openCreateCircleSheet() async {
+    if (!await ensureLoggedIn(context, message: '请先登录后创建圈子')) return;
     final nameCtrl = TextEditingController();
     final placeCtrl = TextEditingController();
     final introCtrl = TextEditingController();
@@ -525,6 +654,8 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   Future<void> _openCreateSalonSheet() async {
+    if (!await ensureLoggedIn(context, message: '请先登录后创建沙龙')) return;
+    if (!mounted) return;
     final titleCtrl = TextEditingController();
     final timeCtrl = TextEditingController();
     final cityCtrl = TextEditingController();
@@ -623,7 +754,6 @@ class _MainScaffoldState extends State<MainScaffold> {
                 'quota': seats,
                 'fee_amount': amount,
                 'currency': 'cny',
-                'status': 'published',
                 'metadata': {
                   'salon_type': salonType,
                   'mode': mode,
@@ -634,6 +764,8 @@ class _MainScaffoldState extends State<MainScaffold> {
                 },
               });
               if (!mounted || !sheetContext.mounted) return;
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
               Navigator.of(sheetContext).pop();
               final localSalon = {
                 ...created,
@@ -649,10 +781,18 @@ class _MainScaffoldState extends State<MainScaffold> {
                   'benefit': _salonCreateBenefit(salonType, feeMode),
                 },
               };
-              _forumKey.currentState?.addCreatedSalon(localSalon);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('沙龙已创建，可以在“我的预约/活动”中管理')),
-              );
+              if (created['status']?.toString() == 'published') {
+                _forumKey.currentState?.addCreatedSalon(localSalon);
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('沙龙已创建，可以在“我的预约/活动”中管理')),
+                );
+              } else {
+                showSubmissionReviewSnackBar(
+                  messenger: messenger,
+                  navigator: navigator,
+                  message: '沙龙已提交审核，审核通过后展示',
+                );
+              }
             } catch (e) {
               if (!mounted) return;
               setSheetState(() => submitting = false);
@@ -831,9 +971,28 @@ class _MainScaffoldState extends State<MainScaffold> {
                                   decoration: InputDecoration(
                                     hintText: '金额，例如：2500',
                                     filled: true,
-                                    fillColor: Colors.white,
+                                    fillColor: context.artC.cardIconBg
+                                        .withOpacity(0.72),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(
+                                        color: context.artC.silver
+                                            .withOpacity(0.36),
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(
+                                        color: context.artC.silver
+                                            .withOpacity(0.32),
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: const BorderSide(
+                                        color: kCobalt,
+                                        width: 1.4,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -889,7 +1048,9 @@ class _MainScaffoldState extends State<MainScaffold> {
     });
   }
 
-  void _showCreateSheet() {
+  Future<void> _showCreateSheet() async {
+    if (!await ensureLoggedIn(context, message: '请先登录后发布资源')) return;
+    if (!mounted) return;
     final primaryKind = switch (_exploreKey.currentState?.activeTabIndex ?? 0) {
       0 => _ResourceKind.opportunity,
       1 => _ResourceKind.event,
@@ -1019,6 +1180,8 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   Future<void> _openResourceDialog(_ResourceKind kind) async {
+    if (!await ensureLoggedIn(context, message: '请先登录后发布资源')) return;
+    if (!mounted) return;
     if (kind == _ResourceKind.event) {
       final result = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
@@ -1126,16 +1289,20 @@ class _MainScaffoldState extends State<MainScaffold> {
                       .toList(),
                   'experience': noteCtrl.text.trim(),
                   'cooperation_intent': cityCtrl.text.trim(),
-                  'status': 'published',
+                  'status': 'reviewing',
                 });
               }
-              if (!mounted) return;
+              if (!mounted || !dialogContext.mounted) return;
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
               Navigator.of(dialogContext).pop();
               if (_currentIndex == 2) {
                 _exploreKey.currentState?.refreshActiveTab();
               }
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${labels.$1}成功')),
+              showSubmissionReviewSnackBar(
+                messenger: messenger,
+                navigator: navigator,
+                message: '${labels.$1}已提交审核',
               );
             } catch (e) {
               if (!mounted) return;
@@ -1264,6 +1431,7 @@ class _MainScaffoldState extends State<MainScaffold> {
       await Navigator.of(context).push<void>(
         MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
       );
+      _loadProfile();
       return;
     }
     setState(() => _currentIndex = 4);
@@ -1272,8 +1440,9 @@ class _MainScaffoldState extends State<MainScaffold> {
   @override
   Widget build(BuildContext context) {
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    final showTopHeader =
-        _currentIndex == 1 || _currentIndex == 2 || _currentIndex == 3;
+    final showTopHeader = (_currentIndex == 1 && !_usesWorkspaceTab) ||
+        _currentIndex == 2 ||
+        _currentIndex == 3;
     final contentTop = _currentIndex == 0
         ? 0.0
         : statusBarHeight + (showTopHeader ? _headerHeight : 0);
@@ -1294,7 +1463,9 @@ class _MainScaffoldState extends State<MainScaffold> {
               index: _currentIndex,
               children: [
                 const HomeScreen(),
-                NewsScaffold(key: _newsKey),
+                _usesWorkspaceTab
+                    ? _buildWorkspaceScreen()
+                    : NewsScaffold(key: _newsKey),
                 ExploreScreen(
                   key: _exploreKey,
                   onTabChanged: () {
@@ -1306,8 +1477,10 @@ class _MainScaffoldState extends State<MainScaffold> {
                   onTabChanged: () {
                     if (mounted) setState(() {});
                   },
+                  onCreateCircle: () =>
+                      _openCommunityDialog(_CommunityCreateKind.circle),
                 ),
-                const ProfileScreen(),
+                ProfileScreen(onOpenMainTab: switchToTab),
               ],
             ),
           ),
@@ -1319,6 +1492,7 @@ class _MainScaffoldState extends State<MainScaffold> {
               child: _TopHeader(
                 showCreateIcon: _currentIndex == 2 || _currentIndex == 3,
                 searchHint: _headerSearchHint,
+                searchValue: _headerSearchValue,
                 actionIcon: _headerActionIcon,
                 actionLabel: _headerActionLabel,
                 onSearchSubmit: _handleHeaderSearch,
@@ -1362,17 +1536,17 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   Widget _buildFloatingNav() {
     return Container(
-      constraints: const BoxConstraints(maxWidth: 520),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      constraints: const BoxConstraints(maxWidth: 500),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.88),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: context.artC.silver.withOpacity(0.2)),
+        color: context.artC.cardIconBg.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: context.artC.silver.withValues(alpha: 0.24)),
         boxShadow: [
           BoxShadow(
-            color: context.artC.ink.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
+            color: context.artC.ink.withValues(alpha: 0.045),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -1389,6 +1563,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                 return;
               }
               setState(() => _currentIndex = index);
+              if (index == 1 || index == 4) _loadProfile();
             },
           );
         }),
@@ -1397,13 +1572,14 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   void _handleHeaderSearch(String keyword) {
-    if (_currentIndex == 1) {
+    if (_currentIndex == 1 && !_usesWorkspaceTab) {
       _newsKey.currentState?.setSchoolSearchKeyword(keyword);
     } else if (_currentIndex == 2) {
       _exploreKey.currentState?.applySearch(keyword);
     } else if (_currentIndex == 3) {
       _forumKey.currentState?.applySearch(keyword);
     }
+    if (mounted) setState(() {});
   }
 
   void _handleHeaderAction() {
@@ -1415,7 +1591,9 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   String get _headerSearchHint {
-    if (_currentIndex == 1) return '搜索 RCA、插画、伦敦';
+    if (_currentIndex == 1) {
+      return _usesWorkspaceTab ? _workspaceSearchHint : '搜索 RCA、插画、伦敦';
+    }
     if (_currentIndex == 2) {
       return _exploreKey.currentState?.searchHint ?? '搜索合作机会、展览、艺术家';
     }
@@ -1423,6 +1601,19 @@ class _MainScaffoldState extends State<MainScaffold> {
       return _forumKey.currentState?.searchHint ?? '搜索问题、学校、作品集经验';
     }
     return '搜索院校、灵感、作品集问题';
+  }
+
+  String get _headerSearchValue {
+    if (_currentIndex == 1 && !_usesWorkspaceTab) {
+      return _newsKey.currentState?.schoolSearchKeyword ?? '';
+    }
+    if (_currentIndex == 2) {
+      return _exploreKey.currentState?.searchKeyword ?? '';
+    }
+    if (_currentIndex == 3) {
+      return _forumKey.currentState?.searchKeyword ?? '';
+    }
+    return '';
   }
 
   IconData? get _headerActionIcon {
@@ -1445,9 +1636,7 @@ class _MainScaffoldState extends State<MainScaffold> {
         _forumKey.currentState?.openMyReservations();
         break;
       case 3:
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('新聊天入口会接入联系人、合作消息和系统通知')),
-        );
+        _forumKey.currentState?.refreshActiveTab();
         break;
     }
   }
@@ -1500,6 +1689,7 @@ class _SheetGroupTitle extends StatelessWidget {
 class _TopHeader extends StatefulWidget {
   final bool showCreateIcon;
   final String searchHint;
+  final String searchValue;
   final IconData? actionIcon;
   final String? actionLabel;
   final ValueChanged<String> onSearchSubmit;
@@ -1508,6 +1698,7 @@ class _TopHeader extends StatefulWidget {
   const _TopHeader({
     required this.showCreateIcon,
     required this.searchHint,
+    required this.searchValue,
     required this.actionIcon,
     this.actionLabel,
     required this.onSearchSubmit,
@@ -1523,18 +1714,37 @@ class _TopHeaderState extends State<_TopHeader> {
   final FocusNode _focusNode = FocusNode();
 
   @override
+  void initState() {
+    super.initState();
+    _searchController.text = widget.searchValue;
+    _focusNode.addListener(_handleFocusChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _TopHeader oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.searchValue != oldWidget.searchValue &&
+        _searchController.text != widget.searchValue) {
+      _searchController.text = widget.searchValue;
+    }
+  }
+
+  @override
   void dispose() {
+    _focusNode.removeListener(_handleFocusChanged);
     _searchController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
+  void _handleFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
   void _handleSubmit(String value) {
     final keyword = value.trim();
-    if (keyword.isNotEmpty) {
-      widget.onSearchSubmit(keyword);
-      _focusNode.unfocus();
-    }
+    widget.onSearchSubmit(keyword);
+    _focusNode.unfocus();
   }
 
   void _clearSearch() {
@@ -1544,31 +1754,43 @@ class _TopHeaderState extends State<_TopHeader> {
 
   @override
   Widget build(BuildContext context) {
+    final isFocused = _focusNode.hasFocus;
+    final activeColor = Theme.of(context).brightness == Brightness.dark
+        ? kCobaltMuted
+        : kCobalt;
+
     return Container(
       height: _MainScaffoldState._headerHeight,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: context.artC.porcelain.withOpacity(0.96),
+        color: context.artC.porcelain.withValues(alpha: 0.96),
         border: Border(
-          bottom: BorderSide(color: context.artC.silver.withOpacity(0.12)),
+          bottom:
+              BorderSide(color: context.artC.silver.withValues(alpha: 0.12)),
         ),
       ),
       child: Row(
         children: [
           Expanded(
-            child: Container(
-              height: 42,
-              padding: const EdgeInsets.only(left: 14, right: 4),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              curve: Curves.easeOutCubic,
+              height: 46,
+              padding: const EdgeInsets.only(left: 14, right: 6),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.artC.cardIconBg,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: context.artC.silver.withOpacity(0.42),
+                  color: isFocused
+                      ? activeColor.withValues(alpha: 0.42)
+                      : context.artC.silver.withValues(alpha: 0.34),
+                  width: isFocused ? 1.2 : 1,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: context.artC.ink.withOpacity(0.035),
-                    blurRadius: 12,
+                    color: (isFocused ? activeColor : context.artC.ink)
+                        .withValues(alpha: isFocused ? 0.08 : 0.03),
+                    blurRadius: isFocused ? 16 : 10,
                     offset: const Offset(0, 4),
                   ),
                 ],
@@ -1577,30 +1799,41 @@ class _TopHeaderState extends State<_TopHeader> {
                 children: [
                   Icon(
                     Icons.search_rounded,
-                    size: 18,
-                    color: kCobalt.withOpacity(0.9),
+                    size: 19,
+                    color: activeColor.withValues(alpha: 0.88),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 9),
                   Expanded(
                     child: TextField(
                       controller: _searchController,
                       focusNode: _focusNode,
                       onSubmitted: _handleSubmit,
+                      cursorColor: activeColor,
                       textInputAction: TextInputAction.search,
+                      maxLines: 1,
+                      textAlignVertical: TextAlignVertical.center,
                       style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 13.5,
+                        height: 1.15,
+                        fontWeight: FontWeight.w800,
                         color: context.artC.ink,
                       ),
                       decoration: InputDecoration(
                         hintText: widget.searchHint,
                         hintStyle: TextStyle(
-                          fontSize: 12,
+                          fontSize: 13.5,
+                          height: 1.15,
                           fontWeight: FontWeight.w700,
-                          color: context.artC.ink.withOpacity(0.34),
+                          color: context.artC.ink.withValues(alpha: 0.36),
                         ),
                         border: InputBorder.none,
-                        isDense: true,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        focusedErrorBorder: InputBorder.none,
+                        filled: false,
+                        isCollapsed: true,
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
@@ -1608,15 +1841,18 @@ class _TopHeaderState extends State<_TopHeader> {
                   ValueListenableBuilder<TextEditingValue>(
                     valueListenable: _searchController,
                     builder: (context, value, _) {
-                      if (value.text.isEmpty) return const SizedBox.shrink();
+                      if (value.text.isEmpty) {
+                        return const SizedBox(width: 2);
+                      }
                       return GestureDetector(
                         onTap: _clearSearch,
-                        child: Padding(
-                          padding: const EdgeInsets.all(7),
+                        child: SizedBox(
+                          width: 30,
+                          height: 34,
                           child: Icon(
                             Icons.close_rounded,
-                            size: 16,
-                            color: context.artC.ink.withOpacity(0.42),
+                            size: 17,
+                            color: context.artC.ink.withValues(alpha: 0.4),
                           ),
                         ),
                       );
@@ -1624,17 +1860,23 @@ class _TopHeaderState extends State<_TopHeader> {
                   ),
                   GestureDetector(
                     onTap: () => _handleSubmit(_searchController.text),
-                    child: Container(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 160),
+                      curve: Curves.easeOutCubic,
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: kCobalt,
+                        color: isFocused
+                            ? activeColor
+                            : context.artC.silver.withValues(alpha: 0.34),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.arrow_forward_rounded,
-                        size: 18,
-                        color: Colors.white,
+                        size: 20,
+                        color: isFocused
+                            ? Colors.white
+                            : context.artC.ink.withValues(alpha: 0.5),
                       ),
                     ),
                   ),
@@ -1647,16 +1889,16 @@ class _TopHeaderState extends State<_TopHeader> {
             GestureDetector(
               onTap: widget.onActionTap,
               child: Container(
-                width: widget.actionLabel == null ? 34 : 54,
-                height: 42,
+                width: widget.actionLabel == null ? 40 : 58,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: context.artC.ink,
-                  borderRadius: BorderRadius.circular(14),
+                  color: context.artC.deepPanel,
+                  borderRadius: BorderRadius.circular(13),
                 ),
                 child: widget.actionLabel == null
                     ? Icon(
                         widget.actionIcon,
-                        size: widget.showCreateIcon ? 23 : 18,
+                        size: widget.showCreateIcon ? 21 : 18,
                         color: Colors.white,
                       )
                     : Center(
@@ -1806,7 +2048,7 @@ class _CircleCreateTextField extends StatelessWidget {
           hintText: hint,
           counterText: '',
           filled: true,
-          fillColor: Colors.white,
+          fillColor: context.artC.cardIconBg.withOpacity(0.72),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 14,
             vertical: 13,
@@ -1852,16 +2094,20 @@ class _CircleCreateChip extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? kCobalt : Colors.white,
+          color: selected
+              ? kCobalt.withOpacity(0.08)
+              : context.artC.cardIconBg.withOpacity(0.78),
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? kCobalt : context.artC.silver.withOpacity(0.52),
+            color: selected
+                ? kCobalt.withOpacity(0.24)
+                : context.artC.silver.withOpacity(0.52),
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : context.artC.ink.withOpacity(0.68),
+            color: selected ? kCobalt : context.artC.ink.withOpacity(0.68),
             fontSize: 12,
             fontWeight: FontWeight.w900,
           ),
@@ -1892,11 +2138,13 @@ class _CircleJoinModeCard extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.all(13),
         decoration: BoxDecoration(
-          color: selected ? context.artC.ink : Colors.white,
+          color: selected
+              ? kCobalt.withOpacity(0.08)
+              : context.artC.cardIconBg.withOpacity(0.78),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: selected
-                ? context.artC.ink
+                ? kCobalt.withOpacity(0.26)
                 : context.artC.silver.withOpacity(0.45),
           ),
         ),
@@ -1907,7 +2155,7 @@ class _CircleJoinModeCard extends StatelessWidget {
               children: [
                 Icon(
                   selected ? Icons.check_circle : Icons.radio_button_unchecked,
-                  color: selected ? Colors.white : kCobalt,
+                  color: kCobalt,
                   size: 17,
                 ),
                 const SizedBox(width: 6),
@@ -1915,7 +2163,7 @@ class _CircleJoinModeCard extends StatelessWidget {
                   child: Text(
                     title,
                     style: TextStyle(
-                      color: selected ? Colors.white : context.artC.ink,
+                      color: selected ? kCobalt : context.artC.ink,
                       fontSize: 12,
                       fontWeight: FontWeight.w900,
                     ),
@@ -1928,7 +2176,7 @@ class _CircleJoinModeCard extends StatelessWidget {
               subtitle,
               style: TextStyle(
                 color: selected
-                    ? Colors.white.withOpacity(0.58)
+                    ? context.artC.ink.withOpacity(0.48)
                     : context.artC.ink.withOpacity(0.42),
                 fontSize: 10,
                 height: 1.25,
@@ -1974,6 +2222,10 @@ class _NavButtonState extends State<_NavButton> {
 
   @override
   Widget build(BuildContext context) {
+    final activeColor = Theme.of(context).brightness == Brightness.dark
+        ? kCobaltMuted
+        : kCobalt;
+
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) => setState(() => _pressed = false),
@@ -1989,10 +2241,10 @@ class _NavButtonState extends State<_NavButton> {
           children: [
             Icon(
               widget.isSelected ? widget.item.activeIcon : widget.item.icon,
-              size: 24,
+              size: 22,
               color: widget.isSelected
-                  ? kCobalt
-                  : context.artC.ink.withOpacity(0.32),
+                  ? activeColor
+                  : context.artC.ink.withValues(alpha: 0.34),
             ),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 180),
@@ -2004,11 +2256,11 @@ class _NavButtonState extends State<_NavButton> {
                       padding: const EdgeInsets.only(top: 5),
                       child: Text(
                         widget.item.label,
-                        style: const TextStyle(
-                          color: kCobalt,
+                        style: TextStyle(
+                          color: activeColor,
                           fontSize: 9,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 0.2,
+                          letterSpacing: 0,
                         ),
                       ),
                     )

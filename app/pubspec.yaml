@@ -1,5 +1,5 @@
 name: artsee_app
-description: "Artiqore 艺衡 - 英国艺术留学平台"
+description: "Artiqore 艺见心 - 英国艺术留学平台"
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -15,6 +15,8 @@ dependencies:
   go_router: ^14.2.0
   timeago: ^3.7.0
   shared_preferences: ^2.2.3
+  file_picker: ^8.1.7
+  url_launcher: ^6.3.2
   image_picker: ^1.0.7
   http: ^1.2.2
   http_parser: ^4.0.0
@@ -30,6 +32,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/data/
     - assets/fonts/
     - assets/images/
   fonts:
@@ -49,4 +52,3 @@ flutter:
           weight: 600
         - asset: assets/fonts/NotoSerifSC-Bold.otf
           weight: 700
-

@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../data/school_display_aliases.dart';
 import '../../services/backend_api_service.dart';
 import '../../services/supabase_service.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import '../auth/login_screen.dart';
+import '../consultation/organization_list_screen.dart';
 import 'school_detail_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
@@ -190,8 +193,18 @@ class SchoolListScreenState extends State<SchoolListScreen>
     }
   }
 
-  Future<void> _toggleSavedSchool(Map<String, dynamic> school) async {
+  String? _schoolActionId(Map<String, dynamic> school) {
+    final remoteId = school['remote_school_id']?.toString();
+    if (remoteId != null && remoteId.isNotEmpty) return remoteId;
+
     final id = school['id']?.toString();
+    if (id == null || id.isEmpty) return null;
+    if (school['is_auxiliary_display'] == true) return null;
+    return id;
+  }
+
+  Future<void> _toggleSavedSchool(Map<String, dynamic> school) async {
+    final id = _schoolActionId(school);
     if (id == null || id.isEmpty || _savingSchoolIds.contains(id)) return;
     if (!SupabaseService.isLoggedIn) {
       await Navigator.of(context).push<void>(
@@ -290,6 +303,7 @@ class SchoolListScreenState extends State<SchoolListScreen>
 
   List<Map<String, dynamic>> _sortSchools(List<Map<String, dynamic>> rows) {
     final sorted = [...rows];
+    final keyword = _searchController.text.trim();
     int rankOf(Map<String, dynamic> item) =>
         (item['qs_art_rank'] as int?) ?? 99999;
     int disciplineCount(Map<String, dynamic> item) =>
@@ -305,23 +319,56 @@ class SchoolListScreenState extends State<SchoolListScreen>
         (rankOf(item) == 99999 ? 0 : (120 - rankOf(item)).clamp(0, 120)) +
         disciplineCount(item) * 8 +
         tagCount(item) * 4;
+    int searchPriority(Map<String, dynamic> item) {
+      if (keyword.isEmpty) return 0;
+      if (_rowHasExactAliasMatch(item, keyword)) return 0;
+      if (_rowHasNamePrefixMatch(item, keyword)) return 10;
+      if (_rowHasAliasFamilyMatch(item, keyword)) return 20;
+      return 50;
+    }
+
+    int compareSearchPriority(Map<String, dynamic> a, Map<String, dynamic> b) {
+      return searchPriority(a).compareTo(searchPriority(b));
+    }
 
     switch (_sortKey) {
       case _SchoolSortKey.qs:
-        sorted.sort((a, b) => rankOf(a).compareTo(rankOf(b)));
+        sorted.sort((a, b) {
+          final searchCompare = compareSearchPriority(a, b);
+          if (searchCompare != 0) return searchCompare;
+          return rankOf(a).compareTo(rankOf(b));
+        });
       case _SchoolSortKey.heat:
-        sorted.sort((a, b) => heatScore(b).compareTo(heatScore(a)));
+        sorted.sort((a, b) {
+          final searchCompare = compareSearchPriority(a, b);
+          if (searchCompare != 0) return searchCompare;
+          return heatScore(b).compareTo(heatScore(a));
+        });
       case _SchoolSortKey.difficultyLow:
-        sorted.sort((a, b) => rankOf(b).compareTo(rankOf(a)));
+        sorted.sort((a, b) {
+          final searchCompare = compareSearchPriority(a, b);
+          if (searchCompare != 0) return searchCompare;
+          return rankOf(b).compareTo(rankOf(a));
+        });
       case _SchoolSortKey.value:
-        sorted.sort((a, b) => valueScore(b).compareTo(valueScore(a)));
+        sorted.sort((a, b) {
+          final searchCompare = compareSearchPriority(a, b);
+          if (searchCompare != 0) return searchCompare;
+          return valueScore(b).compareTo(valueScore(a));
+        });
       case _SchoolSortKey.updated:
         sorted.sort(
-          (a, b) => (b['updated_at']?.toString() ?? '')
-              .compareTo(a['updated_at']?.toString() ?? ''),
+          (a, b) {
+            final searchCompare = compareSearchPriority(a, b);
+            if (searchCompare != 0) return searchCompare;
+            return (b['updated_at']?.toString() ?? '')
+                .compareTo(a['updated_at']?.toString() ?? '');
+          },
         );
       case _SchoolSortKey.recommended:
         sorted.sort((a, b) {
+          final searchCompare = compareSearchPriority(a, b);
+          if (searchCompare != 0) return searchCompare;
           final rankCompare = rankOf(a).compareTo(rankOf(b));
           if (rankCompare != 0) return rankCompare;
           return heatScore(b).compareTo(heatScore(a));
@@ -380,6 +427,16 @@ class SchoolListScreenState extends State<SchoolListScreen>
                     )
                   : const SizedBox.shrink(),
             ),
+            _ConsultationEntryCard(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const OrganizationListScreen(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
             if (_items.isEmpty && _loading)
               const Padding(
                 padding: EdgeInsets.only(top: 120),
@@ -421,24 +478,30 @@ class SchoolListScreenState extends State<SchoolListScreen>
               )
             else ...[
               for (var index = 0; index < _items.length; index++) ...[
-                _SchoolCard(
-                  data: _items[index],
-                  isSaved:
-                      _savedSchoolIds.contains(_items[index]['id']?.toString()),
-                  isSaving: _savingSchoolIds
-                      .contains(_items[index]['id']?.toString()),
-                  onSaveTap: () => _toggleSavedSchool(_items[index]),
-                  onTap: () {
-                    final id = _items[index]['id']?.toString();
-                    if (id != null && id.isNotEmpty) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => SchoolDetailScreen(id: id),
-                        ),
-                      );
-                    }
-                  },
-                ),
+                Builder(builder: (context) {
+                  final school = _items[index];
+                  final actionId = _schoolActionId(school);
+                  return _SchoolCard(
+                    data: school,
+                    isSaved:
+                        actionId != null && _savedSchoolIds.contains(actionId),
+                    isSaving:
+                        actionId != null && _savingSchoolIds.contains(actionId),
+                    onSaveTap: actionId == null
+                        ? null
+                        : () => _toggleSavedSchool(school),
+                    onTap: () {
+                      final id = school['id']?.toString();
+                      if (id != null && id.isNotEmpty) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => SchoolDetailScreen(id: id),
+                          ),
+                        );
+                      }
+                    },
+                  );
+                }),
                 const SizedBox(height: 10),
               ],
             ],
@@ -469,6 +532,71 @@ class SchoolListScreenState extends State<SchoolListScreen>
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ConsultationEntryCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _ConsultationEntryCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return ArtseeSurface(
+      onTap: onTap,
+      elevated: true,
+      radius: 22,
+      padding: const EdgeInsets.fromLTRB(16, 15, 16, 15),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: kCobalt.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: const Icon(
+              Icons.support_agent_outlined,
+              color: kCobalt,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '开始咨询入驻机构',
+                  style: TextStyle(
+                    color: context.artC.ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '浏览同城机构，会员可发起线上会话或查看线下联系方式',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: context.artC.ink.withValues(alpha: 0.42),
+                    fontSize: 11,
+                    height: 1.3,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: context.artC.ink.withValues(alpha: 0.32),
+          ),
+        ],
       ),
     );
   }
@@ -564,11 +692,13 @@ class _SortQuickChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? kCobalt : Colors.white,
+          color: selected
+              ? kCobalt.withValues(alpha: 0.08)
+              : context.artC.cardIconBg,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: selected
-                ? kCobalt
+                ? kCobalt.withValues(alpha: 0.28)
                 : context.artC.silver.withValues(alpha: 0.34),
           ),
         ),
@@ -577,9 +707,8 @@ class _SortQuickChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w800,
-            color: selected
-                ? Colors.white
-                : context.artC.ink.withValues(alpha: 0.62),
+            color:
+                selected ? kCobalt : context.artC.ink.withValues(alpha: 0.62),
           ),
         ),
       ),
@@ -967,11 +1096,13 @@ class _SheetChoiceChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
         decoration: BoxDecoration(
-          color: selected ? kCobalt : Colors.white,
+          color: selected
+              ? kCobalt.withValues(alpha: 0.08)
+              : context.artC.cardIconBg,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: selected
-                ? kCobalt
+                ? kCobalt.withValues(alpha: 0.28)
                 : context.artC.silver.withValues(alpha: 0.36),
           ),
         ),
@@ -980,9 +1111,8 @@ class _SheetChoiceChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w800,
-            color: selected
-                ? Colors.white
-                : context.artC.ink.withValues(alpha: 0.68),
+            color:
+                selected ? kCobalt : context.artC.ink.withValues(alpha: 0.68),
           ),
         ),
       ),
@@ -1182,11 +1312,13 @@ class _FilterSection extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? kCobalt : Colors.white,
+          color: isSelected
+              ? kCobalt.withValues(alpha: 0.08)
+              : context.artC.cardIconBg,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
-                ? kCobalt
+                ? kCobalt.withValues(alpha: 0.28)
                 : context.artC.silver.withValues(alpha: 0.4),
             width: 1,
           ),
@@ -1196,9 +1328,8 @@ class _FilterSection extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: isSelected
-                ? Colors.white
-                : context.artC.ink.withValues(alpha: 0.7),
+            color:
+                isSelected ? kCobalt : context.artC.ink.withValues(alpha: 0.7),
           ),
         ),
       ),
@@ -1248,97 +1379,94 @@ class _SchoolCard extends StatelessWidget {
     final applicationTier = _applicationTier(qsRank);
     final portfolioLevel = _portfolioLevel(qsRank);
 
-    return GestureDetector(
+    return ArtseeSurface(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [kShadowCard],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: context.artC.silver.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: logoUrl != null && logoUrl.isNotEmpty
-                        ? Image.network(
-                            logoUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                _SchoolCardLogoFallback(nameZh),
-                          )
-                        : Center(
-                            child: Text(
-                              nameZh.substring(0, 1),
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                color: kCobalt,
-                                letterSpacing: 1,
-                              ),
+      padding: const EdgeInsets.all(15),
+      radius: 18,
+      elevated: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: context.artC.silver.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: logoUrl != null && logoUrl.isNotEmpty
+                      ? Image.network(
+                          logoUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _SchoolCardLogoFallback(nameZh),
+                        )
+                      : Center(
+                          child: Text(
+                            nameZh.substring(0, 1),
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: kCobalt,
+                              letterSpacing: 0,
                             ),
                           ),
-                  ),
+                        ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      nameZh,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: context.artC.ink,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (nameEn != null && nameEn.isNotEmpty) ...[
+                      const SizedBox(height: 2),
                       Text(
-                        nameZh,
+                        nameEn,
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: context.artC.ink,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: context.artC.ink.withValues(alpha: 0.38),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (nameEn != null && nameEn.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          nameEn,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: context.artC.ink.withValues(alpha: 0.38),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                      const SizedBox(height: 6),
-                      Text(
-                        [
-                          if (city != null && city.isNotEmpty) city,
-                          if (country != null && country.isNotEmpty) country,
-                          schoolTypeLabel,
-                        ].join(' · '),
-                        style: TextStyle(
-                          fontSize: 12,
-                          height: 1.25,
-                          fontWeight: FontWeight.w700,
-                          color: context.artC.ink.withValues(alpha: 0.46),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
                     ],
-                  ),
+                    const SizedBox(height: 6),
+                    Text(
+                      [
+                        if (city != null && city.isNotEmpty) city,
+                        if (country != null && country.isNotEmpty) country,
+                        schoolTypeLabel,
+                      ].join(' · '),
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.25,
+                        fontWeight: FontWeight.w700,
+                        color: context.artC.ink.withValues(alpha: 0.46),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
+              ),
+              if (onSaveTap != null)
                 GestureDetector(
                   onTap: onSaveTap,
                   behavior: HitTestBehavior.opaque,
@@ -1388,61 +1516,59 @@ class _SchoolCard extends StatelessWidget {
                           ),
                   ),
                 ),
-              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: [
+              _MetaChip(qsRank == null ? 'QS 暂无' : 'QS 艺术 #$qsRank',
+                  highlighted: true),
+              _MetaChip(applicationTier, highlighted: applicationTier == '冲刺'),
+              _MetaChip(portfolioLevel,
+                  highlighted: portfolioLevel == '作品集要求高'),
+              if (disciplines.isNotEmpty)
+                ...disciplines
+                    .take(2)
+                    .map((item) => _MetaChip(_displayLabel(item))),
+              if (featureTags.isNotEmpty)
+                _MetaChip(_displayLabel(featureTags.first)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+            decoration: BoxDecoration(
+              color: context.artC.porcelain.withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 7,
-              runSpacing: 7,
+            child: Row(
               children: [
-                _MetaChip(qsRank == null ? 'QS 暂无' : 'QS 艺术 #$qsRank',
-                    highlighted: true),
-                _MetaChip(applicationTier,
-                    highlighted: applicationTier == '冲刺'),
-                _MetaChip(portfolioLevel,
-                    highlighted: portfolioLevel == '作品集要求高'),
-                if (disciplines.isNotEmpty)
-                  ...disciplines
-                      .take(2)
-                      .map((item) => _MetaChip(_displayLabel(item))),
-                if (featureTags.isNotEmpty)
-                  _MetaChip(_displayLabel(featureTags.first)),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-              decoration: BoxDecoration(
-                color: context.artC.porcelain.withValues(alpha: 0.72),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.psychology_alt_outlined,
-                    size: 16,
-                    color: kCobalt.withValues(alpha: 0.72),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '推荐理由：${fitText.replaceFirst('适合：', '')}',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        height: 1.25,
-                        fontWeight: FontWeight.w700,
-                        color: context.artC.ink.withValues(alpha: 0.58),
-                      ),
+                Icon(
+                  Icons.psychology_alt_outlined,
+                  size: 16,
+                  color: kCobalt.withValues(alpha: 0.72),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '推荐理由：${fitText.replaceFirst('适合：', '')}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      height: 1.25,
+                      fontWeight: FontWeight.w700,
+                      color: context.artC.ink.withValues(alpha: 0.58),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1462,7 +1588,7 @@ class _SchoolCardLogoFallback extends StatelessWidget {
           fontSize: 24,
           fontWeight: FontWeight.w700,
           color: kCobalt,
-          letterSpacing: 2,
+          letterSpacing: 0,
         ),
       ),
     );
@@ -1590,6 +1716,55 @@ List<String> _stringList(dynamic value) {
         .toList();
   }
   return const [];
+}
+
+bool _rowHasExactAliasMatch(Map<String, dynamic> row, String query) {
+  final exactValues = [
+    row['name_zh'],
+    row['name_en'],
+    row['slug'],
+    ..._stringList(row['aliases']),
+  ].whereType<String>();
+  return exactValues.any((value) {
+    final normalizedValue = normalizeSchoolAliasText(value);
+    final normalizedQuery = normalizeSchoolAliasText(query);
+    return normalizedValue == normalizedQuery ||
+        schoolAliasMatches(query, value);
+  });
+}
+
+bool _rowHasNamePrefixMatch(Map<String, dynamic> row, String query) {
+  final normalizedQuery = normalizeSchoolAliasText(query);
+  if (normalizedQuery.isEmpty) return false;
+  return [
+    row['name_zh'],
+    row['name_en'],
+  ].whereType<String>().any(
+        (value) => normalizeSchoolAliasText(value).startsWith(normalizedQuery),
+      );
+}
+
+bool _rowHasAliasFamilyMatch(Map<String, dynamic> row, String query) {
+  final matchedAliases = kSchoolDisplayAliases.where(
+    (alias) => alias.aliases.any((value) => schoolAliasMatches(query, value)),
+  );
+  return matchedAliases.any((alias) => _rowMatchesDisplayAlias(row, alias));
+}
+
+bool _rowMatchesDisplayAlias(
+  Map<String, dynamic> row,
+  SchoolDisplayAlias alias,
+) {
+  if (row['slug'] == alias.slug) return true;
+  final text = [
+    row['name_zh'],
+    row['name_en'],
+    row['description'],
+    row['slug'],
+    ..._stringList(row['aliases']),
+  ].whereType<String>().join(' ');
+  if (text.contains(alias.nameZh) || text.contains(alias.nameEn)) return true;
+  return alias.aliases.any((value) => schoolAliasMatches(text, value));
 }
 
 class _MetaChip extends StatelessWidget {

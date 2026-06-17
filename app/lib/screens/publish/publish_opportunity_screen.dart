@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../services/backend_api_service.dart';
 import '../../theme/artsee_ui_colors.dart';
+import '../../utils/auth_gate.dart';
+import '../../utils/submission_review_feedback.dart';
 
 class PublishOpportunityScreen extends StatefulWidget {
   const PublishOpportunityScreen({super.key});
@@ -66,6 +68,8 @@ class _PublishOpportunityScreenState extends State<PublishOpportunityScreen> {
   }
 
   Future<void> _submit() async {
+    if (!await ensureLoggedIn(context, message: '请先登录后发布合作机会')) return;
+    if (!mounted) return;
     if (!_formKey.currentState!.validate() || _submitting) return;
 
     setState(() => _submitting = true);
@@ -101,9 +105,12 @@ class _PublishOpportunityScreenState extends State<PublishOpportunityScreen> {
       });
 
       if (!mounted) return;
-      Navigator.of(context).pop(true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('提交成功，等待审核')),
+      final navigator = Navigator.of(context);
+      final messenger = ScaffoldMessenger.of(context);
+      navigator.pop(true);
+      showSubmissionReviewSnackBar(
+        messenger: messenger,
+        navigator: navigator,
       );
     } catch (e) {
       if (!mounted) return;
@@ -119,7 +126,7 @@ class _PublishOpportunityScreenState extends State<PublishOpportunityScreen> {
     return Scaffold(
       backgroundColor: context.artC.porcelain,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: context.artC.porcelain,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close),
@@ -403,14 +410,14 @@ class _AuditNotice extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7ED),
+        color: const Color(0xFF2563EB).withOpacity(0.06),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.18)),
+        border: Border.all(color: const Color(0xFF2563EB).withOpacity(0.14)),
       ),
-      child: const Text(
+      child: Text(
         '提交后将进入平台审核，审核通过后展示给艺术家。请确保预算、周期、版权和交付要求真实清晰。',
         style: TextStyle(
-          color: Color(0xFF9A3412),
+          color: const Color(0xFF2563EB).withOpacity(0.86),
           fontSize: 12,
           height: 1.45,
           fontWeight: FontWeight.w800,
@@ -474,7 +481,7 @@ class _FormField extends StatelessWidget {
             hintText: hint,
             hintStyle: TextStyle(color: context.artC.ink.withOpacity(0.38)),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: context.artC.cardIconBg,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide:
@@ -530,7 +537,7 @@ class _FormDropdown extends StatelessWidget {
           value: value,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white,
+            fillColor: context.artC.cardIconBg,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide:
@@ -585,7 +592,7 @@ class _DateField extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.artC.cardIconBg,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: context.artC.silver.withOpacity(0.3)),
             ),
@@ -747,11 +754,13 @@ class _MultiSelectField extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF2563EB) : Colors.white,
+                  color: isSelected
+                      ? const Color(0xFF2563EB).withOpacity(0.08)
+                      : context.artC.cardIconBg,
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
                     color: isSelected
-                        ? const Color(0xFF2563EB)
+                        ? const Color(0xFF2563EB).withOpacity(0.28)
                         : context.artC.silver.withOpacity(0.4),
                   ),
                 ),
@@ -761,7 +770,7 @@ class _MultiSelectField extends StatelessWidget {
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
                     color: isSelected
-                        ? Colors.white
+                        ? const Color(0xFF2563EB)
                         : context.artC.ink.withOpacity(0.7),
                   ),
                 ),

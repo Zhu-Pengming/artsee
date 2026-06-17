@@ -3,6 +3,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../services/backend_api_service.dart';
 import '../../theme/artsee_ui_colors.dart';
+import '../../utils/auth_gate.dart';
+import '../../utils/submission_review_feedback.dart';
 
 class PublishArtistScreen extends StatefulWidget {
   const PublishArtistScreen({super.key});
@@ -71,6 +73,8 @@ class _PublishArtistScreenState extends State<PublishArtistScreen> {
   }
 
   Future<void> _submit() async {
+    if (!await ensureLoggedIn(context, message: '请先登录后创建艺术家档案')) return;
+    if (!mounted) return;
     if (!_formKey.currentState!.validate() || _submitting) return;
 
     if (_selectedFields.isEmpty) {
@@ -91,7 +95,7 @@ class _PublishArtistScreenState extends State<PublishArtistScreen> {
         'cooperation_status': _cooperationStatus,
         'bio': _bioCtrl.text.trim(),
         'cooperation_intent': _cooperationIntentCtrl.text.trim(),
-        'status': 'published',
+        'status': 'reviewing',
         'metadata': {
           'real_name': _realNameCtrl.text.trim(),
           'education': _educationCtrl.text.trim(),
@@ -103,9 +107,12 @@ class _PublishArtistScreenState extends State<PublishArtistScreen> {
       });
 
       if (!mounted) return;
-      Navigator.of(context).pop(true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('提交成功，等待审核')),
+      final navigator = Navigator.of(context);
+      final messenger = ScaffoldMessenger.of(context);
+      navigator.pop(true);
+      showSubmissionReviewSnackBar(
+        messenger: messenger,
+        navigator: navigator,
       );
     } catch (e) {
       if (!mounted) return;
@@ -121,7 +128,7 @@ class _PublishArtistScreenState extends State<PublishArtistScreen> {
     return Scaffold(
       backgroundColor: context.artC.porcelain,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: context.artC.porcelain,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close),
@@ -460,14 +467,16 @@ class _FormField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             filled: true,
-            fillColor: Colors.white,
+            fillColor: context.artC.cardIconBg,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: context.artC.silver.withOpacity(0.3)),
+              borderSide:
+                  BorderSide(color: context.artC.silver.withOpacity(0.3)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: context.artC.silver.withOpacity(0.3)),
+              borderSide:
+                  BorderSide(color: context.artC.silver.withOpacity(0.3)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -514,14 +523,16 @@ class _FormDropdown extends StatelessWidget {
           value: value,
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white,
+            fillColor: context.artC.cardIconBg,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: context.artC.silver.withOpacity(0.3)),
+              borderSide:
+                  BorderSide(color: context.artC.silver.withOpacity(0.3)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: context.artC.silver.withOpacity(0.3)),
+              borderSide:
+                  BorderSide(color: context.artC.silver.withOpacity(0.3)),
             ),
           ),
           items: items
@@ -597,15 +608,16 @@ class _MultiSelectField extends StatelessWidget {
                 onChanged(newList);
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? const Color(0xFF2563EB)
-                      : Colors.white,
+                      ? const Color(0xFF2563EB).withOpacity(0.08)
+                      : context.artC.cardIconBg,
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
                     color: isSelected
-                        ? const Color(0xFF2563EB)
+                        ? const Color(0xFF2563EB).withOpacity(0.28)
                         : context.artC.silver.withOpacity(0.4),
                   ),
                 ),
@@ -615,7 +627,7 @@ class _MultiSelectField extends StatelessWidget {
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
                     color: isSelected
-                        ? Colors.white
+                        ? const Color(0xFF2563EB)
                         : context.artC.ink.withOpacity(0.7),
                   ),
                 ),
@@ -661,7 +673,7 @@ class _ImagePicker extends StatelessWidget {
             aspectRatio: aspectRatio,
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.artC.cardIconBg,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: context.artC.silver.withOpacity(0.3),
@@ -761,7 +773,7 @@ class _PortfolioGrid extends StatelessWidget {
                 onTap: images.length < 10 ? onAdd : null,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: context.artC.cardIconBg,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: context.artC.silver.withOpacity(0.3),

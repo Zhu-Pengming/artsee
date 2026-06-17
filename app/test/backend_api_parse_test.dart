@@ -38,6 +38,31 @@ void main() {
     expect(c.authorAvatarUrl, 'https://x/avatar.png');
   });
 
+  test('AppCommunityHotTopic.fromJson 解析热议话题与立场', () {
+    final topic = AppCommunityHotTopic.fromJson({
+      'id': 'topic-1',
+      'slug': 'ai-art-award-progress-or-cheating',
+      'tag': '🔥 争议',
+      'title': 'AI绘画拿大奖，这是艺术的进步还是作弊？',
+      'category': '行业就业',
+      'participant_count': 156,
+      'sort_order': 1,
+      'is_pinned': true,
+      'answers': [
+        {'stance': '正方·进步论', 'content': 'AI是新的画笔。'},
+        {'stance': '反方·作弊论', 'content': '这对人类创作者不公平。'},
+      ],
+      'metadata': {'theme': 'AI科技'},
+      'created_at': '2026-06-10T00:00:00Z',
+    });
+    expect(topic.slug, 'ai-art-award-progress-or-cheating');
+    expect(topic.participantCount, 156);
+    expect(topic.isPinned, true);
+    expect(topic.answers.length, 2);
+    expect(topic.answers.first.stance, '正方·进步论');
+    expect(topic.metadata['theme'], 'AI科技');
+  });
+
   test('AppProgram.fromJson 接受 Next / Supabase 嵌套 schools 与 admissions 数组', () {
     final json = {
       'id': '001f9862-a2c5-4d37-9b7a-720ceeef163e',

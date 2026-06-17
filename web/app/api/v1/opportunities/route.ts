@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/api/require-admin";
-import { getUserFromBearer } from "@/lib/api/auth-user";
+import {
+  isAdminProfile,
+  requireBusinessPublisher,
+} from "@/lib/api/authz";
 import { createServiceClient } from "@/lib/api/supabase-service";
 import { errorResponse, parsePagination } from "@/lib/api/route-helpers";
+
+const OPPORTUNITY_STATUSES = new Set(["draft", "reviewing", "published", "closed", "archived"]);
+
+function opportunityStatusForCreate(raw: unknown, admin: boolean) {
+  const status = typeof raw === "string" ? raw.trim() : "";
+  if (admin) return OPPORTUNITY_STATUSES.has(status) ? status : "published";
+  return status === "draft" ? "draft" : "reviewing";
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -34,15 +45,20 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getUserFromBearer(req);
-  if (!user) {
-    return NextResponse.json({ success: false, error: "未授权" }, { status: 401 });
-  }
+  const auth = await requireBusinessPublisher(req);
+  if ("response" in auth) return auth.response;
   try {
     const body = await req.json();
     const { data, error } = await createServiceClient()
       .from("opportunities")
-      .insert({ ...body, status: body.status ?? "published", created_by: user.id })
+      .insert({
+        ...body,
+        status: opportunityStatusForCreate(
+          body.status,
+          isAdminProfile(auth.profile)
+        ),
+        created_by: auth.user.id,
+      })
       .select()
       .single();
     if (error) return errorResponse(error);

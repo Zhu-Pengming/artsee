@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import '../../services/backend_api_service.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
@@ -161,12 +162,21 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
                       width: 64,
                       height: 64,
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [kShadowCard],
+                        color: context.artC.cardIconBg,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: context.artC.silver.withOpacity(0.48),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: context.artC.ink.withValues(alpha: 0.035),
+                            blurRadius: 14,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(18),
                         child: schoolLogo != null && schoolLogo.isNotEmpty
                             ? Image.network(
                                 schoolLogo,
@@ -469,30 +479,29 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: context.artC.silver.withOpacity(0.35),
-        borderRadius: BorderRadius.circular(10),
+        color: kCobalt.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: kCobalt.withOpacity(0.12)),
       ),
       child: Text(
         text,
         style: TextStyle(
           fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: context.artC.ink.withOpacity(0.7),
+          fontWeight: FontWeight.w800,
+          color: kCobalt.withOpacity(0.86),
         ),
       ),
     );
   }
 
   Widget _buildCard({required Widget child}) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(kRadiusLarge),
-        boxShadow: [kShadowCard],
+      child: ArtseeSurface(
+        padding: const EdgeInsets.all(20),
+        radius: 18,
+        child: child,
       ),
-      child: child,
     );
   }
 
@@ -642,7 +651,10 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: context.artC.silver.withOpacity(0.22),
-                borderRadius: BorderRadius.circular(kRadiusSmall),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: context.artC.silver.withOpacity(0.32),
+                ),
               ),
               child: Text(
                 evidenceNote,
@@ -678,7 +690,7 @@ class _ProgramDetailScreenState extends State<ProgramDetailScreen> {
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
+              letterSpacing: 0,
               color: context.artC.ink.withOpacity(0.32),
             ),
           ),
@@ -864,8 +876,8 @@ class _CareerPathNode extends StatelessWidget {
               decoration: BoxDecoration(
                 color: index == 0
                     ? kCobalt.withOpacity(0.08)
-                    : context.artC.silver.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(kRadiusSmall),
+                    : context.artC.cardIconBg,
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: index == 0
                       ? kCobalt.withOpacity(0.18)
@@ -881,7 +893,7 @@ class _CareerPathNode extends StatelessWidget {
                       fontSize: 9,
                       fontWeight: FontWeight.w900,
                       color: activeColor.withOpacity(0.72),
-                      letterSpacing: 1,
+                      letterSpacing: 0,
                     ),
                   ),
                   const SizedBox(height: 5),

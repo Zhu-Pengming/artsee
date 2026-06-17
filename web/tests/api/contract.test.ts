@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST as postCommunity } from "@/app/api/v1/community/posts/route";
+import { GET as getCommunityHotTopics } from "@/app/api/v1/community/hot-topics/route";
 import { POST as postAiSearch } from "@/app/api/v1/ai/schools/search/route";
 
 vi.mock("@/lib/api/supabase-service", () => ({
@@ -24,6 +25,32 @@ vi.mock("@/lib/api/supabase-service", () => ({
           }),
         };
       }
+      if (table === "community_hot_topics") {
+        const query: any = {};
+        query.select = () => query;
+        query.eq = () => query;
+        query.order = () => query;
+        query.range = async () => ({
+          data: [
+            {
+              id: "topic-1",
+              slug: "ai-art-award-progress-or-cheating",
+              tag: "🔥 争议",
+              title: "AI绘画拿大奖，这是艺术的进步还是作弊？",
+              category: "行业就业",
+              participant_count: 156,
+              sort_order: 1,
+              is_pinned: true,
+              answers: [],
+              metadata: { theme: "AI科技" },
+              created_at: "2026-06-10T00:00:00Z",
+            },
+          ],
+          count: 1,
+          error: null,
+        });
+        return query;
+      }
       return { select: () => ({ eq: () => ({}) }) };
     },
   }),
@@ -37,6 +64,18 @@ describe("community POST", () => {
     });
     const res = await postCommunity(req);
     expect(res.status).toBe(401);
+  });
+});
+
+describe("community hot topics", () => {
+  it("返回已发布热议话题列表", async () => {
+    const req = new NextRequest("http://localhost/api/v1/community/hot-topics?limit=3");
+    const res = await getCommunityHotTopics(req);
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.count).toBe(1);
+    expect(body.data[0].slug).toBe("ai-art-award-progress-or-cheating");
   });
 });
 

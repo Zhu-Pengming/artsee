@@ -2,6 +2,7 @@ import 'package:artsee_app/theme/artsee_ui_colors.dart';
 import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../services/backend_api_service.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 
 class CaseDetailScreen extends StatefulWidget {
@@ -106,59 +107,62 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
 
           // Applicant card
           SliverToBoxAdapter(
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black.withOpacity(0.05), blurRadius: 8)
-                  ]),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: kPrimary,
-                        child: Text(
-                            c.isAnonymous
-                                ? '匿'
-                                : (c.authorNickname?.substring(0, 1) ?? '?'),
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700)),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                          child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+              child: ArtseeSurface(
+                padding: const EdgeInsets.all(14),
+                radius: 18,
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: kCobalt,
+                          child: Text(
                               c.isAnonymous
-                                  ? '匿名用户'
-                                  : (c.authorNickname ?? '用户'),
+                                  ? '匿'
+                                  : (c.authorNickname?.substring(0, 1) ?? '?'),
                               style: const TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w600)),
-                          Text('${c.undergrad ?? ''} · GPA ${c.gpa ?? '—'}',
-                              style: TextStyle(
-                                  fontSize: 11, color: Colors.grey.shade500)),
-                        ],
-                      )),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      InfoCard(label: '目标院校', value: c.targetSchool ?? '—'),
-                      const SizedBox(width: 8),
-                      InfoCard(label: '申请专业', value: c.targetProgram ?? '—'),
-                    ],
-                  ),
-                ],
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800)),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                            child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                                c.isAnonymous
+                                    ? '匿名用户'
+                                    : (c.authorNickname ?? '用户'),
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: context.artC.ink)),
+                            const SizedBox(height: 2),
+                            Text(
+                                '${c.undergrad ?? '背景待补'} · GPA ${c.gpa ?? '—'}',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: context.artC.ink.withOpacity(0.42))),
+                          ],
+                        )),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _CaseInfoTile(
+                            label: '目标院校', value: c.targetSchool ?? '—'),
+                        const SizedBox(width: 8),
+                        _CaseInfoTile(
+                            label: '申请专业', value: c.targetProgram ?? '—'),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -176,14 +180,17 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFF7ED),
+                              color: kCobalt.withOpacity(0.07),
                               border:
-                                  Border.all(color: kPrimary.withOpacity(0.3)),
+                                  Border.all(color: kCobalt.withOpacity(0.12)),
                               borderRadius: BorderRadius.circular(99),
                             ),
                             child: Text('#$t',
-                                style: const TextStyle(
-                                    fontSize: 10, color: kPrimary)),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: kCobalt.withOpacity(0.9),
+                                  fontWeight: FontWeight.w800,
+                                )),
                           ))
                       .toList(),
                 ),
@@ -192,24 +199,27 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
 
           // Content
           SliverToBoxAdapter(
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                  color: Colors.white, borderRadius: BorderRadius.circular(16)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('申请心得',
-                      style:
-                          TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  Text(c.content ?? c.excerpt ?? '暂无内容',
-                      style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade700,
-                          height: 1.7)),
-                ],
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: ArtseeSurface(
+                padding: const EdgeInsets.all(16),
+                radius: 18,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('申请心得',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: context.artC.ink)),
+                    const SizedBox(height: 8),
+                    Text(c.content ?? c.excerpt ?? '暂无内容',
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: context.artC.ink.withOpacity(0.66),
+                            height: 1.7)),
+                  ],
+                ),
               ),
             ),
           ),
@@ -234,6 +244,51 @@ class _CaseDetailScreenState extends State<CaseDetailScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CaseInfoTile extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _CaseInfoTile({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        decoration: BoxDecoration(
+          color: context.artC.silver.withOpacity(0.18),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: context.artC.silver.withOpacity(0.32)),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: kCobalt.withOpacity(0.9),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: context.artC.ink.withOpacity(0.38),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -298,17 +353,21 @@ class _ActionBtn extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: Colors.grey.shade200),
-          borderRadius: BorderRadius.circular(12),
+          color: context.artC.cardIconBg,
+          border: Border.all(color: context.artC.silver.withOpacity(0.42)),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 14, color: Colors.grey.shade500),
+            Icon(icon, size: 14, color: kCobalt.withOpacity(0.72)),
             const SizedBox(width: 4),
             Text(label,
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: context.artC.ink.withOpacity(0.56),
+                  fontWeight: FontWeight.w700,
+                )),
           ],
         ),
       ),

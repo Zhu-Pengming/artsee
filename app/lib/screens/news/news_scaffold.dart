@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import '../schools/school_list_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 import '../../services/backend_api_service.dart';
+import '../../services/supabase_service.dart';
+import '../../utils/auth_gate.dart';
 import '_radar_compare_chart.dart';
 import '_application_workspace_widgets.dart';
 
@@ -221,6 +224,7 @@ class _ToolboxTabState extends State<_ToolboxTab> {
   bool _loading = true;
   bool _loadingApplicationPlan = false;
   bool _generatingApplicationPlan = false;
+  bool _needsLogin = false;
   String? _error;
   String? _applicationPlanError;
   int _targetSchoolCount = 0;
@@ -234,8 +238,24 @@ class _ToolboxTabState extends State<_ToolboxTab> {
   }
 
   Future<void> _loadData() async {
+    if (!SupabaseService.isLoggedIn) {
+      setState(() {
+        _loading = false;
+        _needsLogin = true;
+        _error = null;
+        _applicationPlanError = null;
+        _progress = null;
+        _applicationPlan = null;
+        _targetSchoolCount = 0;
+        _materialCount = 0;
+        _completedMaterialCount = 0;
+      });
+      return;
+    }
+
     setState(() {
       _loading = true;
+      _needsLogin = false;
       _error = null;
     });
     try {
@@ -268,7 +288,23 @@ class _ToolboxTabState extends State<_ToolboxTab> {
     _loadData();
   }
 
+  Future<void> _loginAndReload() async {
+    final ok = await ensureLoggedIn(
+      context,
+      message: '登录后可以查看申请计划和材料进度',
+    );
+    if (!ok || !mounted) return;
+    await _loadData();
+  }
+
   Future<void> _loadApplicationPlan({bool silent = false}) async {
+    if (!SupabaseService.isLoggedIn) {
+      if (!silent && mounted) {
+        setState(() => _needsLogin = true);
+      }
+      return;
+    }
+
     if (!silent) {
       setState(() {
         _loadingApplicationPlan = true;
@@ -295,6 +331,12 @@ class _ToolboxTabState extends State<_ToolboxTab> {
 
   Future<void> _generateApplicationPlan() async {
     if (_generatingApplicationPlan) return;
+    final ok = await ensureLoggedIn(
+      context,
+      message: '登录后可以生成申请计划',
+    );
+    if (!ok) return;
+
     setState(() => _generatingApplicationPlan = true);
     try {
       final data = await BackendApiService.generateApplicationPlan();
@@ -316,6 +358,12 @@ class _ToolboxTabState extends State<_ToolboxTab> {
   }
 
   Future<void> _toggleApplicationPlanTask(Map<String, dynamic> task) async {
+    final ok = await ensureLoggedIn(
+      context,
+      message: '登录后可以更新申请任务',
+    );
+    if (!ok) return;
+
     final id = task['id']?.toString();
     if (id == null) return;
     final next = task['status'] == 'done' ? 'todo' : 'done';
@@ -359,6 +407,17 @@ class _ToolboxTabState extends State<_ToolboxTab> {
                 ),
               ),
             )
+          else if (_needsLogin)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: _PlanEmptyState(
+                icon: Icons.lock_outline_rounded,
+                title: '登录后查看申请计划',
+                body: '申请进度、目标院校和时间线需要绑定到你的账号，登录后会自动读取你的目标池与材料状态。',
+                actionLabel: '去登录',
+                onAction: () => _loginAndReload(),
+              ),
+            )
           else if (_error != null)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 40),
@@ -386,6 +445,7 @@ class _ToolboxTabState extends State<_ToolboxTab> {
               materialCount: _materialCount,
               completedMaterialCount: _completedMaterialCount,
               hasTargetSchools: hasTargetSchools,
+              onPrimaryAction: widget.onGoSchools,
             ),
             const SizedBox(height: 14),
 
@@ -938,6 +998,7 @@ class _CompareTabState extends State<_CompareTab> {
   Map<String, dynamic>? _report;
   bool _comparing = false;
   bool _loadingTargetPool = true;
+  bool _needsLogin = false;
 
   @override
   void initState() {
@@ -946,21 +1007,46 @@ class _CompareTabState extends State<_CompareTab> {
   }
 
   Future<void> _loadTargetPool() async {
-    setState(() => _loadingTargetPool = true);
+    if (!SupabaseService.isLoggedIn) {
+      if (!mounted) return;
+      setState(() {
+        _targetPool = const [];
+        _loadingTargetPool = false;
+        _needsLogin = true;
+      });
+      return;
+    }
+
+    setState(() {
+      _loadingTargetPool = true;
+      _needsLogin = false;
+    });
     try {
       final saved = await BackendApiService.fetchSavedSchools(limit: 20);
       if (!mounted) return;
       setState(() {
         _targetPool = saved.data;
         _loadingTargetPool = false;
+        _needsLogin = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
+      final message = e.toString();
       setState(() {
         _targetPool = const [];
         _loadingTargetPool = false;
+        _needsLogin = message.contains('401') || message.contains('未授权');
       });
     }
+  }
+
+  Future<void> _loginAndReload() async {
+    final ok = await ensureLoggedIn(
+      context,
+      message: '登录后可以使用目标院校对比',
+    );
+    if (!ok || !mounted) return;
+    await _loadTargetPool();
   }
 
   void _toggleSchool(Map<String, dynamic> school) {
@@ -996,6 +1082,12 @@ class _CompareTabState extends State<_CompareTab> {
       );
       return;
     }
+    final ok = await ensureLoggedIn(
+      context,
+      message: '登录后可以生成院校对比报告',
+    );
+    if (!ok) return;
+
     setState(() => _comparing = true);
     try {
       final report = await BackendApiService.compareSchools(
@@ -1016,8 +1108,14 @@ class _CompareTabState extends State<_CompareTab> {
     }
   }
 
-  void _showAddSchoolSheet() {
-    showModalBottomSheet(
+  Future<void> _showAddSchoolSheet() async {
+    final ok = await ensureLoggedIn(
+      context,
+      message: '登录后可以添加目标院校',
+    );
+    if (!ok || !mounted) return;
+
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -1027,11 +1125,11 @@ class _CompareTabState extends State<_CompareTab> {
           _toggleSchool(school);
         },
       ),
-    ).then((_) {
-      // 关闭后刷新主页面
-      if (mounted) setState(() {});
-      _loadTargetPool();
-    });
+    );
+    // 关闭后刷新主页面
+    if (!mounted) return;
+    setState(() {});
+    await _loadTargetPool();
   }
 
   @override
@@ -1048,9 +1146,12 @@ class _CompareTabState extends State<_CompareTab> {
         // 已选学校区 或 空状态
         if (_selected.isEmpty)
           _CompareEmptyState(
-            title: '先加入目标池，再做对比',
-            subtitle: '从院校页点击「目标池」或在这里添加 2-5 所学校，对比排名、作品集难度、预算和城市资源。',
-            onRetry: null,
+            title: _needsLogin ? '登录后使用目标院校对比' : '先加入目标池，再做对比',
+            subtitle: _needsLogin
+                ? '目标池和对比报告需要绑定到你的账号，登录后可以读取已收藏院校并生成多维对比。'
+                : '从院校页点击「目标池」或在这里添加 2-5 所学校，对比排名、作品集难度、预算和城市资源。',
+            actionLabel: _needsLogin ? '去登录' : null,
+            onRetry: _needsLogin ? () => _loginAndReload() : null,
           )
         else
           _SelectedSchoolsPanel(
@@ -1058,14 +1159,14 @@ class _CompareTabState extends State<_CompareTab> {
             onRemove: _removeSchool,
           ),
 
-        if (_selected.isEmpty) ...[
+        if (_selected.isEmpty && !_needsLogin) ...[
           const SizedBox(height: 14),
           _TargetPoolPanel(
             loading: _loadingTargetPool,
             schools: _targetPool,
             selected: _selected,
             onAdd: _toggleSchool,
-            onOpenAddSheet: _showAddSchoolSheet,
+            onOpenAddSheet: () => _showAddSchoolSheet(),
           ),
         ],
 
@@ -1075,7 +1176,7 @@ class _CompareTabState extends State<_CompareTab> {
         _CompareActionButtons(
           selectedCount: _selected.length,
           comparing: _comparing,
-          onAddSchool: _showAddSchoolSheet,
+          onAddSchool: () => _showAddSchoolSheet(),
           onCompare: _generateReport,
         ),
 
@@ -1113,10 +1214,17 @@ class _SelectedSchoolsPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: context.artC.ink,
-        borderRadius: BorderRadius.circular(20),
+        color: context.artC.deepPanel,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: context.artC.ink.withValues(alpha: 0.035),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1355,9 +1463,9 @@ class _CompareActionButtons extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: kCobalt.withValues(alpha: 0.3)),
+                color: context.artC.cardIconBg,
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: kCobalt.withValues(alpha: 0.26)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1386,7 +1494,7 @@ class _CompareActionButtons extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
                 color: canCompare ? kCobalt : kCobalt.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(13),
               ),
               child: Center(
                 child: Text(
@@ -2384,11 +2492,13 @@ class _DynamicCompareTable extends StatelessWidget {
 class _CompareEmptyState extends StatelessWidget {
   final String title;
   final String subtitle;
+  final String? actionLabel;
   final VoidCallback? onRetry;
 
   const _CompareEmptyState({
     required this.title,
     required this.subtitle,
+    this.actionLabel,
     this.onRetry,
   });
 
@@ -2443,10 +2553,24 @@ class _CompareEmptyState extends StatelessWidget {
                 ),
               ),
               if (onRetry != null)
-                IconButton(
-                  onPressed: onRetry,
-                  icon: const Icon(Icons.refresh_rounded),
-                  color: kCobalt,
+                GestureDetector(
+                  onTap: onRetry,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: kCobalt.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      actionLabel ?? '刷新',
+                      style: const TextStyle(
+                        color: kCobalt,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -2543,7 +2667,7 @@ class _DarkHeroCard extends StatelessWidget {
                     color: Colors.white.withOpacity(0.38),
                     fontSize: 9,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 1.8,
+                    letterSpacing: 0,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -2623,7 +2747,7 @@ class _MetricStrip extends StatelessWidget {
                     color: context.artC.ink.withOpacity(0.36),
                     fontSize: 9,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
+                    letterSpacing: 0,
                   ),
                 ),
               ],
@@ -2651,7 +2775,7 @@ class _NewsSectionHeader extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w900,
-              letterSpacing: 1.2,
+              letterSpacing: 0,
               color: context.artC.ink,
             ),
           ),
@@ -2662,7 +2786,7 @@ class _NewsSectionHeader extends StatelessWidget {
             color: kCobalt,
             fontSize: 10,
             fontWeight: FontWeight.w900,
-            letterSpacing: 1.4,
+            letterSpacing: 0,
           ),
         ),
       ],
@@ -2733,7 +2857,7 @@ class _FeatureArticle extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 8,
                       fontWeight: FontWeight.w900,
-                      letterSpacing: 1.6,
+                      letterSpacing: 0,
                     ),
                   ),
                 ),
@@ -3084,60 +3208,13 @@ class _NewsSegmentTabs extends StatelessWidget {
       (label: '申请计划', icon: Icons.inventory_2_outlined),
     ];
 
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: context.artC.silver.withOpacity(0.28),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: TabBar(
-        controller: controller,
-        indicator: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: context.artC.ink.withOpacity(0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        indicatorSize: TabBarIndicatorSize.tab,
-        dividerColor: Colors.transparent,
-        labelColor: kCobalt,
-        unselectedLabelColor: context.artC.ink.withOpacity(0.42),
-        labelStyle: const TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w900,
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w800,
-        ),
-        tabs: tabs
-            .map(
-              (tab) => Tab(
-                height: 40,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(tab.icon, size: 12),
-                    const SizedBox(width: 2),
-                    Flexible(
-                      child: Text(
-                        tab.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-            .toList(),
-      ),
+    return ArtseeSegmentedTabs(
+      controller: controller,
+      tabs: tabs
+          .map((tab) => ArtseeSegmentTab(label: tab.label, icon: tab.icon))
+          .toList(),
+      labelFontSize: 10.5,
+      iconSize: 12.5,
     );
   }
 }

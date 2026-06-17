@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/models.dart';
 import '../../services/backend_api_service.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
@@ -538,16 +539,18 @@ class _DetailBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
-        color: dark ? kCobalt : Colors.white,
+        color: dark ? kCobalt.withOpacity(0.08) : context.artC.cardIconBg,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: dark ? kCobalt : context.artC.silver.withOpacity(0.55),
+          color: dark
+              ? kCobalt.withOpacity(0.28)
+              : context.artC.silver.withOpacity(0.55),
         ),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: dark ? Colors.white : context.artC.ink.withOpacity(0.58),
+          color: dark ? kCobalt : context.artC.ink.withOpacity(0.58),
           fontSize: 10,
           fontWeight: FontWeight.w900,
         ),
@@ -572,7 +575,7 @@ class _Metric extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.artC.cardIconBg,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: context.artC.silver.withOpacity(0.55)),
       ),
@@ -645,19 +648,17 @@ class _CommentsSection extends StatelessWidget {
               ),
             )
           else if (comments.isEmpty)
-            Container(
+            SizedBox(
               width: double.infinity,
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(kRadiusMedium),
-                border: Border.all(color: context.artC.silver.withOpacity(0.5)),
-              ),
-              child: Text(
-                isQa ? '还没有回答，分享你的经验或建议。' : '还没有评论，来写下第一句反馈。',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: context.artC.ink.withOpacity(0.42),
+              child: ArtseeSurface(
+                padding: const EdgeInsets.all(18),
+                radius: 16,
+                child: Text(
+                  isQa ? '还没有回答，分享你的经验或建议。' : '还没有评论，来写下第一句反馈。',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: context.artC.ink.withOpacity(0.42),
+                  ),
                 ),
               ),
             )
@@ -704,7 +705,7 @@ class _AnswerGroupTitle extends StatelessWidget {
           color: context.artC.ink.withOpacity(0.48),
           fontSize: 11,
           fontWeight: FontWeight.w900,
-          letterSpacing: 1.2,
+          letterSpacing: 0,
         ),
       ),
     );
@@ -714,39 +715,39 @@ class _AnswerGroupTitle extends StatelessWidget {
 class _InviteAnswerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(kRadiusMedium),
-        border: Border.all(color: context.artC.silver.withOpacity(0.5)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.verified_outlined, color: kCobalt, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              '暂无认证回答，可以邀请校友、导师或顾问来回答。',
-              style: TextStyle(
-                color: context.artC.ink.withOpacity(0.52),
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: SizedBox(
+        width: double.infinity,
+        child: ArtseeSurface(
+          padding: const EdgeInsets.all(14),
+          radius: 16,
+          child: Row(
+            children: [
+              const Icon(Icons.verified_outlined, color: kCobalt, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '暂无认证回答，可以邀请校友、导师或顾问来回答。',
+                  style: TextStyle(
+                    color: context.artC.ink.withOpacity(0.52),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 10),
+              Text(
+                '邀请',
+                style: TextStyle(
+                  color: kCobalt,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
-          Text(
-            '邀请',
-            style: TextStyle(
-              color: kCobalt,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -761,75 +762,74 @@ class _CommentTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = comment.authorNickname ?? 'Artsee 用户';
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(kRadiusMedium),
-        border: Border.all(color: context.artC.silver.withOpacity(0.5)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: kCobalt.withOpacity(0.08),
-            child: ClipOval(
-              child: comment.authorAvatarUrl != null &&
-                      comment.authorAvatarUrl!.isNotEmpty
-                  ? Image.network(
-                      comment.authorAvatarUrl!,
-                      width: 32,
-                      height: 32,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _CommentInitial(name: name),
-                    )
-                  : _CommentInitial(name: name),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: ArtseeSurface(
+        padding: const EdgeInsets.all(14),
+        radius: 16,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: kCobalt.withOpacity(0.08),
+              child: ClipOval(
+                child: comment.authorAvatarUrl != null &&
+                        comment.authorAvatarUrl!.isNotEmpty
+                    ? Image.network(
+                        comment.authorAvatarUrl!,
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) =>
+                            _CommentInitial(name: name),
+                      )
+                    : _CommentInitial(name: name),
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        isQa && comment.likeCount > 0 ? '$name · 已认证' : name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: context.artC.ink,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          isQa && comment.likeCount > 0 ? '$name · 已认证' : name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: context.artC.ink,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      timeAgo(comment.createdAt),
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: context.artC.ink.withOpacity(0.32),
+                      const SizedBox(width: 8),
+                      Text(
+                        timeAgo(comment.createdAt),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: context.artC.ink.withOpacity(0.32),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  comment.body,
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 1.5,
-                    color: context.artC.ink.withOpacity(0.74),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  Text(
+                    comment.body,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.5,
+                      color: context.artC.ink.withOpacity(0.74),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -887,7 +887,7 @@ class _CommentComposer extends StatelessWidget {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.artC.cardIconBg,
                   borderRadius: BorderRadius.circular(999),
                   border:
                       Border.all(color: context.artC.silver.withOpacity(0.55)),

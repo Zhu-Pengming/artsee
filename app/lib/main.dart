@@ -37,7 +37,8 @@ void _applySystemUi(bool isDark) {
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
       systemNavigationBarColor: isDark ? const Color(0xFF07080C) : kPorcelain,
-      systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+      systemNavigationBarIconBrightness:
+          isDark ? Brightness.light : Brightness.dark,
     ),
   );
 }
@@ -98,7 +99,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
   void initState() {
     super.initState();
     _init();
-    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((_) => _reload());
+    _authSub = Supabase.instance.client.auth.onAuthStateChange
+        .listen((_) => _reload());
   }
 
   Future<void> _init() async {
@@ -164,13 +166,17 @@ class _AuthWrapperState extends State<AuthWrapper> {
         ),
       );
     }
-    final dbDone = _profile != null && _profile!['has_completed_onboarding'] == true;
+    final dbDone =
+        _profile != null && _profile!['has_completed_onboarding'] == true;
     final devSkip = AppConfig.devLoginEnabled &&
         SupabaseService.currentUser?.email == 'dev.test@artsee.app';
     final done = dbDone || _onboardingDoneThisSession || devSkip;
     if (!done) {
       return ArtInterestOnboardingScreen(onCompleted: _onOnboardingCompleted);
     }
-    return MainScaffold(key: MainScaffold.globalKey);
+    return MainScaffold(
+      key: MainScaffold.globalKey,
+      initialProfile: _profile,
+    );
   }
 }

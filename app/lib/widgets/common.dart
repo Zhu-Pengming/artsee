@@ -77,7 +77,7 @@ const kSerifTitle = TextStyle(
   fontWeight: FontWeight.w700,
   color: kInk,
   height: 1.3,
-  letterSpacing: 0.5,
+  letterSpacing: 0,
 );
 
 /// 衬线体大标题
@@ -86,14 +86,14 @@ const kSerifHeadline = TextStyle(
   fontWeight: FontWeight.w700,
   color: kInk,
   height: 1.2,
-  letterSpacing: 0.5,
+  letterSpacing: 0,
 );
 
 /// 标签文字
 const kLabelStyle = TextStyle(
   fontSize: 10,
   fontWeight: FontWeight.w600,
-  letterSpacing: 0.5,
+  letterSpacing: 0,
 );
 
 /// 正文文字
@@ -126,16 +126,26 @@ LinearGradient schoolGradient(String? school) {
     '皇家艺术学院': [const Color(0xFFDC2626), const Color(0xFFF87171)],
   };
   final colors = map[school] ?? [kCobalt, kCobaltMuted];
-  return LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight);
+  return LinearGradient(
+      colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight);
 }
 
 LinearGradient resultGradient(String result) {
   if (result == 'admitted') {
-    return const LinearGradient(colors: [Color(0xFF16A34A), Color(0xFF4ADE80)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+    return const LinearGradient(
+        colors: [Color(0xFF16A34A), Color(0xFF4ADE80)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight);
   } else if (result == 'waitlisted') {
-    return const LinearGradient(colors: [Color(0xFFCA8A04), const Color(0xFFFBBF24)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+    return const LinearGradient(
+        colors: [Color(0xFFCA8A04), const Color(0xFFFBBF24)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight);
   }
-  return const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFFF87171)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+  return const LinearGradient(
+      colors: [Color(0xFFDC2626), Color(0xFFF87171)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight);
 }
 
 String resultLabel(String result) {
@@ -170,7 +180,12 @@ class TagChip extends StatelessWidget {
   final bool active;
   final VoidCallback? onTap;
 
-  const TagChip({super.key, required this.label, this.active = false, this.onTap});
+  const TagChip({
+    super.key,
+    required this.label,
+    this.active = false,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -180,16 +195,19 @@ class TagChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: active ? kCobalt : kSilver.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(kRadiusSmall),
-          border: active ? null : Border.all(color: kSilver, width: 1),
+          color: active ? kCobalt.withOpacity(0.08) : kSilver.withOpacity(0.36),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: active ? kCobalt.withOpacity(0.26) : kSilver,
+            width: 1,
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 11,
-            color: active ? Colors.white : kInk.withOpacity(0.6),
-            fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+            color: active ? kCobalt : kInk.withOpacity(0.6),
+            fontWeight: active ? FontWeight.w800 : FontWeight.w600,
           ),
         ),
       ),
@@ -202,7 +220,12 @@ class SectionHeader extends StatelessWidget {
   final String? action;
   final VoidCallback? onAction;
 
-  const SectionHeader({super.key, required this.title, this.action, this.onAction});
+  const SectionHeader({
+    super.key,
+    required this.title,
+    this.action,
+    this.onAction,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -223,7 +246,8 @@ class SectionHeader extends StatelessWidget {
             GestureDetector(
               onTap: onAction,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: kCobalt.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(kRadiusSmall),
@@ -231,9 +255,14 @@ class SectionHeader extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(action!, style: const TextStyle(fontSize: 11, color: kCobalt, fontWeight: FontWeight.w600)),
+                    Text(action!,
+                        style: const TextStyle(
+                            fontSize: 11,
+                            color: kCobalt,
+                            fontWeight: FontWeight.w600)),
                     const SizedBox(width: 2),
-                    Icon(Icons.arrow_forward_ios, size: 10, color: kCobalt.withOpacity(0.7)),
+                    Icon(Icons.arrow_forward_ios,
+                        size: 10, color: kCobalt.withOpacity(0.7)),
                   ],
                 ),
               ),
@@ -299,7 +328,11 @@ class GradientBanner extends StatelessWidget {
   final Widget child;
   final double height;
 
-  const GradientBanner({super.key, required this.gradient, required this.child, this.height = 120});
+  const GradientBanner(
+      {super.key,
+      required this.gradient,
+      required this.child,
+      this.height = 120});
 
   @override
   Widget build(BuildContext context) {
@@ -319,19 +352,35 @@ class InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = isDark ? const Color(0xFF171A21) : Colors.white;
+    final ink = isDark ? const Color(0xFFECEDF1) : kInk;
+    final silver = isDark ? const Color(0xFF2E333D) : kSilver;
+
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: surface,
           borderRadius: BorderRadius.circular(kRadiusMedium),
-          boxShadow: [kShadowCard],
+          border: Border.all(color: silver.withOpacity(0.34)),
+          boxShadow: [
+            BoxShadow(
+              color: ink.withOpacity(0.026),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           children: [
             Text(
               value,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: kCobalt),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: kCobalt,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
@@ -339,7 +388,11 @@ class InfoCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(fontSize: 10, color: kInk.withOpacity(0.4), letterSpacing: 0.5),
+              style: TextStyle(
+                fontSize: 10,
+                color: ink.withOpacity(0.4),
+                letterSpacing: 0,
+              ),
             ),
           ],
         ),
@@ -370,6 +423,11 @@ class PorcelainCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surface = isDark ? const Color(0xFF171A21) : Colors.white;
+    final ink = isDark ? const Color(0xFFECEDF1) : kInk;
+    final silver = isDark ? const Color(0xFF2E333D) : kSilver;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -377,10 +435,19 @@ class PorcelainCard extends StatelessWidget {
         height: height,
         padding: padding,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(kRadiusLarge),
-          boxShadow: [kShadowCard],
-          border: Border.all(color: kSilver.withOpacity(0.5), width: 1),
+          color: surface,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: ink.withOpacity(0.026),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(
+            color: silver.withOpacity(0.34),
+            width: 1,
+          ),
         ),
         child: child,
       ),

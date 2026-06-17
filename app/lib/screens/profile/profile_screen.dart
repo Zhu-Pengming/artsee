@@ -2,14 +2,24 @@ import 'package:flutter/material.dart';
 import '../../config/dev_test_account.dart';
 import '../../services/backend_api_service.dart';
 import '../../services/supabase_service.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import '../auth/login_screen.dart';
+import '../mentors/mentor_application_screen.dart';
+import '../mentors/mentor_list_screen.dart';
 import '../onboarding/art_interest_onboarding_screen.dart';
 import '../programs/program_detail_screen.dart';
 import '../schools/school_detail_screen.dart';
 import 'application_workspace_screen.dart';
+import 'contract_archive_screen.dart';
+import 'content_submissions_screen.dart';
+import 'creator_center_screen.dart';
+import 'identity_verification_screen.dart';
+import 'membership_center_screen.dart';
+import 'notifications_screen.dart';
 import 'orders_screen.dart';
 import 'profile_edit_screen.dart';
+import 'team_invitations_screen.dart';
 import 'package:artsee_app/theme/artsee_theme_controller.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
@@ -18,7 +28,9 @@ import 'package:artsee_app/theme/artsee_ui_colors.dart';
 /// ═══════════════════════════════════════════════════════════════
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final ValueChanged<int>? onOpenMainTab;
+
+  const ProfileScreen({super.key, this.onOpenMainTab});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -27,6 +39,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _profile;
   int _savedSchoolCount = 0;
+  int _unreadNotificationCount = 0;
+  int _consultationUnreadCount = 0;
   String _planStatus = '待创建';
   bool _loading = true;
 
@@ -43,6 +57,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     final p = await SupabaseService.fetchProfile();
     var savedSchoolCount = 0;
+    var unreadNotificationCount = 0;
+    var consultationUnreadCount = 0;
     var planStatus = '待创建';
     try {
       final saved = await BackendApiService.fetchSavedSchools(limit: 1);
@@ -58,10 +74,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }).length;
       planStatus = plan['state'] == 'generated' ? '$todo 项待办' : '待创建';
     } catch (_) {}
+    try {
+      unreadNotificationCount =
+          await BackendApiService.fetchUnreadNotificationCount();
+    } catch (_) {
+      unreadNotificationCount = 0;
+    }
+    try {
+      final consultations = await BackendApiService.fetchConsultations(
+        limit: 100,
+      );
+      consultationUnreadCount = consultations.data.fold<int>(
+        0,
+        (sum, item) => sum + _asInt(item['unread_count']),
+      );
+    } catch (_) {
+      consultationUnreadCount = 0;
+    }
     if (mounted) {
       setState(() {
         _profile = p;
         _savedSchoolCount = savedSchoolCount;
+        _unreadNotificationCount = unreadNotificationCount;
+        _consultationUnreadCount = consultationUnreadCount;
         _planStatus = planStatus;
         _loading = false;
       });
@@ -370,14 +405,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(17, 16, 17, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
+        color: context.artC.cardIconBg,
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: context.artC.silver.withValues(alpha: 0.22)),
         boxShadow: [
           BoxShadow(
-            color: context.artC.ink.withValues(alpha: 0.045),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+            color: context.artC.ink.withValues(alpha: 0.032),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -497,7 +532,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     if (_savedSchoolCount >= 2 && _planStatus == '待创建') {
       return (
-        label: '生成项目对比',
+        label: '生成院校对比',
         onTap: () =>
             _openApplicationWorkspace(ApplicationWorkspaceKind.programCompare),
       );
@@ -554,10 +589,94 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _load();
   }
 
+  void _closeWorkspaceThen(VoidCallback action) {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) action();
+    });
+  }
+
   void _openPlaceholder(String title) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$title - 节点二待实现')),
     );
+  }
+
+  Future<void> _openNotifications() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => NotificationsScreen(
+          isBusinessUser: _isBusinessUser,
+        ),
+      ),
+    );
+    _load();
+  }
+
+  Future<void> _openMentors() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const MentorListScreen()),
+    );
+    _load();
+  }
+
+  Future<void> _openMentorCenter() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const MentorServicesScreen(),
+      ),
+    );
+    _load();
+  }
+
+  Future<void> _openMentorBookings() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const MentorBookingsScreen(),
+      ),
+    );
+    _load();
+  }
+
+  Future<void> _openCreatorCenter() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const CreatorCenterScreen(),
+      ),
+    );
+    _load();
+  }
+
+  Future<void> _openContentSubmissions() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const ContentSubmissionsScreen(),
+      ),
+    );
+    _load();
+  }
+
+  Future<void> _openIdentityVerification() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => IdentityVerificationScreen(
+          initialType: _isBusinessUser ? 'business' : _roleKey,
+          initialBusinessRole: _isBusinessUser ? _roleKey : null,
+        ),
+      ),
+    );
+    _load();
+  }
+
+  Future<void> _openTeamInvitations() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const TeamInvitationsScreen(),
+      ),
+    );
+    _load();
   }
 
   Widget _buildMenuList() {
@@ -565,10 +684,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         if (_isBusinessUser) ...[
           _buildMenuSection('入驻与认证', [
-            _MenuAction('入驻审核', Icons.fact_check_outlined,
-                () => _openPlaceholder('入驻审核')),
-            _MenuAction('身份认证', Icons.verified_outlined,
-                () => _openPlaceholder('身份认证')),
+            _MenuAction(
+                '入驻审核', Icons.fact_check_outlined, _openIdentityVerification),
+            _MenuAction(
+                '身份认证', Icons.verified_outlined, _openIdentityVerification),
             _MenuAction('机构资料', Icons.storefront_outlined, _openEditProfile),
             _MenuAction('AI 展示页预览', Icons.auto_awesome_outlined,
                 () => _openPlaceholder('AI 展示页预览')),
@@ -581,7 +700,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _MenuAction('活动 / 展览管理', Icons.event_available_outlined,
                 () => _openPlaceholder('活动 / 展览管理')),
             _MenuAction(
-                '发布记录', Icons.history_outlined, () => _openPlaceholder('发布记录')),
+                '发布记录', Icons.history_outlined, _openContentSubmissions),
           ]),
           _buildMenuSection('商务与合作', [
             _MenuAction('咨询与订单', Icons.receipt_long_outlined, _openOrders),
@@ -589,15 +708,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 () => _openPlaceholder('咨询线索')),
             _MenuAction('合作追踪', Icons.business_center_outlined,
                 () => _openPlaceholder('合作追踪')),
-            _MenuAction('合同 / 报价', Icons.description_outlined,
-                () => _openPlaceholder('合同 / 报价')),
+            _MenuAction(
+                '合同 / 报价', Icons.description_outlined, _openContractArchive),
           ]),
         ] else ...[
           _buildContentGridSection(),
         ],
         _buildMenuSection('账号与设置', [
-          _MenuAction('消息通知', Icons.notifications_outlined,
-              () => _openPlaceholder('消息通知')),
+          _MenuAction('消息通知', Icons.notifications_outlined, _openNotifications,
+              badgeText: _unreadNotificationCount > 0
+                  ? '$_unreadNotificationCount'
+                  : null),
+          _MenuAction('团队邀请', Icons.group_add_outlined, _openTeamInvitations),
+          _MenuAction('导师中心', Icons.school_outlined, _openMentorCenter),
+          _MenuAction('导师预约', Icons.event_note_outlined, _openMentorBookings),
           _MenuAction(
             '深色模式',
             ArtseeThemeController.instance.isDark
@@ -690,16 +814,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
+              color: context.artC.cardIconBg,
+              borderRadius: BorderRadius.circular(18),
               border: Border.all(
                 color: context.artC.silver.withValues(alpha: 0.22),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: context.artC.ink.withValues(alpha: 0.035),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
+                  color: context.artC.ink.withValues(alpha: 0.026),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
@@ -721,10 +845,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildContentGridSection() {
     final items = [
       _MenuAction(
-          '我的作品', Icons.layers_outlined, () => _openPlaceholder('我的作品')),
+          '会员中心', Icons.workspace_premium_outlined, _openMembershipCenter),
+      _MenuAction('创作中心', Icons.auto_awesome_outlined, _openCreatorCenter),
+      _MenuAction('发布记录', Icons.layers_outlined, _openContentSubmissions),
+      _MenuAction(
+        '咨询记录',
+        Icons.forum_outlined,
+        () => _openApplicationWorkspace(ApplicationWorkspaceKind.consultations),
+        badgeText:
+            _consultationUnreadCount > 0 ? '$_consultationUnreadCount' : null,
+      ),
       _MenuAction('我的收藏', Icons.favorite_border_rounded,
           () => _openPlaceholder('我的收藏')),
-      _MenuAction('活动报名', Icons.event_outlined, () => _openPlaceholder('活动报名')),
+      _MenuAction('导师咨询', Icons.school_outlined, _openMentors),
+      _MenuAction('导师预约', Icons.event_note_outlined, _openMentorBookings),
+      _MenuAction('身份认证', Icons.verified_outlined, _openIdentityVerification),
+      _MenuAction('合同存档', Icons.description_outlined, _openContractArchive),
       _MenuAction(
           '看展记录', Icons.museum_outlined, () => _openPlaceholder('看展记录')),
     ];
@@ -754,43 +890,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
             physics: const NeverScrollableScrollPhysics(),
             children: items
                 .map(
-                  (item) => GestureDetector(
+                  (item) => ArtseeSurface(
                     onTap: item.onTap,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: context.artC.silver.withValues(alpha: 0.22),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    radius: 16,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 29,
+                          height: 29,
+                          decoration: BoxDecoration(
+                            color: kCobalt.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(item.icon, size: 16, color: kCobalt),
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 29,
-                            height: 29,
-                            decoration: BoxDecoration(
-                              color: kCobalt.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(item.icon, size: 16, color: kCobalt),
-                          ),
-                          const SizedBox(width: 9),
-                          Expanded(
-                            child: Text(
-                              item.label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: context.artC.ink.withValues(alpha: 0.82),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w900,
-                              ),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: Text(
+                            item.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: context.artC.ink.withValues(alpha: 0.82),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
                             ),
                           ),
+                        ),
+                        if (item.badgeText != null) ...[
+                          const SizedBox(width: 6),
+                          _MenuBadge(text: item.badgeText!),
                         ],
-                      ),
+                      ],
                     ),
                   ),
                 )
@@ -841,6 +973,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: color,
                       ),
                     ),
+                    if (item.badgeText != null) ...[
+                      const SizedBox(width: 8),
+                      _MenuBadge(text: item.badgeText!),
+                    ],
                   ],
                 ),
                 Row(
@@ -914,12 +1050,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _openApplicationWorkspace(ApplicationWorkspaceKind kind) {
+  void _openMembershipCenter() {
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ApplicationWorkspaceScreen(kind: kind),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const MembershipCenterScreen()),
     );
+  }
+
+  void _openContractArchive() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const ContractArchiveScreen()),
+    );
+  }
+
+  void _openApplicationWorkspace(ApplicationWorkspaceKind kind) {
+    Navigator.of(context)
+        .push(
+      MaterialPageRoute<void>(
+        builder: (_) => ApplicationWorkspaceScreen(
+          kind: kind,
+          onOpenSchools: () => _closeWorkspaceThen(
+            () => widget.onOpenMainTab?.call(1),
+          ),
+          onOpenExplore: () => _closeWorkspaceThen(
+            () => widget.onOpenMainTab?.call(2),
+          ),
+          onOpenProfileSetup: () => _closeWorkspaceThen(_openOnboardingEditor),
+        ),
+      ),
+    )
+        .then((_) {
+      if (mounted) _load();
+    });
   }
 }
 
@@ -929,6 +1090,7 @@ class _MenuAction {
   final VoidCallback onTap;
   final bool destructive;
   final bool? switchValue;
+  final String? badgeText;
 
   const _MenuAction(
     this.label,
@@ -936,7 +1098,40 @@ class _MenuAction {
     this.onTap, {
     this.destructive = false,
     this.switchValue,
+    this.badgeText,
   });
+}
+
+class _MenuBadge extends StatelessWidget {
+  final String text;
+
+  const _MenuBadge({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE11D48),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+int _asInt(dynamic value) {
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
 }
 
 class _ProfileChip extends StatelessWidget {
@@ -950,16 +1145,19 @@ class _ProfileChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
-        color: strong ? kCobalt : context.artC.silver.withValues(alpha: 0.22),
+        color: strong
+            ? kCobalt.withValues(alpha: 0.08)
+            : context.artC.silver.withValues(alpha: 0.22),
         borderRadius: BorderRadius.circular(999),
+        border:
+            strong ? Border.all(color: kCobalt.withValues(alpha: 0.22)) : null,
       ),
       child: Text(
         label,
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w900,
-          color:
-              strong ? Colors.white : context.artC.ink.withValues(alpha: 0.62),
+          color: strong ? kCobalt : context.artC.ink.withValues(alpha: 0.62),
         ),
       ),
     );
@@ -989,7 +1187,7 @@ class _InstagramAvatar extends StatelessWidget {
           height: 48,
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.artC.cardIconBg,
             shape: BoxShape.circle,
             border: Border.all(
               color: verified
@@ -1000,8 +1198,8 @@ class _InstagramAvatar extends StatelessWidget {
           ),
           child: Container(
             padding: const EdgeInsets.all(2),
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: context.artC.cardIconBg,
               shape: BoxShape.circle,
             ),
             child: ClipOval(

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromBearer } from "@/lib/api/auth-user";
+import { recordCreatorContent } from "@/lib/api/creator-level";
+import { requireUser } from "@/lib/api/authz";
 import { createServiceClient } from "@/lib/api/supabase-service";
 
 /** GET /api/v1/community/posts — 图文社区列表（数据库 community_posts） */
@@ -69,10 +71,8 @@ export async function GET(req: NextRequest) {
 /** POST /api/v1/community/posts — 发布图文（需登录） */
 export async function POST(req: NextRequest) {
   try {
-    const user = await getUserFromBearer(req);
-    if (!user) {
-      return NextResponse.json({ success: false, error: "未授权" }, { status: 401 });
-    }
+    const auth = await requireUser(req);
+    if ("response" in auth) return auth.response;
 
     const body = await req.json();
     const title = (body.title as string)?.trim() ?? "";
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     const { data, error } = await supabase
       .from("community_posts")
       .insert({
-        author_id: user.id,
+        author_id: auth.user.id,
         title: title || "作品分享",
         body: text || null,
         image_urls: imageUrls,
@@ -104,6 +104,13 @@ export async function POST(req: NextRequest) {
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
+
+    await recordCreatorContent(supabase, auth.user.id, {
+      sourceType: "community_post",
+      sourceId: String(data.id),
+    }).catch((error) => {
+      console.warn("[creator-level] failed to record community post", error);
+    });
 
     return NextResponse.json({ success: true, data });
   } catch (e: unknown) {

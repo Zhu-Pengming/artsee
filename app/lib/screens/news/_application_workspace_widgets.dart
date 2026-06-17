@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
@@ -9,6 +10,7 @@ class ApplicationStatusOverview extends StatelessWidget {
   final int materialCount;
   final int completedMaterialCount;
   final bool hasTargetSchools;
+  final VoidCallback? onPrimaryAction;
 
   const ApplicationStatusOverview({
     super.key,
@@ -17,6 +19,7 @@ class ApplicationStatusOverview extends StatelessWidget {
     required this.materialCount,
     required this.completedMaterialCount,
     required this.hasTargetSchools,
+    this.onPrimaryAction,
   });
 
   @override
@@ -32,13 +35,10 @@ class ApplicationStatusOverview extends StatelessWidget {
             ? '当前建议：再添加 1-4 所院校，方便对比冲刺 / 匹配 / 保底'
             : '当前状态：可以生成申请时间线和材料清单';
 
-    return Container(
+    return ArtseeSurface(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: context.artC.silver.withOpacity(0.38)),
-      ),
+      radius: 18,
+      elevated: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -92,7 +92,7 @@ class ApplicationStatusOverview extends StatelessWidget {
               const SizedBox(width: 20),
               _StatusItem(
                 label: 'DDL',
-                value: '0 个',
+                value: '待生成',
                 isEmpty: true,
               ),
             ],
@@ -141,9 +141,7 @@ class ApplicationStatusOverview extends StatelessWidget {
               width: double.infinity,
               height: 44,
               child: ElevatedButton(
-                onPressed: () {
-                  // TODO: 跳转到院校搜索页
-                },
+                onPressed: onPrimaryAction,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: kCobalt,
                   foregroundColor: Colors.white,
@@ -227,13 +225,9 @@ class NextStepTasks extends StatelessWidget {
       (title: '建立作品集项目', subtitle: '规划项目数量', done: false),
     ];
 
-    return Container(
+    return ArtseeSurface(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: context.artC.silver.withOpacity(0.38)),
-      ),
+      radius: 18,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -413,13 +407,9 @@ class _CompactToolCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ArtseeSurface(
       padding: const EdgeInsets.all(11),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: context.artC.silver.withOpacity(0.38)),
-      ),
+      radius: 16,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

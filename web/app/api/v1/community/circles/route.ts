@@ -7,7 +7,8 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const { limit, offset } = parsePagination(searchParams);
-    let query = createServiceClient()
+    const supabase = createServiceClient();
+    let query = supabase
       .from("community_circles")
       .select("*", { count: "exact" })
       .eq("status", "published")
@@ -21,9 +22,31 @@ export async function GET(req: NextRequest) {
 
     const { data, error, count } = await query;
     if (error) return errorResponse(error);
+    const circles = data ?? [];
+    const user = await getUserFromBearer(req);
+    let membershipMap: Record<string, string> = {};
+    if (user && circles.length > 0) {
+      const ids = circles.map((circle: { id: string }) => circle.id);
+      const { data: memberships } = await supabase
+        .from("community_circle_members")
+        .select("circle_id, status")
+        .eq("user_id", user.id)
+        .in("circle_id", ids);
+      membershipMap = Object.fromEntries(
+        (memberships ?? []).map((item: { circle_id: string; status: string }) => [
+          item.circle_id,
+          item.status,
+        ])
+      );
+    }
     return NextResponse.json({
       success: true,
-      data,
+      data: circles.map((circle: Record<string, unknown>) => ({
+        ...circle,
+        join_status:
+          membershipMap[String(circle.id)] ??
+          (user && circle.creator_id === user.id ? "joined" : null),
+      })),
       count,
       pagination: { limit, offset },
     });
@@ -45,7 +68,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "请填写圈子名称" }, { status: 400 });
     }
 
-    const { data, error } = await createServiceClient()
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
       .from("community_circles")
       .insert({
         creator_id: user.id,
@@ -64,7 +88,21 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) return errorResponse(error);
-    return NextResponse.json({ success: true, data }, { status: 201 });
+    if (data?.id) {
+      await supabase.from("community_circle_members").upsert(
+        {
+          circle_id: data.id,
+          user_id: user.id,
+          status: "joined",
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "circle_id,user_id" }
+      );
+    }
+    return NextResponse.json(
+      { success: true, data: { ...data, join_status: "joined" } },
+      { status: 201 }
+    );
   } catch (e) {
     return errorResponse(e);
   }

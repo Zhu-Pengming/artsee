@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/institution_archive_data.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
@@ -83,9 +84,8 @@ class _InstitutionsArchiveScreenState extends State<InstitutionsArchiveScreen> {
                           'Artiqore Global Archive',
                           style: TextStyle(
                             fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            fontStyle: FontStyle.italic,
-                            letterSpacing: 2.4,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0,
                             color: kCobalt.withOpacity(0.95),
                           ),
                         ),
@@ -96,9 +96,8 @@ class _InstitutionsArchiveScreenState extends State<InstitutionsArchiveScreen> {
                       '全球顶尖\n艺术院校',
                       style: TextStyle(
                         fontSize: 36,
-                        fontWeight: FontWeight.w300,
+                        fontWeight: FontWeight.w800,
                         height: 1.05,
-                        fontStyle: FontStyle.italic,
                         color: context.artC.ink,
                         fontFamily: 'Noto Serif SC',
                       ),
@@ -119,7 +118,7 @@ class _InstitutionsArchiveScreenState extends State<InstitutionsArchiveScreen> {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: 1.4,
+                        letterSpacing: 0,
                         color: context.artC.ink.withOpacity(0.28),
                       ),
                     ),
@@ -137,22 +136,25 @@ class _InstitutionsArchiveScreenState extends State<InstitutionsArchiveScreen> {
                           color: context.artC.ink.withOpacity(0.22),
                         ),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.55),
+                        fillColor: context.artC.cardIconBg,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 20,
                           vertical: 18,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(kRadiusMedium),
-                          borderSide: BorderSide(color: context.artC.silver.withOpacity(0.5)),
+                          borderSide: BorderSide(
+                              color: context.artC.silver.withOpacity(0.5)),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(kRadiusMedium),
-                          borderSide: BorderSide(color: context.artC.silver.withOpacity(0.5)),
+                          borderSide: BorderSide(
+                              color: context.artC.silver.withOpacity(0.5)),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(kRadiusMedium),
-                          borderSide: BorderSide(color: kCobalt.withOpacity(0.35)),
+                          borderSide:
+                              BorderSide(color: kCobalt.withOpacity(0.35)),
                         ),
                       ),
                     ),
@@ -173,14 +175,22 @@ class _InstitutionsArchiveScreenState extends State<InstitutionsArchiveScreen> {
                                   vertical: 14,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: sel ? Colors.white : context.artC.silver.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(kRadiusMedium),
+                                  color: sel
+                                      ? kCobalt.withOpacity(0.08)
+                                      : context.artC.cardIconBg,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: sel
+                                        ? kCobalt.withOpacity(0.22)
+                                        : context.artC.silver.withOpacity(0.42),
+                                  ),
                                   boxShadow: sel
                                       ? [
                                           BoxShadow(
-                                            color: kCobalt.withOpacity(0.08),
-                                            blurRadius: 18,
-                                            offset: const Offset(0, 6),
+                                            color: context.artC.ink
+                                                .withValues(alpha: 0.025),
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 4),
                                           ),
                                         ]
                                       : null,
@@ -190,8 +200,10 @@ class _InstitutionsArchiveScreenState extends State<InstitutionsArchiveScreen> {
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
-                                    letterSpacing: 1.2,
-                                    color: sel ? kCobalt : context.artC.ink.withOpacity(0.38),
+                                    letterSpacing: 0,
+                                    color: sel
+                                        ? kCobalt
+                                        : context.artC.ink.withOpacity(0.38),
                                   ),
                                 ),
                               ),
@@ -229,8 +241,7 @@ class _InstitutionsArchiveScreenState extends State<InstitutionsArchiveScreen> {
                         '未能找到相关院校',
                         style: TextStyle(
                           fontSize: 22,
-                          fontWeight: FontWeight.w500,
-                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.w800,
                           color: context.artC.ink.withOpacity(0.35),
                           fontFamily: 'Noto Serif SC',
                         ),
@@ -288,147 +299,138 @@ class _InstitutionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final no = (index + 1).toString().padLeft(2, '0');
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(48),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpen,
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(48),
-            border: Border.all(color: context.artC.silver.withOpacity(0.35)),
+    return ArtseeSurface(
+      onTap: onOpen,
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      radius: 18,
+      elevated: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: AspectRatio(
+              aspectRatio: 21 / 10,
+              child: Image.network(
+                inst.image,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    Container(color: context.artC.silver.withOpacity(0.35)),
+              ),
+            ),
           ),
-          padding: const EdgeInsets.fromLTRB(28, 32, 28, 28),
-          child: Column(
+          const SizedBox(height: 22),
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(32),
-                child: AspectRatio(
-                  aspectRatio: 21 / 10,
-                  child: Image.network(
-                    inst.image,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        Container(color: context.artC.silver.withOpacity(0.35)),
-                  ),
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: context.artC.porcelain,
+                  borderRadius: BorderRadius.circular(kRadiusMedium),
+                ),
+                child: Icon(
+                  Icons.school_outlined,
+                  color: context.artC.ink.withOpacity(0.25),
                 ),
               ),
-              const SizedBox(height: 22),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: context.artC.porcelain,
-                      borderRadius: BorderRadius.circular(kRadiusMedium),
-                    ),
-                    child: Icon(
-                      Icons.school_outlined,
-                      color: context.artC.ink.withOpacity(0.25),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'No. $no',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 2,
-                      color: context.artC.ink.withOpacity(0.22),
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: onOpen,
-                    icon: Icon(
-                      Icons.open_in_new,
-                      size: 18,
-                      color: context.artC.ink.withOpacity(0.22),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(width: 12),
               Text(
-                inst.name,
+                'No. $no',
                 style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w300,
-                  fontStyle: FontStyle.italic,
-                  height: 1.2,
-                  color: context.artC.ink,
-                  fontFamily: 'Noto Serif SC',
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
+                  color: context.artC.ink.withOpacity(0.22),
                 ),
               ),
-              if (inst.originalName != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  inst.originalName!.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.6,
-                    color: context.artC.ink.withOpacity(0.28),
-                  ),
+              const Spacer(),
+              IconButton(
+                onPressed: onOpen,
+                icon: Icon(
+                  Icons.open_in_new,
+                  size: 18,
+                  color: context.artC.ink.withOpacity(0.22),
                 ),
-              ],
-              const SizedBox(height: 14),
-              Text(
-                inst.description,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w300,
-                  height: 1.55,
-                  color: context.artC.ink.withOpacity(0.52),
-                ),
-              ),
-              const SizedBox(height: 22),
-              Row(
-                children: [
-                  Icon(Icons.place_outlined, size: 15, color: context.artC.ink.withOpacity(0.32)),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      inst.location.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.6,
-                        color: context.artC.ink.withOpacity(0.32),
-                      ),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: onOpen,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '查看详情',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 2,
-                            color: context.artC.ink.withOpacity(0.75),
-                          ),
-                        ),
-                        Icon(
-                          Icons.chevron_right,
-                          size: 14,
-                          color: context.artC.ink.withOpacity(0.45),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 8),
+          Text(
+            inst.name,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              height: 1.2,
+              color: context.artC.ink,
+              fontFamily: 'Noto Serif SC',
+            ),
+          ),
+          if (inst.originalName != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              inst.originalName!.toUpperCase(),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0,
+                color: context.artC.ink.withOpacity(0.28),
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          Text(
+            inst.description,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w300,
+              height: 1.55,
+              color: context.artC.ink.withOpacity(0.52),
+            ),
+          ),
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              Icon(Icons.place_outlined,
+                  size: 15, color: context.artC.ink.withOpacity(0.32)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  inst.location.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0,
+                    color: context.artC.ink.withOpacity(0.32),
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: onOpen,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '查看详情',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0,
+                        color: context.artC.ink.withOpacity(0.75),
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right,
+                      size: 14,
+                      color: context.artC.ink.withOpacity(0.45),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -449,7 +451,8 @@ class _InstitutionArchiveDetailPage extends StatelessWidget {
             pinned: true,
             backgroundColor: context.artC.porcelain.withOpacity(0.94),
             leading: IconButton(
-              icon: Icon(Icons.arrow_back_ios_new, size: 18, color: context.artC.ink),
+              icon: Icon(Icons.arrow_back_ios_new,
+                  size: 18, color: context.artC.ink),
               onPressed: () => Navigator.of(context).pop(),
             ),
             title: Text(
@@ -476,8 +479,8 @@ class _InstitutionArchiveDetailPage extends StatelessWidget {
                       child: Image.network(
                         inst.image,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            Container(color: context.artC.silver.withOpacity(0.35)),
+                        errorBuilder: (_, __, ___) => Container(
+                            color: context.artC.silver.withOpacity(0.35)),
                       ),
                     ),
                   ),
@@ -488,7 +491,7 @@ class _InstitutionArchiveDetailPage extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: 1.8,
+                        letterSpacing: 0,
                         color: context.artC.ink.withOpacity(0.35),
                       ),
                     ),

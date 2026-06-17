@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import '../../services/backend_api_service.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
@@ -101,74 +102,69 @@ class _EventCard extends StatelessWidget {
     final venue = event['venue'] as String? ?? '';
     final type = event['type'] as String? ?? '';
 
-    return GestureDetector(
+    return ArtseeSurface(
       onTap: () {},
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: context.artC.silver.withOpacity(0.3)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: kCobalt.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    type.isNotEmpty ? type : '活动',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: kCobalt,
-                    ),
+      padding: const EdgeInsets.all(16),
+      radius: 18,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: kCobalt.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  type.isNotEmpty ? type : '活动',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: kCobalt,
                   ),
                 ),
-                if (city.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  Icon(Icons.location_on, size: 12, color: context.artC.ink.withOpacity(0.4)),
-                  const SizedBox(width: 2),
-                  Text(
-                    city,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: context.artC.ink.withOpacity(0.5),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: context.artC.ink,
               ),
-              maxLines: 2,
+              if (city.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Icon(Icons.location_on,
+                    size: 12, color: context.artC.ink.withOpacity(0.4)),
+                const SizedBox(width: 2),
+                Text(
+                  city,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: context.artC.ink.withOpacity(0.5),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: context.artC.ink,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (venue.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              venue,
+              style: TextStyle(
+                fontSize: 12,
+                color: context.artC.ink.withOpacity(0.5),
+              ),
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            if (venue.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(
-                venue,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: context.artC.ink.withOpacity(0.5),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
           ],
-        ),
+        ],
       ),
     );
   }

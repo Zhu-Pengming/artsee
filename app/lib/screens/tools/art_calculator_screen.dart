@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import '../../theme/artsee_ui_colors.dart';
 
@@ -29,7 +30,7 @@ class _ArtCalculatorScreenState extends State<ArtCalculatorScreen> {
     return Scaffold(
       backgroundColor: context.artC.porcelain,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: context.artC.porcelain,
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: context.artC.ink),
@@ -56,7 +57,6 @@ class _ArtCalculatorScreenState extends State<ArtCalculatorScreen> {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
-                  fontStyle: FontStyle.italic,
                   color: context.artC.ink,
                   fontFamily: 'Noto Serif SC',
                 ),
@@ -79,12 +79,19 @@ class _ArtCalculatorScreenState extends State<ArtCalculatorScreen> {
                     return GestureDetector(
                       onTap: () => setState(() => _selectedDegree = degree),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
-                          color: isSelected ? kCobalt : Colors.white,
-                          borderRadius: BorderRadius.circular(20),
+                          color: isSelected
+                              ? kCobalt.withOpacity(0.08)
+                              : context.artC.cardIconBg,
+                          borderRadius: BorderRadius.circular(999),
                           border: Border.all(
-                            color: isSelected ? kCobalt : context.artC.silver,
+                            color: isSelected
+                                ? kCobalt.withOpacity(0.28)
+                                : context.artC.silver.withOpacity(0.48),
                           ),
                         ),
                         child: Text(
@@ -92,7 +99,9 @@ class _ArtCalculatorScreenState extends State<ArtCalculatorScreen> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: isSelected ? Colors.white : context.artC.ink.withOpacity(0.6),
+                            color: isSelected
+                                ? kCobalt
+                                : context.artC.ink.withOpacity(0.6),
                           ),
                         ),
                       ),
@@ -111,12 +120,19 @@ class _ArtCalculatorScreenState extends State<ArtCalculatorScreen> {
                     return GestureDetector(
                       onTap: () => setState(() => _selectedCountry = country),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                         decoration: BoxDecoration(
-                          color: isSelected ? kCobalt : Colors.white,
-                          borderRadius: BorderRadius.circular(20),
+                          color: isSelected
+                              ? kCobalt.withOpacity(0.08)
+                              : context.artC.cardIconBg,
+                          borderRadius: BorderRadius.circular(999),
                           border: Border.all(
-                            color: isSelected ? kCobalt : context.artC.silver,
+                            color: isSelected
+                                ? kCobalt.withOpacity(0.28)
+                                : context.artC.silver.withOpacity(0.48),
                           ),
                         ),
                         child: Text(
@@ -124,7 +140,9 @@ class _ArtCalculatorScreenState extends State<ArtCalculatorScreen> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: isSelected ? Colors.white : context.artC.ink.withOpacity(0.6),
+                            color: isSelected
+                                ? kCobalt
+                                : context.artC.ink.withOpacity(0.6),
                           ),
                         ),
                       ),
@@ -188,7 +206,11 @@ class _ArtCalculatorScreenState extends State<ArtCalculatorScreen> {
     );
   }
 
-  Widget _buildInputField(String label, TextEditingController controller, String hint) {
+  Widget _buildInputField(
+    String label,
+    TextEditingController controller,
+    String hint,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -201,13 +223,8 @@ class _ArtCalculatorScreenState extends State<ArtCalculatorScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        Container(
+        ArtseeSurface(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: context.artC.silver.withOpacity(0.5)),
-          ),
           child: TextField(
             controller: controller,
             keyboardType: TextInputType.number,

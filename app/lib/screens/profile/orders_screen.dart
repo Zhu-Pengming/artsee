@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../services/backend_api_service.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
+import 'order_detail_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -48,7 +50,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     return Scaffold(
       backgroundColor: context.artC.porcelain,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: context.artC.porcelain,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
@@ -78,9 +80,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
         children: [
           SizedBox(
             height: MediaQuery.sizeOf(context).height * 0.55,
-            child: Center(
-              child:
-                  CircularProgressIndicator(color: kCobalt, strokeWidth: 2.5),
+            child: const Center(
+              child: CircularProgressIndicator(
+                color: kCobalt,
+                strokeWidth: 2.5,
+              ),
             ),
           ),
         ],
@@ -93,7 +97,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
         children: [
           const SizedBox(height: 120),
           Icon(Icons.receipt_long_outlined,
-              size: 42, color: context.artC.ink.withOpacity(0.18)),
+              size: 42, color: context.artC.ink.withValues(alpha: 0.18)),
           const SizedBox(height: 14),
           Text(
             '订单加载失败',
@@ -109,7 +113,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
             _error!,
             textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: 12, color: context.artC.ink.withOpacity(0.42)),
+                fontSize: 12, color: context.artC.ink.withValues(alpha: 0.42)),
           ),
           const SizedBox(height: 20),
           Center(
@@ -129,7 +133,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
         children: [
           const SizedBox(height: 140),
           Icon(Icons.receipt_long_outlined,
-              size: 46, color: context.artC.ink.withOpacity(0.16)),
+              size: 46, color: context.artC.ink.withValues(alpha: 0.16)),
           const SizedBox(height: 14),
           Text(
             '暂无订单',
@@ -145,7 +149,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
             '课程、咨询与服务支付记录会显示在这里。',
             textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: 12, color: context.artC.ink.withOpacity(0.42)),
+                fontSize: 12, color: context.artC.ink.withValues(alpha: 0.42)),
           ),
         ],
       );
@@ -155,15 +159,29 @@ class _OrdersScreenState extends State<OrdersScreen> {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
       itemCount: _orders.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) => _OrderCard(order: _orders[index]),
+      itemBuilder: (context, index) => _OrderCard(
+        order: _orders[index],
+        onTap: () async {
+          await Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(
+              builder: (_) => OrderDetailScreen(order: _orders[index]),
+            ),
+          );
+          if (mounted) _load();
+        },
+      ),
     );
   }
 }
 
 class _OrderCard extends StatelessWidget {
   final Map<String, dynamic> order;
+  final VoidCallback onTap;
 
-  const _OrderCard({required this.order});
+  const _OrderCard({
+    required this.order,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -175,94 +193,100 @@ class _OrderCard extends StatelessWidget {
     final orderNo = order['order_no']?.toString() ?? '';
     final createdAt = order['created_at']?.toString() ?? '';
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(kRadiusLarge),
-        border: Border.all(color: context.artC.silver.withOpacity(0.45)),
-        boxShadow: [kShadowCard],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  subject,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: context.artC.ink,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                decoration: BoxDecoration(
-                  color: meta.color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  meta.label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: meta.color,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (orderNo.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              '订单号 $orderNo',
-              style: TextStyle(
-                  fontSize: 10, color: context.artC.ink.withOpacity(0.34)),
-            ),
-          ],
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '下单时间',
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: ArtseeSurface(
+        padding: const EdgeInsets.all(16),
+        radius: 18,
+        elevated: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    subject,
                     style: TextStyle(
-                        fontSize: 10,
-                        color: context.artC.ink.withOpacity(0.32)),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    _dateText(createdAt),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: context.artC.ink.withOpacity(0.62),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: context.artC.ink,
                     ),
                   ),
-                ],
-              ),
-              Text(
-                currency == 'CNY'
-                    ? '¥${amount.toStringAsFixed(2)}'
-                    : '$currency ${amount.toStringAsFixed(2)}',
-                style: TextStyle(
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
-                  color: kCobalt,
                 ),
+                const SizedBox(width: 10),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: meta.color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    meta.label,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: meta.color,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: context.artC.ink.withValues(alpha: 0.26),
+                ),
+              ],
+            ),
+            if (orderNo.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                '订单号 $orderNo',
+                style: TextStyle(
+                    fontSize: 10,
+                    color: context.artC.ink.withValues(alpha: 0.34)),
               ),
             ],
-          ),
-        ],
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '下单时间',
+                      style: TextStyle(
+                          fontSize: 10,
+                          color: context.artC.ink.withValues(alpha: 0.32)),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _dateText(createdAt),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: context.artC.ink.withValues(alpha: 0.62),
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  currency == 'CNY'
+                      ? '¥${amount.toStringAsFixed(2)}'
+                      : '$currency ${amount.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    color: kCobalt,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

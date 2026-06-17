@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../services/backend_api_service.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import 'program_detail_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
@@ -234,8 +235,7 @@ class _ProgramHeader extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
-                fontStyle: FontStyle.italic,
-                letterSpacing: 2.6,
+                letterSpacing: 0,
                 color: kCobalt.withOpacity(0.95),
               ),
             ),
@@ -247,8 +247,7 @@ class _ProgramHeader extends StatelessWidget {
           style: TextStyle(
             fontSize: 32,
             height: 1.08,
-            fontWeight: FontWeight.w300,
-            fontStyle: FontStyle.italic,
+            fontWeight: FontWeight.w800,
             color: context.artC.ink,
             fontFamily: 'Noto Serif SC',
           ),
@@ -281,13 +280,8 @@ class _ProgramSearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ArtseeSurface(
       padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(kRadiusLarge),
-        boxShadow: [kShadowCard],
-      ),
       child: Row(
         children: [
           Icon(Icons.search,
@@ -343,13 +337,8 @@ class _ProgramFilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasFilters = selectedDegree != null || requiresPortfolio != null;
-    return Container(
+    return ArtseeSurface(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(kRadiusLarge),
-        boxShadow: [kShadowCard],
-      ),
       child: Column(
         children: [
           Row(
@@ -382,7 +371,7 @@ class _ProgramFilterBar extends StatelessWidget {
                       style: TextStyle(
                         color: context.artC.ink.withOpacity(0.28),
                         fontSize: 9,
-                        letterSpacing: 2.2,
+                        letterSpacing: 0,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -460,15 +449,17 @@ class _FilterChipButton extends StatelessWidget {
       selected: selected,
       label: Text(text),
       onSelected: (_) => onTap(),
-      selectedColor: kCobalt,
+      selectedColor: kCobalt.withOpacity(0.08),
       backgroundColor: context.artC.porcelain.withOpacity(0.45),
       labelStyle: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w700,
-        color: selected ? Colors.white : context.artC.ink.withOpacity(0.55),
+        color: selected ? kCobalt : context.artC.ink.withOpacity(0.55),
       ),
       side: BorderSide(
-        color: selected ? kCobalt : context.artC.silver.withOpacity(0.6),
+        color: selected
+            ? kCobalt.withOpacity(0.28)
+            : context.artC.silver.withOpacity(0.6),
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
@@ -485,155 +476,148 @@ class _ProgramCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final schoolName = program.schoolNameZh ?? '—';
 
-    return GestureDetector(
+    return ArtseeSurface(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(kRadiusLarge),
-          boxShadow: [kShadowCard],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (program.coverImageUrl != null &&
-                program.coverImageUrl!.isNotEmpty) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: AspectRatio(
-                  aspectRatio: 16 / 8,
-                  child: Image.network(
-                    program.coverImageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: context.artC.silver.withOpacity(0.22),
-                      child: Icon(
-                        Icons.image_not_supported_outlined,
-                        color: context.artC.ink.withOpacity(0.26),
-                      ),
+      padding: const EdgeInsets.all(16),
+      elevated: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (program.coverImageUrl != null &&
+              program.coverImageUrl!.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: AspectRatio(
+                aspectRatio: 16 / 8,
+                child: Image.network(
+                  program.coverImageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: context.artC.silver.withOpacity(0.22),
+                    child: Icon(
+                      Icons.image_not_supported_outlined,
+                      color: context.artC.ink.withOpacity(0.26),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
-            ],
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    program.programName,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: context.artC.ink,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                Icon(Icons.chevron_right,
-                    size: 20, color: context.artC.ink.withOpacity(0.25)),
-              ],
             ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
+            const SizedBox(height: 14),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  program.programName,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: context.artC.ink,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(Icons.chevron_right,
+                  size: 20, color: context.artC.ink.withOpacity(0.25)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: context.artC.silver.withOpacity(0.32),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  schoolName,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: context.artC.ink.withOpacity(0.6),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (program.degreeType != null &&
+                  program.degreeType!.isNotEmpty) ...[
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: context.artC.silver.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(6),
+                    color: kCobalt.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    schoolName,
+                    program.degreeType!,
                     style: TextStyle(
                       fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: context.artC.ink.withOpacity(0.6),
+                      fontWeight: FontWeight.w800,
+                      color: kCobalt.withOpacity(0.9),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (program.degreeType != null &&
-                    program.degreeType!.isNotEmpty) ...[
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: kCobalt.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      program.degreeType!,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: kCobalt.withOpacity(0.9),
-                      ),
-                    ),
-                  ),
-                ],
-                if (program.requiresPortfolio) _Pill('需作品集', highlighted: true),
-                if (program.requiresInterview) _Pill('需面试'),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _ProgramStat(
-                    label: 'IELTS',
-                    value: program.ieltsOverall?.toString() ?? '---',
-                    icon: Icons.menu_book_outlined,
-                  ),
-                ),
-                Expanded(
-                  child: _ProgramStat(
-                    label: '学制',
-                    value: program.durationText ?? '---',
-                    icon: Icons.schedule,
-                  ),
-                ),
-                Expanded(
-                  child: _ProgramStat(
-                    label: '学费',
-                    value: _formatTuition(
-                      program.internationalTuitionFee,
-                      program.currencyCode,
-                    ),
-                    icon: Icons.payments_outlined,
-                  ),
-                ),
-                Expanded(
-                  child: _ProgramStat(
-                    label: '截止',
-                    value: _shortDate(program.regularDeadline),
-                    icon: Icons.event_available_outlined,
                   ),
                 ),
               ],
-            ),
-            if (program.programOverview != null &&
-                program.programOverview!.trim().isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                program.programOverview!.trim(),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12,
-                  height: 1.45,
-                  color: context.artC.ink.withOpacity(0.5),
+              if (program.requiresPortfolio) _Pill('需作品集', highlighted: true),
+              if (program.requiresInterview) _Pill('需面试'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _ProgramStat(
+                  label: 'IELTS',
+                  value: program.ieltsOverall?.toString() ?? '---',
+                  icon: Icons.menu_book_outlined,
+                ),
+              ),
+              Expanded(
+                child: _ProgramStat(
+                  label: '学制',
+                  value: program.durationText ?? '---',
+                  icon: Icons.schedule,
+                ),
+              ),
+              Expanded(
+                child: _ProgramStat(
+                  label: '学费',
+                  value: _formatTuition(
+                    program.internationalTuitionFee,
+                    program.currencyCode,
+                  ),
+                  icon: Icons.payments_outlined,
+                ),
+              ),
+              Expanded(
+                child: _ProgramStat(
+                  label: '截止',
+                  value: _shortDate(program.regularDeadline),
+                  icon: Icons.event_available_outlined,
                 ),
               ),
             ],
+          ),
+          if (program.programOverview != null &&
+              program.programOverview!.trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              program.programOverview!.trim(),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.45,
+                color: context.artC.ink.withOpacity(0.5),
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -652,8 +636,8 @@ class _Pill extends StatelessWidget {
       decoration: BoxDecoration(
         color: highlighted
             ? kCobalt.withOpacity(0.08)
-            : context.artC.silver.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(6),
+            : context.artC.silver.withOpacity(0.32),
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         text,

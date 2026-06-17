@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../services/backend_api_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/supabase_service.dart';
+import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import '../auth/login_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
@@ -131,7 +132,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     return Scaffold(
       backgroundColor: context.artC.porcelain,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: context.artC.porcelain,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
@@ -374,19 +375,20 @@ class _PostTypeSelector extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: selected ? kCobalt : Colors.white,
+              color: selected
+                  ? kCobalt.withOpacity(0.08)
+                  : context.artC.cardIconBg,
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
-                color:
-                    selected ? kCobalt : context.artC.silver.withOpacity(0.42),
+                color: selected
+                    ? kCobalt.withOpacity(0.28)
+                    : context.artC.silver.withOpacity(0.42),
               ),
             ),
             child: Text(
               item.$2,
               style: TextStyle(
-                color: selected
-                    ? Colors.white
-                    : context.artC.ink.withOpacity(0.68),
+                color: selected ? kCobalt : context.artC.ink.withOpacity(0.68),
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
               ),
@@ -417,13 +419,9 @@ class _EditorTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ArtseeSurface(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.artC.silver.withOpacity(0.34)),
-      ),
+      radius: 16,
       child: TextField(
         controller: controller,
         minLines: minLines,
@@ -465,13 +463,9 @@ class _VisibilityRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ArtseeSurface(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.artC.silver.withOpacity(0.34)),
-      ),
+      radius: 16,
       child: Column(
         children: [
           Row(
