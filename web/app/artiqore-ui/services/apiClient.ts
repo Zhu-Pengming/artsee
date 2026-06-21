@@ -344,6 +344,9 @@ export interface CommunityPost {
   title?: string;
   body?: string;
   image_urls?: string[];
+  status?: 'draft' | 'reviewing' | 'published' | 'hidden' | 'rejected';
+  audit_status?: 'pending' | 'approved' | 'reviewing' | 'rejected';
+  audit_reason?: string | null;
   author_id: string;
   like_count?: number;
   comment_count?: number;
@@ -369,7 +372,7 @@ export const communityApi = {
   },
 
   async createPost(data: { title: string; body?: string; image_urls?: string[] }) {
-    return apiClient.post('/api/v1/community/posts', data, true);
+    return apiClient.post<CommunityPost>('/api/v1/community/posts', data, true);
   },
 
   async likePost(id: string) {
@@ -590,11 +593,58 @@ export const profileApi = {
 
 export const uploadApi = {
   async uploadFile(file: File, folder = 'general') {
+    try {
+      return await uploadApi.uploadFileToCos(file, folder);
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 503) {
+        return uploadApi.uploadFileLegacy(file, folder);
+      }
+      throw error;
+    }
+  },
+
+  async uploadFileToCos(file: File, folder = 'general') {
+    const signed = await apiClient.post<any>('/api/v1/uploads/cos/sign', {
+      file_name: file.name,
+      content_type: file.type || 'application/octet-stream',
+      size: file.size,
+      scene: folder,
+    }, true);
+
+    const uploadResponse = await fetch(signed.upload_url, {
+      method: signed.method || 'PUT',
+      headers: signed.headers || {},
+      body: file,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`COS 上传失败 ${uploadResponse.status}`);
+    }
+
+    const completed = await apiClient.post<any>('/api/v1/uploads/cos/complete', {
+      key: signed.key,
+      url: signed.public_url,
+      bucket: signed.bucket,
+      file_type: file.type || null,
+      scene: folder,
+      size: file.size,
+    }, true);
+
+    return {
+      ...signed,
+      ...completed,
+      url: completed?.url || signed.public_url,
+      public_url: signed.public_url,
+      provider: 'tencent_cos',
+    };
+  },
+
+  async uploadFileLegacy(file: File, folder = 'general') {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('folder', folder);
 
-    // 使用原生 fetch，因为需要 FormData
+    // 使用原生 fetch，因为需要 FormData。
     const token = typeof window !== 'undefined' ? localStorage.getItem('artiqore_access_token') : '';
     const response = await fetch('/api/v1/upload', {
       method: 'POST',

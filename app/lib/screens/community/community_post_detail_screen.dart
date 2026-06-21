@@ -4,6 +4,7 @@ import '../../models/models.dart';
 import '../../services/backend_api_service.dart';
 import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
+import '../profile/public_user_profile_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 class CommunityPostDetailScreen extends StatefulWidget {
@@ -164,6 +165,48 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
 
   bool get _isQa => _post?.metadata['kind'] == 'qa';
 
+  void _openPostAuthorProfile(AppCommunityPost post) {
+    final anonymous = _isQa && post.metadata['anonymous'] == true;
+    if (anonymous) return;
+    final name = post.authorNickname?.trim().isNotEmpty == true
+        ? post.authorNickname!.trim()
+        : 'Artsee 用户';
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => PublicUserProfileScreen(
+          name: name,
+          handle: _publicHandleFromName(name),
+          avatarUrl: post.authorAvatarUrl,
+          roleLabel: _isQa ? '社区提问者' : '社区创作者',
+          kind: PublicUserProfileKind.user,
+          featuredActivity: post.title,
+        ),
+      ),
+    );
+  }
+
+  void _openCommentAuthorProfile(AppCommunityComment comment) {
+    final name = comment.authorNickname?.trim().isNotEmpty == true
+        ? comment.authorNickname!.trim()
+        : 'Artsee 用户';
+    final certifiedAnswer = _isQa && comment.likeCount > 0;
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => PublicUserProfileScreen(
+          name: name,
+          handle: _publicHandleFromName(name),
+          avatarUrl: comment.authorAvatarUrl,
+          roleLabel: certifiedAnswer ? '认证回答者' : '社区用户',
+          kind: certifiedAnswer
+              ? PublicUserProfileKind.mentor
+              : PublicUserProfileKind.user,
+          featuredAnswerContext: _isQa ? '来自问答区的回答' : '来自评论区的观点',
+          featuredAnswer: comment.body,
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _commentCtrl.dispose();
@@ -220,6 +263,8 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                                   commentCount: _commentCount,
                                   likeBusy: _likeBusy,
                                   onLike: _toggleLike,
+                                  onAuthorTap: () =>
+                                      _openPostAuthorProfile(post),
                                 ),
                               ),
                               if (!_isQa)
@@ -233,6 +278,7 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
                                   comments: _comments,
                                   loading: _commentsLoading,
                                   isQa: _isQa,
+                                  onAuthorTap: _openCommentAuthorProfile,
                                 ),
                               ),
                               SliverToBoxAdapter(
@@ -352,6 +398,7 @@ class _PostBody extends StatelessWidget {
   final int likeCount;
   final int commentCount;
   final VoidCallback onLike;
+  final VoidCallback? onAuthorTap;
 
   const _PostBody({
     required this.post,
@@ -361,6 +408,7 @@ class _PostBody extends StatelessWidget {
     required this.likeCount,
     required this.commentCount,
     required this.onLike,
+    this.onAuthorTap,
   });
 
   @override
@@ -389,38 +437,42 @@ class _PostBody extends StatelessWidget {
             ),
             const SizedBox(height: 14),
           ],
-          Row(
-            children: [
-              _Avatar(post: post, radius: 19, anonymous: isQa && anonymous),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isQa && anonymous
-                          ? '匿名用户'
-                          : post.authorNickname ?? 'Artsee 用户',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: context.artC.ink,
+          InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: isQa && anonymous ? null : onAuthorTap,
+            child: Row(
+              children: [
+                _Avatar(post: post, radius: 19, anonymous: isQa && anonymous),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isQa && anonymous
+                            ? '匿名用户'
+                            : post.authorNickname ?? 'Artsee 用户',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: context.artC.ink,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      timeAgo(post.createdAt),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: context.artC.ink.withOpacity(0.38),
+                      const SizedBox(height: 2),
+                      Text(
+                        timeAgo(post.createdAt),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: context.artC.ink.withOpacity(0.38),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 20),
           Text(
@@ -606,11 +658,13 @@ class _CommentsSection extends StatelessWidget {
   final List<AppCommunityComment> comments;
   final bool loading;
   final bool isQa;
+  final ValueChanged<AppCommunityComment> onAuthorTap;
 
   const _CommentsSection({
     required this.comments,
     required this.loading,
     required this.isQa,
+    required this.onAuthorTap,
   });
 
   @override
@@ -668,6 +722,7 @@ class _CommentsSection extends StatelessWidget {
               ...certified.map((comment) => _CommentTile(
                     comment: comment,
                     isQa: isQa,
+                    onAuthorTap: () => onAuthorTap(comment),
                   )),
               const SizedBox(height: 8),
             ] else
@@ -677,12 +732,14 @@ class _CommentsSection extends StatelessWidget {
               ...ordinary.map((comment) => _CommentTile(
                     comment: comment,
                     isQa: isQa,
+                    onAuthorTap: () => onAuthorTap(comment),
                   )),
             ],
           ] else
             ...comments.map((comment) => _CommentTile(
                   comment: comment,
                   isQa: isQa,
+                  onAuthorTap: () => onAuthorTap(comment),
                 )),
         ],
       ),
@@ -756,8 +813,13 @@ class _InviteAnswerCard extends StatelessWidget {
 class _CommentTile extends StatelessWidget {
   final AppCommunityComment comment;
   final bool isQa;
+  final VoidCallback onAuthorTap;
 
-  const _CommentTile({required this.comment, required this.isQa});
+  const _CommentTile({
+    required this.comment,
+    required this.isQa,
+    required this.onAuthorTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -770,21 +832,25 @@ class _CommentTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: kCobalt.withOpacity(0.08),
-              child: ClipOval(
-                child: comment.authorAvatarUrl != null &&
-                        comment.authorAvatarUrl!.isNotEmpty
-                    ? Image.network(
-                        comment.authorAvatarUrl!,
-                        width: 32,
-                        height: 32,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            _CommentInitial(name: name),
-                      )
-                    : _CommentInitial(name: name),
+            InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: onAuthorTap,
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: kCobalt.withOpacity(0.08),
+                child: ClipOval(
+                  child: comment.authorAvatarUrl != null &&
+                          comment.authorAvatarUrl!.isNotEmpty
+                      ? Image.network(
+                          comment.authorAvatarUrl!,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _CommentInitial(name: name),
+                        )
+                      : _CommentInitial(name: name),
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -795,14 +861,20 @@ class _CommentTile extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          isQa && comment.likeCount > 0 ? '$name · 已认证' : name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: context.artC.ink,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(6),
+                          onTap: onAuthorTap,
+                          child: Text(
+                            isQa && comment.likeCount > 0
+                                ? '$name · 已认证'
+                                : name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: context.artC.ink,
+                            ),
                           ),
                         ),
                       ),
@@ -853,6 +925,15 @@ class _CommentInitial extends StatelessWidget {
       ),
     );
   }
+}
+
+String _publicHandleFromName(String name) {
+  final cleaned = name
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+      .replaceAll(RegExp(r'^_+|_+$'), '');
+  if (cleaned.isNotEmpty) return '@$cleaned';
+  return '@artsee_${(name.hashCode.abs() % 99999).toString().padLeft(5, '0')}';
 }
 
 class _CommentComposer extends StatelessWidget {

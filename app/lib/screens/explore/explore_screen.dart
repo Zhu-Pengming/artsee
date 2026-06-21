@@ -4,6 +4,7 @@ import '../../services/backend_api_service.dart';
 import '../../utils/auth_gate.dart';
 import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
+import '../profile/public_user_profile_screen.dart';
 import '../publish/publish_artist_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
@@ -719,15 +720,25 @@ class _ArtistTab extends StatefulWidget {
 }
 
 class _ArtistTabState extends State<_ArtistTab> {
+  final TextEditingController _searchCtrl = TextEditingController();
   List<Map<String, dynamic>> _items = const [];
   bool _loading = true;
   String? _error;
-  String _quickFilter = '全部';
+  String _artCategory = '全部门类';
+  String _region = '全部地区';
+  String _verificationLevel = '全部认证';
+  String _cooperationType = '全部合作';
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -770,29 +781,67 @@ class _ArtistTabState extends State<_ArtistTab> {
         onRetry: _load,
       );
     }
-    final visibleItems = _filterMaps(_items, widget.searchKeyword)
-        .where((item) => _matchesArtistQuickFilter(item, _quickFilter))
+    final certifiedItems = _items.where(_isCertifiedArtist).toList();
+    final query = [
+      widget.searchKeyword,
+      _searchCtrl.text,
+    ].where((item) => item.trim().isNotEmpty).join(' ');
+    final visibleItems = _filterMaps(certifiedItems, query)
+        .where(
+          (item) => _matchesArtistStructuredFilters(
+            item,
+            artCategory: _artCategory,
+            region: _region,
+            verificationLevel: _verificationLevel,
+            cooperationType: _cooperationType,
+          ),
+        )
         .toList();
-    final availableCount = _items
+    final availableCount = certifiedItems
         .where((item) =>
             (item['cooperation_status']?.toString() ?? 'available') ==
             'available')
         .length;
-    final verifiedCount =
-        _items.where((item) => item['verification_badges'] != null).length;
+    final verifiedCount = certifiedItems.length;
 
     if (visibleItems.isEmpty) {
       return ListView(
         padding: EdgeInsets.fromLTRB(20, 0, 20, widget.bottom + 88),
         children: [
-          widget.searchKeyword.trim().isEmpty
-              ? _ArtistOnboardingPanel(onStart: _openArtistOnboarding)
-              : _EmptyPanel(
-                  title: '没有匹配艺术家',
-                  subtitle: '换一个艺术方向、城市或合作关键词试试。',
-                ),
+          _ArtistLibraryHeader(
+            totalCount: certifiedItems.length,
+            availableCount: availableCount,
+            verifiedCount: verifiedCount,
+            onApply: _openArtistOnboarding,
+          ),
           const SizedBox(height: 14),
-          if (widget.searchKeyword.trim().isEmpty) _ArtistExampleStrip(),
+          _ArtistSearchField(
+            controller: _searchCtrl,
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 12),
+          _ArtistFilterPanel(
+            artCategory: _artCategory,
+            region: _region,
+            verificationLevel: _verificationLevel,
+            cooperationType: _cooperationType,
+            onArtCategoryChanged: (value) =>
+                setState(() => _artCategory = value),
+            onRegionChanged: (value) => setState(() => _region = value),
+            onVerificationLevelChanged: (value) =>
+                setState(() => _verificationLevel = value),
+            onCooperationTypeChanged: (value) =>
+                setState(() => _cooperationType = value),
+          ),
+          const SizedBox(height: 14),
+          _EmptyPanel(
+            title: certifiedItems.isEmpty ? '暂无认证艺术家' : '没有匹配艺术家',
+            subtitle: certifiedItems.isEmpty
+                ? '认证艺术家通过审核后会显示在这里，可以先申请入驻。'
+                : '换一个艺术方向、城市、认证等级或合作关键词试试。',
+          ),
+          const SizedBox(height: 14),
+          _ArtistOnboardingPanel(onStart: _openArtistOnboarding),
         ],
       );
     }
@@ -800,31 +849,46 @@ class _ArtistTabState extends State<_ArtistTab> {
       padding: EdgeInsets.fromLTRB(20, 0, 20, widget.bottom + 88),
       children: [
         _ArtistLibraryHeader(
-          totalCount: _items.length,
+          totalCount: certifiedItems.length,
           availableCount: availableCount,
           verifiedCount: verifiedCount,
+          onApply: _openArtistOnboarding,
         ),
         const SizedBox(height: 14),
-        _FilterHintBar(
-          chips: const ['全部', '可合作', '认证', '学生', '新锐', '同城'],
-          selected: _quickFilter,
-          onSelected: (filter) => setState(() => _quickFilter = filter),
+        _ArtistSearchField(
+          controller: _searchCtrl,
+          onChanged: (_) => setState(() {}),
         ),
-        const SizedBox(height: 20),
-        GridView.builder(
+        const SizedBox(height: 12),
+        _ArtistFilterPanel(
+          artCategory: _artCategory,
+          region: _region,
+          verificationLevel: _verificationLevel,
+          cooperationType: _cooperationType,
+          onArtCategoryChanged: (value) => setState(() => _artCategory = value),
+          onRegionChanged: (value) => setState(() => _region = value),
+          onVerificationLevelChanged: (value) =>
+              setState(() => _verificationLevel = value),
+          onCooperationTypeChanged: (value) =>
+              setState(() => _cooperationType = value),
+        ),
+        const SizedBox(height: 14),
+        _ArtistListSummary(
+          visibleCount: visibleItems.length,
+          totalCount: certifiedItems.length,
+        ),
+        const SizedBox(height: 12),
+        ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: visibleItems.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 14,
-            mainAxisSpacing: 18,
-            childAspectRatio: 0.62,
-          ),
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) => _ArtistCard(
             artist: visibleItems[index],
           ),
         ),
+        const SizedBox(height: 16),
+        _ArtistOnboardingPanel(onStart: _openArtistOnboarding),
       ],
     );
   }
@@ -1793,43 +1857,48 @@ class _ArtistCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = artist['display_name']?.toString() ?? '未命名艺术家';
-    final fields = (artist['art_fields'] as List<dynamic>? ?? [])
-        .map((e) => e.toString())
-        .where((e) => e.isNotEmpty)
-        .join(' / ');
-    final city = artist['city']?.toString();
+    final handle = _artistHandle(artist);
+    final fields = _artistFields(artist);
+    final city = artist['city']?.toString().trim();
     final coverWorkUrl = artist['cover_work_url']?.toString() ??
         artist['featured_work_url']?.toString() ??
         artist['avatar_url']?.toString();
+    final avatarUrl = artist['avatar_url']?.toString();
     final cooperationStatus =
         artist['cooperation_status']?.toString() ?? 'available';
-    final portfolioCount = artist['portfolio_count'] is int
-        ? artist['portfolio_count'] as int
-        : int.tryParse(artist['portfolio_count']?.toString() ?? '') ?? 0;
-    final exhibitionCount = artist['exhibition_count'] is int
-        ? artist['exhibition_count'] as int
-        : int.tryParse(artist['exhibition_count']?.toString() ?? '') ?? 0;
-    final hasVerification = artist['verification_badges'] != null;
-    final careerStage = artist['career_stage']?.toString();
+    final portfolioCount = _artistInt(artist['portfolio_count']);
+    final exhibitionCount = _artistInt(artist['exhibition_count']);
+    final cooperationTypes = _artistCooperationTypes(artist);
 
     return ArtseeSurface(
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => ArtistDetailScreen(artist: artist),
+        Navigator.of(context).push<void>(
+          MaterialPageRoute<void>(
+            builder: (_) => PublicUserProfileScreen(
+              name: name,
+              handle: handle,
+              avatarUrl: avatarUrl,
+              roleLabel: _artistVerificationLabel(artist),
+              bio: artist['bio']?.toString(),
+              kind: PublicUserProfileKind.artist,
+              featuredActivity:
+                  '正在展示${fields.isEmpty ? '艺术创作' : fields.join(' / ')}方向的作品与合作意向。',
+              featuredAnswerContext: '艺术家观点',
+              featuredAnswer: artist['cooperation_intent']?.toString(),
+            ),
           ),
         );
       },
       padding: EdgeInsets.zero,
-      radius: 18,
+      radius: 8,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AspectRatio(
-            aspectRatio: 0.85,
+          SizedBox(
+            height: 132,
             child: ClipRRect(
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(18)),
+                  const BorderRadius.vertical(top: Radius.circular(8)),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -1838,23 +1907,21 @@ class _ArtistCard extends StatelessWidget {
                           coverWorkUrl,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                            color: context.artC.silver.withOpacity(0.3),
-                            child: Icon(
-                              Icons.palette_outlined,
-                              size: 50,
-                              color: context.artC.ink.withOpacity(0.2),
-                            ),
-                          ),
+                              _ArtistCoverFallback(name: name),
                         )
-                      : Container(
-                          color: context.artC.silver.withOpacity(0.3),
-                          child: Icon(
-                            Icons.palette_outlined,
-                            size: 50,
-                            color: context.artC.ink.withOpacity(0.2),
-                          ),
-                        ),
+                      : _ArtistCoverFallback(name: name),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.08),
+                          Colors.black.withValues(alpha: 0.48),
+                        ],
+                      ),
+                    ),
+                  ),
                   Positioned(
                     top: 10,
                     right: 10,
@@ -1876,93 +1943,147 @@ class _ArtistCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  Positioned(
+                    left: 12,
+                    bottom: 12,
+                    right: 12,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        _ArtistAvatar(name: name, avatarUrl: avatarUrl),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w900,
+                                        fontFamily: 'Noto Serif SC',
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  const Icon(Icons.verified_rounded,
+                                      color: Colors.white, size: 16),
+                                ],
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                handle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.72),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    color: context.artC.ink,
-                    fontFamily: 'Noto Serif SC',
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  fields.isEmpty ? '艺术家' : fields,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: context.artC.ink.withOpacity(0.48),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
                   children: [
-                    if (city != null && city.isNotEmpty) ...[
-                      Icon(Icons.location_on_outlined,
-                          size: 11, color: context.artC.ink.withOpacity(0.38)),
-                      const SizedBox(width: 3),
-                      Text(
-                        city,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: context.artC.ink.withOpacity(0.38),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                    ],
-                    if (careerStage != null && careerStage.isNotEmpty)
-                      Text(
-                        careerStage,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: context.artC.ink.withOpacity(0.38),
-                        ),
+                    _MiniBadge(
+                        text: _artistVerificationLabel(artist), color: kCobalt),
+                    if (city != null && city.isNotEmpty)
+                      _MiniBadge(text: city, color: const Color(0xFF047857)),
+                    if (cooperationTypes.isNotEmpty)
+                      _MiniBadge(
+                        text: cooperationTypes.first,
+                        color: const Color(0xFF7A6A56),
                       ),
                   ],
                 ),
-                if (hasVerification) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Icon(Icons.verified, size: 11, color: kCobalt),
-                      const SizedBox(width: 3),
-                      Text(
-                        '已认证',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                          color: kCobalt,
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 10),
+                Text(
+                  fields.isEmpty ? '艺术家' : fields.join(' / '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: context.artC.ink,
                   ),
-                ],
-                if (portfolioCount > 0 || exhibitionCount > 0) ...[
-                  const SizedBox(height: 8),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ArtistWorkStrip(
+                        artist: artist,
+                        coverUrl: coverWorkUrl,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          [
+                            if (portfolioCount > 0) '$portfolioCount 件作品',
+                            if (exhibitionCount > 0) '$exhibitionCount 次展览',
+                            if (portfolioCount == 0 && exhibitionCount == 0)
+                              '作品待补充',
+                          ].join(' · '),
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: context.artC.ink.withValues(alpha: 0.42),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _cooperationStatusLabel(cooperationStatus),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: _cooperationStatusColor(cooperationStatus),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                if (artist['cooperation_intent']
+                        ?.toString()
+                        .trim()
+                        .isNotEmpty ==
+                    true) ...[
+                  const SizedBox(height: 10),
                   Text(
-                    [
-                      if (portfolioCount > 0) '$portfolioCount 件作品',
-                      if (exhibitionCount > 0) '$exhibitionCount 次展览',
-                    ].join(' · '),
+                    artist['cooperation_intent'].toString().trim(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      color: context.artC.ink.withOpacity(0.32),
+                      fontSize: 12,
+                      height: 1.45,
+                      fontWeight: FontWeight.w700,
+                      color: context.artC.ink.withValues(alpha: 0.58),
                     ),
                   ),
                 ],
@@ -1971,6 +2092,373 @@ class _ArtistCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ArtistCoverFallback extends StatelessWidget {
+  final String name;
+
+  const _ArtistCoverFallback({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: context.artC.silver.withValues(alpha: 0.28),
+      child: Center(
+        child: Text(
+          name.isEmpty ? '艺' : name.characters.first,
+          style: TextStyle(
+            color: kCobalt.withValues(alpha: 0.52),
+            fontSize: 42,
+            fontWeight: FontWeight.w900,
+            fontFamily: 'Noto Serif SC',
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ArtistAvatar extends StatelessWidget {
+  final String name;
+  final String? avatarUrl;
+
+  const _ArtistAvatar({required this.name, required this.avatarUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = avatarUrl?.trim();
+    return Container(
+      width: 48,
+      height: 48,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.92),
+        shape: BoxShape.circle,
+      ),
+      child: ClipOval(
+        child: url != null && url.isNotEmpty
+            ? Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _ArtistAvatarFallback(name: name),
+              )
+            : _ArtistAvatarFallback(name: name),
+      ),
+    );
+  }
+}
+
+class _ArtistAvatarFallback extends StatelessWidget {
+  final String name;
+
+  const _ArtistAvatarFallback({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: kCobalt.withValues(alpha: 0.08),
+      child: Center(
+        child: Text(
+          name.isEmpty ? '艺' : name.characters.first,
+          style: const TextStyle(
+            color: kCobalt,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ArtistWorkStrip extends StatelessWidget {
+  final Map<String, dynamic> artist;
+  final String? coverUrl;
+
+  const _ArtistWorkStrip({required this.artist, required this.coverUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final urls = _artistWorkUrls(artist, coverUrl).take(3).toList();
+    return Row(
+      children: List.generate(3, (index) {
+        final url = index < urls.length ? urls[index] : null;
+        return Padding(
+          padding: EdgeInsets.only(right: index == 2 ? 0 : 6),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: SizedBox(
+              width: 42,
+              height: 42,
+              child: url != null && url.isNotEmpty
+                  ? Image.network(
+                      url,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _ArtistWorkFallback(index: index),
+                    )
+                  : _ArtistWorkFallback(index: index),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _ArtistWorkFallback extends StatelessWidget {
+  final int index;
+
+  const _ArtistWorkFallback({required this.index});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = [
+      const Color(0xFFE7EEF8),
+      const Color(0xFFE8F3EE),
+      const Color(0xFFF4E8EA),
+    ];
+    return Container(
+      color: colors[index % colors.length],
+      child: Icon(
+        Icons.image_outlined,
+        size: 16,
+        color: kCobalt.withValues(alpha: 0.35),
+      ),
+    );
+  }
+}
+
+class _ArtistSearchField extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  const _ArtistSearchField({
+    required this.controller,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 46,
+      decoration: BoxDecoration(
+        color: context.artC.cardIconBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.artC.silver.withValues(alpha: 0.38)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 13),
+      child: Row(
+        children: [
+          Icon(Icons.search_rounded,
+              color: context.artC.ink.withValues(alpha: 0.34), size: 19),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              onChanged: onChanged,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: '搜索艺术家、方向、城市、标签',
+                border: InputBorder.none,
+                isDense: true,
+                hintStyle: TextStyle(
+                  color: context.artC.ink.withValues(alpha: 0.34),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              style: TextStyle(
+                color: context.artC.ink,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          if (controller.text.isNotEmpty)
+            GestureDetector(
+              onTap: () {
+                controller.clear();
+                onChanged('');
+              },
+              child: Icon(Icons.close_rounded,
+                  color: context.artC.ink.withValues(alpha: 0.3), size: 18),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ArtistFilterPanel extends StatelessWidget {
+  final String artCategory;
+  final String region;
+  final String verificationLevel;
+  final String cooperationType;
+  final ValueChanged<String> onArtCategoryChanged;
+  final ValueChanged<String> onRegionChanged;
+  final ValueChanged<String> onVerificationLevelChanged;
+  final ValueChanged<String> onCooperationTypeChanged;
+
+  const _ArtistFilterPanel({
+    required this.artCategory,
+    required this.region,
+    required this.verificationLevel,
+    required this.cooperationType,
+    required this.onArtCategoryChanged,
+    required this.onRegionChanged,
+    required this.onVerificationLevelChanged,
+    required this.onCooperationTypeChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _ArtistFilterRow(
+          label: '艺术门类',
+          values: const ['全部门类', '绘画', '装置', '影像', '摄影', '设计', '新媒体'],
+          selected: artCategory,
+          onChanged: onArtCategoryChanged,
+        ),
+        const SizedBox(height: 8),
+        _ArtistFilterRow(
+          label: '地区',
+          values: const ['全部地区', '北京', '上海', '广州', '深圳', '杭州', '伦敦', '纽约'],
+          selected: region,
+          onChanged: onRegionChanged,
+        ),
+        const SizedBox(height: 8),
+        _ArtistFilterRow(
+          label: '认证等级',
+          values: const ['全部认证', '平台认证', '展览认证', '教育背景认证', '职业认证'],
+          selected: verificationLevel,
+          onChanged: onVerificationLevelChanged,
+        ),
+        const SizedBox(height: 8),
+        _ArtistFilterRow(
+          label: '可合作类型',
+          values: const ['全部合作', '可合作', '展览', '品牌联名', '公共艺术', '讲座工作坊'],
+          selected: cooperationType,
+          onChanged: onCooperationTypeChanged,
+        ),
+      ],
+    );
+  }
+}
+
+class _ArtistFilterRow extends StatelessWidget {
+  final String label;
+  final List<String> values;
+  final String selected;
+  final ValueChanged<String> onChanged;
+
+  const _ArtistFilterRow({
+    required this.label,
+    required this.values,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 70,
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: context.artC.ink.withValues(alpha: 0.48),
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: values.map((value) {
+                final active = value == selected;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () => onChanged(value),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 11, vertical: 7),
+                      decoration: BoxDecoration(
+                        color:
+                            active ? context.artC.ink : context.artC.cardIconBg,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: active
+                              ? context.artC.ink
+                              : context.artC.silver.withValues(alpha: 0.38),
+                        ),
+                      ),
+                      child: Text(
+                        value,
+                        style: TextStyle(
+                          color: active
+                              ? Colors.white
+                              : context.artC.ink.withValues(alpha: 0.58),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ArtistListSummary extends StatelessWidget {
+  final int visibleCount;
+  final int totalCount;
+
+  const _ArtistListSummary({
+    required this.visibleCount,
+    required this.totalCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Icon(Icons.verified_rounded, color: kCobalt, size: 16),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            '认证艺术家 $visibleCount / $totalCount',
+            style: TextStyle(
+              color: context.artC.ink,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        Text(
+          '仅展示已认证',
+          style: TextStyle(
+            color: context.artC.ink.withValues(alpha: 0.42),
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -2065,74 +2553,6 @@ class _ArtistOnboardingPanel extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ArtistExampleStrip extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    const examples = [
-      ('新锐艺术家', '装置 / 影像 / 纽约'),
-      ('学生艺术家', '插画 / 视觉设计 / 上海'),
-      ('签约艺术家', '公共艺术 / 商业联名 / 北京'),
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SectionHeader(title: '示例档案', action: 'SAMPLES'),
-        const SizedBox(height: 12),
-        ...examples.map(
-          (item) => Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: context.artC.silver.withOpacity(0.35)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: context.artC.silver.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(Icons.person_outline, color: kCobalt),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.$1,
-                        style: TextStyle(
-                          color: context.artC.ink,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        item.$2,
-                        style: TextStyle(
-                          color: context.artC.ink.withOpacity(0.42),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right_rounded, color: kCobalt),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -3757,36 +4177,194 @@ class _VerificationBadge extends StatelessWidget {
   }
 }
 
-bool _matchesArtistQuickFilter(Map<String, dynamic> item, String filter) {
-  if (filter == '全部') return true;
-  final cooperationStatus =
-      item['cooperation_status']?.toString() ?? 'available';
-  final hasVerification = item['verification_badges'] != null;
-  final careerStage = item['career_stage']?.toString().toLowerCase() ?? '';
-  final city = item['city']?.toString().toLowerCase() ?? '';
+bool _isCertifiedArtist(Map<String, dynamic> item) {
+  final status = item['status']?.toString().toLowerCase() ?? '';
+  final verification =
+      item['verification_status']?.toString().toLowerCase() ?? '';
+  return status == 'published' ||
+      verification == 'verified' ||
+      verification == 'approved' ||
+      item['verification_badges'] != null;
+}
 
-  return switch (filter) {
-    '可合作' => cooperationStatus == 'available',
-    '认证' => hasVerification,
-    '学生' => careerStage.contains('学生') || careerStage.contains('student'),
-    '新锐' => careerStage.contains('新锐') || careerStage.contains('emerging'),
-    '同城' => city.contains('上海') ||
-        city.contains('北京') ||
-        city.contains('深圳') ||
-        city.contains('广州'),
-    _ => true,
+bool _matchesArtistStructuredFilters(
+  Map<String, dynamic> item, {
+  required String artCategory,
+  required String region,
+  required String verificationLevel,
+  required String cooperationType,
+}) {
+  final fields = _artistFields(item).join(' ').toLowerCase();
+  final city = item['city']?.toString().toLowerCase() ?? '';
+  final verificationText = [
+    item['verification_status'],
+    item['verification_level'],
+    item['verification_badges'],
+  ].join(' ').toLowerCase();
+  final cooperationText = [
+    item['cooperation_status'],
+    item['cooperation_intent'],
+    _artistCooperationTypes(item).join(' '),
+  ].join(' ').toLowerCase();
+
+  final categoryOk = artCategory == '全部门类' ||
+      switch (artCategory) {
+        '绘画' => fields.contains('绘') ||
+            fields.contains('painting') ||
+            fields.contains('fine_art'),
+        '装置' => fields.contains('装置') || fields.contains('installation'),
+        '影像' => fields.contains('影像') || fields.contains('video'),
+        '摄影' => fields.contains('摄影') || fields.contains('photo'),
+        '设计' => fields.contains('设计') || fields.contains('design'),
+        '新媒体' => fields.contains('新媒体') || fields.contains('media'),
+        _ => fields.contains(artCategory.toLowerCase()),
+      };
+
+  final regionOk = region == '全部地区' || city.contains(region.toLowerCase());
+
+  final verificationOk = verificationLevel == '全部认证' ||
+      switch (verificationLevel) {
+        '平台认证' => _isCertifiedArtist(item),
+        '展览认证' => verificationText.contains('展览') ||
+            verificationText.contains('exhibition'),
+        '教育背景认证' => verificationText.contains('教育') ||
+            verificationText.contains('school'),
+        '职业认证' => verificationText.contains('职业') ||
+            verificationText.contains('career'),
+        _ => true,
+      };
+
+  final cooperationOk = cooperationType == '全部合作' ||
+      switch (cooperationType) {
+        '可合作' => (item['cooperation_status']?.toString() ?? 'available') ==
+            'available',
+        '展览' => cooperationText.contains('展') ||
+            cooperationText.contains('exhibition'),
+        '品牌联名' =>
+          cooperationText.contains('品牌') || cooperationText.contains('brand'),
+        '公共艺术' =>
+          cooperationText.contains('公共') || cooperationText.contains('public'),
+        '讲座工作坊' => cooperationText.contains('讲座') ||
+            cooperationText.contains('工作坊') ||
+            cooperationText.contains('workshop'),
+        _ => cooperationText.contains(cooperationType.toLowerCase()),
+      };
+
+  return categoryOk && regionOk && verificationOk && cooperationOk;
+}
+
+List<String> _artistFields(Map<String, dynamic> artist) {
+  final raw = artist['art_fields'];
+  if (raw is List) {
+    return raw
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+  final text = raw?.toString().trim();
+  if (text == null || text.isEmpty) return const [];
+  return text.split(RegExp(r'[,，/、]+')).map((item) => item.trim()).toList();
+}
+
+List<String> _artistCooperationTypes(Map<String, dynamic> artist) {
+  final metadata = _artistMetadata(artist);
+  final raw = metadata['cooperation_types'] ?? artist['cooperation_types'];
+  if (raw is List) {
+    return raw
+        .map((item) => _cooperationTypeLabel(item.toString()))
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+  final intent = artist['cooperation_intent']?.toString().trim();
+  if (intent != null && intent.isNotEmpty) {
+    if (intent.contains('展')) return const ['展览'];
+    if (intent.contains('品牌')) return const ['品牌联名'];
+    if (intent.contains('公共')) return const ['公共艺术'];
+  }
+  return const [];
+}
+
+String _cooperationTypeLabel(String value) {
+  return switch (value) {
+    'exhibition' => '展览',
+    'brand' => '品牌联名',
+    'public_art' => '公共艺术',
+    'workshop' => '讲座工作坊',
+    _ => value,
   };
+}
+
+Map<String, dynamic> _artistMetadata(Map<String, dynamic> artist) {
+  final raw = artist['metadata'];
+  if (raw is Map) return Map<String, dynamic>.from(raw);
+  return const {};
+}
+
+String _artistHandle(Map<String, dynamic> artist) {
+  final raw = artist['handle']?.toString() ??
+      artist['username']?.toString() ??
+      artist['slug']?.toString();
+  final text = raw?.trim();
+  if (text != null && text.isNotEmpty) {
+    return text.startsWith('@') ? text : '@$text';
+  }
+  final name = artist['display_name']?.toString().trim() ?? 'artist';
+  final cleaned = name
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+      .replaceAll(RegExp(r'^_+|_+$'), '');
+  if (cleaned.isNotEmpty) return '@$cleaned';
+  return '@artist_${(name.hashCode.abs() % 99999).toString().padLeft(5, '0')}';
+}
+
+String _artistVerificationLabel(Map<String, dynamic> artist) {
+  final badges = artist['verification_badges'];
+  final text = badges?.toString() ?? '';
+  if (text.contains('展')) return '展览认证';
+  if (text.contains('学') || text.toLowerCase().contains('school')) {
+    return '教育背景认证';
+  }
+  if (text.contains('职业') || text.toLowerCase().contains('career')) {
+    return '职业认证';
+  }
+  return '平台认证艺术家';
+}
+
+int _artistInt(Object? value) {
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+List<String> _artistWorkUrls(Map<String, dynamic> artist, String? coverUrl) {
+  final metadata = _artistMetadata(artist);
+  final raw = metadata['portfolio_images'] ??
+      metadata['work_urls'] ??
+      artist['portfolio_images'] ??
+      artist['work_urls'];
+  final urls = <String>[
+    if (coverUrl != null && coverUrl.trim().isNotEmpty) coverUrl.trim(),
+  ];
+  if (raw is List) {
+    urls.addAll(
+      raw
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty),
+    );
+  }
+  return urls.toSet().toList();
 }
 
 class _ArtistLibraryHeader extends StatelessWidget {
   final int totalCount;
   final int availableCount;
   final int verifiedCount;
+  final VoidCallback onApply;
 
   const _ArtistLibraryHeader({
     required this.totalCount,
     required this.availableCount,
     required this.verifiedCount,
+    required this.onApply,
   });
 
   @override
@@ -3830,7 +4408,7 @@ class _ArtistLibraryHeader extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            '艺术家资源库',
+            '认证艺术家库',
             style: TextStyle(
               color: Colors.white,
               fontSize: 22,
@@ -3840,7 +4418,7 @@ class _ArtistLibraryHeader extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '发现可合作的新锐艺术家、设计师与创作者',
+            '先展示已认证艺术家，浏览作品、方向与合作状态',
             style: TextStyle(
               color: Colors.white.withOpacity(0.7),
               fontSize: 12,
@@ -3848,23 +4426,44 @@ class _ArtistLibraryHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               _StatChip(
                 icon: Icons.people_outline,
-                label: '$totalCount 位艺术家',
+                label: '$totalCount 位认证',
               ),
-              const SizedBox(width: 8),
               _StatChip(
                 icon: Icons.handshake_outlined,
                 label: '$availableCount 位可合作',
               ),
-              const SizedBox(width: 8),
               _StatChip(
                 icon: Icons.verified,
-                label: '$verifiedCount 位认证',
+                label: '$verifiedCount 已审核',
               ),
             ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: onApply,
+              icon: const Icon(Icons.verified_user_outlined, size: 17),
+              label: const Text('成为艺术家 / 申请入驻'),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: context.artC.ink,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                textStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
           ),
         ],
       ),

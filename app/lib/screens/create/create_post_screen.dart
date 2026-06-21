@@ -71,7 +71,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         imageUrls.add(url);
       }
 
-      await BackendApiService.createCommunityPost(
+      final created = await BackendApiService.createCommunityPost(
         title: _titleCtrl.text.trim(),
         body: _contentCtrl.text.trim(),
         imageUrls: imageUrls,
@@ -88,10 +88,18 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       );
       if (!mounted) return;
       setState(() => _publishing = false);
+      final message = switch (created['status']?.toString()) {
+        'published' => '发布成功',
+        'reviewing' => '已提交审核，通过后会公开展示',
+        'rejected' => '内容未通过安全审核，请调整后再试',
+        _ => '已提交',
+      };
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('发布成功')),
+        SnackBar(content: Text(message)),
       );
-      Navigator.of(context).pop(true);
+      if (created['status']?.toString() != 'rejected') {
+        Navigator.of(context).pop(true);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _publishing = false);

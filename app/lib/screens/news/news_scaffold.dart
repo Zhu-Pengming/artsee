@@ -1050,12 +1050,12 @@ class _CompareTabState extends State<_CompareTab> {
   }
 
   void _toggleSchool(Map<String, dynamic> school) {
-    final id = school['id']?.toString();
+    final id = _schoolId(school);
     if (id == null) return;
-    final exists = _selected.any((item) => item['id']?.toString() == id);
+    final exists = _selected.any((item) => _schoolId(item) == id);
     setState(() {
       if (exists) {
-        _selected.removeWhere((item) => item['id']?.toString() == id);
+        _selected.removeWhere((item) => _schoolId(item) == id);
         _report = null;
       } else if (_selected.length < 5) {
         _selected.add(school);
@@ -1070,7 +1070,7 @@ class _CompareTabState extends State<_CompareTab> {
 
   void _removeSchool(String id) {
     setState(() {
-      _selected.removeWhere((item) => item['id']?.toString() == id);
+      _selected.removeWhere((item) => _schoolId(item) == id);
       _report = null;
     });
   }
@@ -1091,7 +1091,7 @@ class _CompareTabState extends State<_CompareTab> {
     setState(() => _comparing = true);
     try {
       final report = await BackendApiService.compareSchools(
-        schoolIds: _selected.map((school) => school['id'].toString()).toList(),
+        schoolIds: _selected.map(_schoolId).whereType<String>().toList(),
       );
       if (!mounted) return;
 
@@ -1249,7 +1249,7 @@ class _SelectedSchoolsPanel extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: selected.map((school) {
-              final id = school['id']?.toString() ?? '';
+              final id = _schoolId(school) ?? '';
               final name = _schoolName(school);
               return GestureDetector(
                 onTap: () => onRemove(id),
@@ -1381,11 +1381,8 @@ class _TargetPoolPanel extends StatelessWidget {
             )
           else
             ...candidates.map((school) {
-              final id = school['id']?.toString() ??
-                  school['school_id']?.toString() ??
-                  '';
-              final isSelected =
-                  selected.any((item) => item['id']?.toString() == id);
+              final id = _schoolId(school) ?? '';
+              final isSelected = selected.any((item) => _schoolId(item) == id);
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
@@ -1579,22 +1576,33 @@ class _AddSchoolBottomSheetState extends State<_AddSchoolBottomSheet> {
   }
 
   bool _isSelected(Map<String, dynamic> school) {
-    final id = school['id']?.toString();
-    return _localSelected.any((item) => item['id']?.toString() == id);
+    final id = _schoolId(school);
+    if (id == null) return false;
+    return _localSelected.any((item) => _schoolId(item) == id);
   }
 
   void _handleToggle(Map<String, dynamic> school) {
-    final id = school['id']?.toString();
+    final id = _schoolId(school);
     if (id == null) return;
 
+    var changed = false;
     setState(() {
-      final exists = _localSelected.any((item) => item['id']?.toString() == id);
+      final exists = _localSelected.any((item) => _schoolId(item) == id);
       if (exists) {
-        _localSelected.removeWhere((item) => item['id']?.toString() == id);
+        _localSelected.removeWhere((item) => _schoolId(item) == id);
+        changed = true;
       } else if (_localSelected.length < 5) {
         _localSelected.add(school);
+        changed = true;
       }
     });
+
+    if (!changed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('最多选择 5 所院校')),
+      );
+      return;
+    }
 
     // 同步到父组件
     widget.onToggle(school);
@@ -2618,6 +2626,14 @@ String _schoolName(Map<String, dynamic> school) {
       : school['name_en']?.toString().isNotEmpty == true
           ? school['name_en'].toString()
           : school['name']?.toString() ?? '未命名院校';
+}
+
+String? _schoolId(Map<String, dynamic> school) {
+  final id = school['id']?.toString();
+  if (id != null && id.isNotEmpty) return id;
+  final schoolId = school['school_id']?.toString();
+  if (schoolId != null && schoolId.isNotEmpty) return schoolId;
+  return null;
 }
 
 String _initials(Map<String, dynamic> school) {

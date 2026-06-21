@@ -3,6 +3,23 @@ import { getUserFromBearer } from "@/lib/api/auth-user";
 import { recordCreatorContent } from "@/lib/api/creator-level";
 import { requireUser } from "@/lib/api/authz";
 import { createServiceClient } from "@/lib/api/supabase-service";
+import { auditContent } from "@/lib/api/content-safety";
+import { TencentCloudConfigError } from "@/lib/api/tencent-cloud";
+
+function postStatusForAudit(auditStatus: string) {
+  if (auditStatus === "approved") return "published";
+  if (auditStatus === "rejected") return "rejected";
+  return "reviewing";
+}
+
+function auditReasonFromItems(
+  items: Array<{ label: string | null; sub_label: string | null }>
+) {
+  return items
+    .map((item) => [item.label, item.sub_label].filter(Boolean).join("/"))
+    .filter(Boolean)
+    .join(", ");
+}
 
 /** GET /api/v1/community/posts — 图文社区列表（数据库 community_posts） */
 export async function GET(req: NextRequest) {
@@ -87,6 +104,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "请至少填写标题、正文或上传一张图片" }, { status: 400 });
     }
 
+    const audit = await auditContent({
+      userId: auth.user.id,
+      text: [title, text].filter(Boolean).join("\n\n"),
+      imageUrls,
+      scene: "community_post",
+    });
+    const status = postStatusForAudit(audit.audit_status);
     const supabase = createServiceClient();
     const { data, error } = await supabase
       .from("community_posts")
@@ -95,7 +119,12 @@ export async function POST(req: NextRequest) {
         title: title || "作品分享",
         body: text || null,
         image_urls: imageUrls,
-        status: "published",
+        status,
+        audit_status: audit.audit_status,
+        audit_provider: audit.provider,
+        audit_reason: auditReasonFromItems(audit.items) || null,
+        audit_metadata: audit,
+        audited_at: new Date().toISOString(),
         metadata,
       })
       .select()
@@ -105,15 +134,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }
 
-    await recordCreatorContent(supabase, auth.user.id, {
-      sourceType: "community_post",
-      sourceId: String(data.id),
-    }).catch((error) => {
-      console.warn("[creator-level] failed to record community post", error);
-    });
+    if (status === "published") {
+      await recordCreatorContent(supabase, auth.user.id, {
+        sourceType: "community_post",
+        sourceId: String(data.id),
+      }).catch((error) => {
+        console.warn("[creator-level] failed to record community post", error);
+      });
+    }
 
     return NextResponse.json({ success: true, data });
   } catch (e: unknown) {
+    if (e instanceof TencentCloudConfigError) {
+      return NextResponse.json(
+        { success: false, error: e.message, missing: e.missing },
+        { status: 503 }
+      );
+    }
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }

@@ -9,6 +9,9 @@ void main() {
       'title': '测试',
       'body': '正文',
       'image_urls': ['https://x.com/1.jpg'],
+      'status': 'reviewing',
+      'audit_status': 'reviewing',
+      'audit_reason': 'Ad/Suspected',
       'like_count': 2,
       'comment_count': 1,
       'view_count': 10,
@@ -21,6 +24,9 @@ void main() {
     expect(p.authorNickname, '小明');
     expect(p.authorAvatarUrl, null);
     expect(p.likedByMe, true);
+    expect(p.status, 'reviewing');
+    expect(p.auditStatus, 'reviewing');
+    expect(p.auditReason, 'Ad/Suspected');
   });
 
   test('AppCommunityComment.fromJson 解析评论作者资料', () {
@@ -38,7 +44,7 @@ void main() {
     expect(c.authorAvatarUrl, 'https://x/avatar.png');
   });
 
-  test('AppCommunityHotTopic.fromJson 解析热议话题与立场', () {
+  test('AppCommunityHotTopic.fromJson 解析热议话题与观点作者', () {
     final topic = AppCommunityHotTopic.fromJson({
       'id': 'topic-1',
       'slug': 'ai-art-award-progress-or-cheating',
@@ -49,7 +55,19 @@ void main() {
       'sort_order': 1,
       'is_pinned': true,
       'answers': [
-        {'stance': '正方·进步论', 'content': 'AI是新的画笔。'},
+        {
+          'stance': '正方·进步论',
+          'content': 'AI是新的画笔。',
+          'author': {
+            'name': '沈予白',
+            'handle': 'shen-yubai',
+            'avatar_url': 'https://x/avatar.png',
+            'role': '认证艺术家',
+          },
+          'like_count': 18,
+          'comment_count': 3,
+          'share_count': 2,
+        },
         {'stance': '反方·作弊论', 'content': '这对人类创作者不公平。'},
       ],
       'metadata': {'theme': 'AI科技'},
@@ -60,6 +78,13 @@ void main() {
     expect(topic.isPinned, true);
     expect(topic.answers.length, 2);
     expect(topic.answers.first.stance, '正方·进步论');
+    expect(topic.answers.first.authorName, '沈予白');
+    expect(topic.answers.first.authorHandle, 'shen-yubai');
+    expect(topic.answers.first.authorAvatarUrl, 'https://x/avatar.png');
+    expect(topic.answers.first.authorRole, '认证艺术家');
+    expect(topic.answers.first.likeCount, 18);
+    expect(topic.answers.first.commentCount, 3);
+    expect(topic.answers.first.shareCount, 2);
     expect(topic.metadata['theme'], 'AI科技');
   });
 

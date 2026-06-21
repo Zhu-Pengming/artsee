@@ -1782,29 +1782,24 @@ class BackendApiService {
     return decoded['data'] as Map<String, dynamic>? ?? {};
   }
 
-  static Future<void> createCommunityPost({
+  static Future<Map<String, dynamic>> createCommunityPost({
     required String title,
     String? body,
     List<String> imageUrls = const [],
     Map<String, dynamic>? metadata,
   }) async {
-    final r = await http.post(
-      _api('/api/v1/community/posts'),
-      headers: await _headers(withAuth: true),
-      body: jsonEncode({
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/community/posts',
+      withAuth: true,
+      body: {
         'title': title,
         'body': body,
         'image_urls': imageUrls,
         if (metadata != null) 'metadata': metadata,
-      }),
+      },
     );
-    final decoded = jsonDecode(r.body) as Map<String, dynamic>;
-    if (r.statusCode != 200 && r.statusCode != 201) {
-      throw Exception(decoded['error'] ?? '发布失败 ${r.statusCode}');
-    }
-    if (decoded['success'] != true) {
-      throw Exception(decoded['error'] ?? '发布失败');
-    }
+    return (decoded['data'] as Map<String, dynamic>? ?? {});
   }
 
   static Future<
@@ -2913,6 +2908,101 @@ class BackendApiService {
     required String contentType,
     String folder = 'uploads',
   }) async {
+    try {
+      return await _uploadFileToCos(
+        bytes: bytes,
+        filename: filename,
+        contentType: contentType,
+        folder: folder,
+      );
+    } on ApiException catch (e) {
+      if (e.code == 503) {
+        return _uploadFileLegacy(
+          bytes: bytes,
+          filename: filename,
+          contentType: contentType,
+          folder: folder,
+        );
+      }
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> _uploadFileToCos({
+    required List<int> bytes,
+    required String filename,
+    required String contentType,
+    required String folder,
+  }) async {
+    final signDecoded = await _requestJson(
+      'POST',
+      '/api/v1/uploads/cos/sign',
+      withAuth: true,
+      body: {
+        'file_name': filename,
+        'content_type': contentType,
+        'size': bytes.length,
+        'scene': folder,
+      },
+    );
+    final signed = signDecoded['data'] as Map<String, dynamic>? ?? {};
+    final uploadUrl = signed['upload_url']?.toString() ?? '';
+    if (uploadUrl.isEmpty) {
+      throw ApiException(code: 500, message: '上传签名缺少 URL');
+    }
+
+    final rawHeaders = signed['headers'];
+    final headers = <String, String>{};
+    if (rawHeaders is Map) {
+      for (final entry in rawHeaders.entries) {
+        headers[entry.key.toString()] = entry.value.toString();
+      }
+    }
+    final uploaded = await http.put(
+      Uri.parse(uploadUrl),
+      headers: headers,
+      body: bytes,
+    );
+    if (uploaded.statusCode < 200 || uploaded.statusCode >= 300) {
+      throw ApiException(
+        code: uploaded.statusCode,
+        message: 'COS 上传失败 ${uploaded.statusCode}',
+      );
+    }
+
+    final publicUrl = signed['public_url']?.toString() ?? '';
+    final completeDecoded = await _requestJson(
+      'POST',
+      '/api/v1/uploads/cos/complete',
+      withAuth: true,
+      body: {
+        'key': signed['key']?.toString() ?? '',
+        'url': publicUrl,
+        'bucket': signed['bucket']?.toString(),
+        'file_type': contentType,
+        'scene': folder,
+        'size': bytes.length,
+      },
+    );
+    final completed =
+        completeDecoded['data'] as Map<String, dynamic>? ?? <String, dynamic>{};
+    return {
+      ...signed,
+      ...completed,
+      'url': completed['url']?.toString().isNotEmpty == true
+          ? completed['url']
+          : publicUrl,
+      'public_url': publicUrl,
+      'provider': 'tencent_cos',
+    };
+  }
+
+  static Future<Map<String, dynamic>> _uploadFileLegacy({
+    required List<int> bytes,
+    required String filename,
+    required String contentType,
+    required String folder,
+  }) async {
     final request = http.MultipartRequest('POST', _api('/api/v1/upload'));
     request.headers.addAll(await _authHeaders());
     request.fields['folder'] = folder;
@@ -2924,7 +3014,14 @@ class BackendApiService {
     ));
     final streamed = await request.send();
     final r = await http.Response.fromStream(streamed);
-    return _decodeBody(r);
+    final decoded = _decodeBody(r);
+    final data = decoded['data'];
+    final result = data is Map<String, dynamic>
+        ? {...data}
+        : <String, dynamic>{...decoded};
+    final url = result['url']?.toString() ?? decoded['url']?.toString() ?? '';
+    if (url.isNotEmpty) result['url'] = url;
+    return result;
   }
 
   static Future<String> signSubmissionMaterial(String material) async {

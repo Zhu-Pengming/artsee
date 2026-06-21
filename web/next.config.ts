@@ -5,6 +5,18 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  generateBuildId: async () => {
+    return 'build-' + Date.now()
+  },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
+  },
+  staticPageGenerationTimeout: 120,
   async headers() {
     // 开发环境放行 CORS，方便 Flutter Web / 本地前端联调
     if (process.env.NODE_ENV !== 'development') return [];

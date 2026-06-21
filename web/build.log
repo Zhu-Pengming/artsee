@@ -1,0 +1,38 @@
+
+> web@0.1.0 build
+> next build --no-lint
+
+ ⚠ Linting is disabled.
+   ▲ Next.js 15.1.8
+   - Environments: .env
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Skipping validation of types
+   Collecting page data ...
+   Generating static pages (0/120) ...
+   Generating static pages (30/120) 
+TypeError: Cannot read properties of null (reading 'useContext')
+    at h (.next/server/pages/_error.js:1:6080)
+Error occurred prerendering page "/404". Read more: https://nextjs.org/docs/messages/prerender-error
+TypeError: Cannot read properties of null (reading 'useContext')
+    at exports.useContext (/Users/tom/Desktop/artsee/web/node_modules/react/cjs/react.production.js:489:33)
+    at h (/Users/tom/Desktop/artsee/web/.next/server/pages/_error.js:1:6080)
+    at renderWithHooks (/Users/tom/Desktop/artsee/node_modules/react-dom/cjs/react-dom-server.edge.production.js:4282:18)
+    at renderElement (/Users/tom/Desktop/artsee/node_modules/react-dom/cjs/react-dom-server.edge.production.js:4420:14)
+    at retryNode (/Users/tom/Desktop/artsee/node_modules/react-dom/cjs/react-dom-server.edge.production.js:5022:16)
+    at renderNodeDestructive (/Users/tom/Desktop/artsee/node_modules/react-dom/cjs/react-dom-server.edge.production.js:4835:7)
+    at renderNode (/Users/tom/Desktop/artsee/node_modules/react-dom/cjs/react-dom-server.edge.production.js:5280:14)
+    at renderChildrenArray (/Users/tom/Desktop/artsee/node_modules/react-dom/cjs/react-dom-server.edge.production.js:5170:7)
+    at retryNode (/Users/tom/Desktop/artsee/node_modules/react-dom/cjs/react-dom-server.edge.production.js:5036:9)
+    at renderNodeDestructive (/Users/tom/Desktop/artsee/node_modules/react-dom/cjs/react-dom-server.edge.production.js:4835:7)
+Export encountered an error on /_error: /404, exiting the build.
+   Generating static pages (60/120) 
+ ⨯ Next.js build worker exited with code: 1 and signal: null
+npm error Lifecycle script `build` failed with error:
+npm error code 1
+npm error path /Users/tom/Desktop/artsee/web
+npm error workspace web@0.1.0
+npm error location /Users/tom/Desktop/artsee/web
+npm error command failed
+npm error command sh -c next build --no-lint

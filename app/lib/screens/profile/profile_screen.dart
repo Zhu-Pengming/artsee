@@ -5,10 +5,12 @@ import '../../services/supabase_service.dart';
 import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import '../auth/login_screen.dart';
+import '../consultation/organization_list_screen.dart';
 import '../mentors/mentor_application_screen.dart';
 import '../mentors/mentor_list_screen.dart';
 import '../onboarding/art_interest_onboarding_screen.dart';
 import '../programs/program_detail_screen.dart';
+import '../publish/publish_artist_screen.dart';
 import '../schools/school_detail_screen.dart';
 import 'application_workspace_screen.dart';
 import 'contract_archive_screen.dart';
@@ -19,6 +21,7 @@ import 'membership_center_screen.dart';
 import 'notifications_screen.dart';
 import 'orders_screen.dart';
 import 'profile_edit_screen.dart';
+import 'public_user_profile_screen.dart';
 import 'team_invitations_screen.dart';
 import 'package:artsee_app/theme/artsee_theme_controller.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
@@ -43,6 +46,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int _consultationUnreadCount = 0;
   String _planStatus = '待创建';
   bool _loading = true;
+  int _profileShowcaseTab = 0;
 
   @override
   void initState() {
@@ -224,6 +228,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
         : (location != null && location.isNotEmpty ? location : '城市待补全');
   }
 
+  String get _profileHandle {
+    final raw = _profile?['handle']?.toString() ??
+        _profile?['username']?.toString() ??
+        SupabaseService.currentUser?.email?.split('@').first;
+    final handle = raw?.trim();
+    if (handle != null && handle.isNotEmpty) {
+      return '@${handle.replaceFirst(RegExp(r'^@'), '').replaceAll(RegExp(r'\s+'), '_')}';
+    }
+    return '@artsee_user';
+  }
+
+  String get _profileBio {
+    final raw = _profile?['bio']?.toString() ??
+        _profile?['introduction']?.toString() ??
+        _profile?['description']?.toString();
+    if (raw != null && raw.trim().isNotEmpty) return raw.trim();
+    if (_isBusinessUser) {
+      return '位于$_cityLabel，提供$_roleLabel相关服务，案例和团队信息会沉淀在公开主页。';
+    }
+    if (_roleKey == 'artist') {
+      return '关注${_directionSummary()}，持续更新作品、创作过程和展览记录。';
+    }
+    if (_roleKey == 'student') {
+      return '正在整理作品集、申请动态和院校经验，关注${_directionSummary()}。';
+    }
+    if (_roleKey == 'mentor') {
+      return '分享作品集案例、申请判断和面试经验，帮助学生理解作品与院校匹配。';
+    }
+    return '参与艺术社区讨论，收藏作品、院校案例和申请经验。';
+  }
+
+  PublicUserProfileKind get _publicProfileKind {
+    if (_roleKey == 'artist') return PublicUserProfileKind.artist;
+    if (_roleKey == 'student') return PublicUserProfileKind.student;
+    if (_roleKey == 'mentor') return PublicUserProfileKind.mentor;
+    return PublicUserProfileKind.user;
+  }
+
+  int get _followersCount => _profileInt(
+        ['followers_count', 'follower_count'],
+        _isBusinessUser
+            ? 1280
+            : _roleKey == 'artist'
+                ? 842
+                : _roleKey == 'mentor'
+                    ? 536
+                    : 96,
+      );
+
+  int get _profileViews => _profileInt(
+        ['view_count', 'views_count', 'profile_views'],
+        _isBusinessUser ? 18600 : 3200 + _savedSchoolCount * 120,
+      );
+
+  int get _followingCount => _profileInt(
+        ['following_count', 'followings_count'],
+        28 + _savedSchoolCount,
+      );
+
+  int get _worksCount => _profileInt(
+        ['works_count', 'artwork_count', 'portfolio_count'],
+        _isBusinessUser
+            ? 18
+            : _roleKey == 'artist'
+                ? 24
+                : _roleKey == 'student'
+                    ? 12
+                    : _roleKey == 'mentor'
+                        ? 8
+                        : 5,
+      );
+
   String get _businessName {
     for (final item in _asStringList(_profile?['target_majors'])) {
       if (item.startsWith('机构名称：')) {
@@ -241,6 +317,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .toList();
     }
     return const [];
+  }
+
+  int _profileInt(List<String> keys, int fallback) {
+    for (final key in keys) {
+      final value = _profile?[key];
+      final parsed = _asInt(value);
+      if (parsed > 0) return parsed;
+    }
+    return fallback;
   }
 
   String _joinLabels(List<String> raw, Map<String, String> labels,
@@ -375,6 +460,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               _buildProfileHeader(),
               const SizedBox(height: 18),
+              _buildProfileShowcaseSection(),
+              const SizedBox(height: 18),
               _buildMenuList(),
               SizedBox(height: bottomSpacer),
             ],
@@ -444,6 +531,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         fontFamily: 'Noto Serif SC',
                       ),
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _profileHandle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: context.artC.ink.withValues(alpha: 0.42),
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 6,
@@ -457,6 +555,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _profileBio,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.5,
+              fontWeight: FontWeight.w700,
+              color: context.artC.ink.withValues(alpha: 0.68),
+            ),
+          ),
+          const SizedBox(height: 13),
+          _ProfilePublicStats(
+            followers: _followersCount,
+            views: _profileViews,
+            following: _followingCount,
+            works: _worksCount,
           ),
           const SizedBox(height: 8),
           GridView.count(
@@ -521,7 +636,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   ({String label, VoidCallback onTap}) _primaryAction() {
     if (_isBusinessUser) {
-      return (label: '查看主页', onTap: () => _openPlaceholder('机构主页'));
+      return (label: '查看主页', onTap: _openBusinessPublicProfile);
     }
     if (_savedSchoolCount == 0) {
       return (
@@ -604,6 +719,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _openPublicProfile() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => PublicUserProfileScreen(
+          name: _isBusinessUser ? _businessName : _nickname,
+          handle: _profileHandle,
+          avatarUrl: _avatarUrl,
+          roleLabel: _roleLabel,
+          bio: _profileBio,
+          kind: _publicProfileKind,
+          featuredAnswerContext: '我的讨论回答',
+          featuredAnswer: '回答、评论和社区观点会沉淀在这里，方便别人从讨论进入主页后继续了解我。',
+        ),
+      ),
+    );
+  }
+
+  void _openBusinessPublicProfile() {
+    final organizationId = _profile?['organization_id']?.toString() ??
+        _profile?['primary_organization_id']?.toString();
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => OrganizationDetailScreen(
+          initialOrg: {
+            if (organizationId != null && organizationId.isNotEmpty)
+              'id': organizationId,
+            'name': _businessName,
+            'type': _roleKey,
+            'status': _isVerified ? 'active' : 'pending',
+            'verification_status': _isVerified ? 'verified' : 'pending',
+            'city': _cityLabel,
+            'focus_areas': _asStringList(_profile?['target_directions']),
+            'supports_online': true,
+            'supports_offline': false,
+            'rating': 0,
+            'review_count': 0,
+            'contract_count': 0,
+            'metadata': {
+              'summary': _profileBio,
+              if (_avatarUrl.isNotEmpty) 'avatar_url': _avatarUrl,
+              'response_speed': '2小时内',
+            },
+          },
+        ),
+      ),
+    );
+  }
+
   Future<void> _openNotifications() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
@@ -649,6 +812,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _load();
   }
 
+  Future<void> _openArtistOnboarding() async {
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(builder: (_) => const PublishArtistScreen()),
+    );
+    if (created == true) _load();
+  }
+
   Future<void> _openContentSubmissions() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
@@ -677,6 +847,98 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
     _load();
+  }
+
+  Widget _buildProfileShowcaseSection() {
+    const tabs = ['作品', '动态', '回答', '收藏 / 经历'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _isBusinessUser ? '机构展示预览' : '个人主页预览',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: context.artC.ink.withValues(alpha: 0.86),
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: _openPublicProfile,
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '查看主页',
+                      style: TextStyle(
+                        color: kCobalt,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    SizedBox(width: 3),
+                    Icon(Icons.arrow_forward_ios_rounded,
+                        size: 12, color: kCobalt),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        _ProfileShowcaseTabStrip(
+          tabs: tabs,
+          selectedIndex: _profileShowcaseTab,
+          onChanged: (index) => setState(() => _profileShowcaseTab = index),
+        ),
+        const SizedBox(height: 12),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          child: _buildProfileShowcaseBody(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileShowcaseBody() {
+    return switch (_profileShowcaseTab) {
+      0 => _ProfileWorksPreview(
+          key: const ValueKey('works'),
+          seed: _profileHandle,
+        ),
+      1 => _ProfileTextPreview(
+          key: const ValueKey('activity'),
+          icon: Icons.auto_awesome_mosaic_outlined,
+          title: _isBusinessUser ? '机构动态' : '最新动态',
+          text: _isBusinessUser
+              ? '服务更新、团队活动和案例进展会在这里展示。'
+              : '作品集进度、创作过程和社区帖子会在这里展示。',
+        ),
+      2 => _ProfileTextPreview(
+          key: const ValueKey('answers'),
+          icon: Icons.question_answer_outlined,
+          title: _publicProfileKind == PublicUserProfileKind.mentor
+              ? '回答 / 案例'
+              : '讨论回答',
+          text: _publicProfileKind == PublicUserProfileKind.mentor
+              ? '回答、案例拆解和经历判断会沉淀在主页，作为信任依据。'
+              : '在热议、问答和评论区发布过的回答会沉淀在这里。',
+        ),
+      _ => _ProfileTextPreview(
+          key: const ValueKey('saved'),
+          icon: Icons.bookmark_border_rounded,
+          title: _publicProfileKind == PublicUserProfileKind.artist
+              ? '收藏 / 展览经历'
+              : '收藏 / 经历',
+          text: _publicProfileKind == PublicUserProfileKind.artist
+              ? '展览记录、代表项目和收藏内容会集中展示。'
+              : '收藏的案例、院校内容和公开经历会集中展示。',
+        ),
+    };
   }
 
   Widget _buildMenuList() {
@@ -847,6 +1109,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _MenuAction(
           '会员中心', Icons.workspace_premium_outlined, _openMembershipCenter),
       _MenuAction('创作中心', Icons.auto_awesome_outlined, _openCreatorCenter),
+      _MenuAction('艺术家入驻', Icons.palette_outlined, _openArtistOnboarding),
       _MenuAction('发布记录', Icons.layers_outlined, _openContentSubmissions),
       _MenuAction(
         '咨询记录',
@@ -1132,6 +1395,233 @@ class _MenuBadge extends StatelessWidget {
 int _asInt(dynamic value) {
   if (value is num) return value.toInt();
   return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+String _compactProfileNumber(int value) {
+  if (value >= 10000) {
+    final v = value / 10000;
+    return '${v.toStringAsFixed(v >= 10 ? 0 : 1)}w';
+  }
+  if (value >= 1000) {
+    final v = value / 1000;
+    return '${v.toStringAsFixed(v >= 10 ? 0 : 1)}k';
+  }
+  return '$value';
+}
+
+class _ProfilePublicStats extends StatelessWidget {
+  final int followers;
+  final int views;
+  final int following;
+  final int works;
+
+  const _ProfilePublicStats({
+    required this.followers,
+    required this.views,
+    required this.following,
+    required this.works,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      ('粉丝', followers),
+      ('浏览', views),
+      ('关注', following),
+      ('作品', works),
+    ];
+    return Row(
+      children: items
+          .map(
+            (item) => Expanded(
+              child: Column(
+                children: [
+                  Text(
+                    _compactProfileNumber(item.$2),
+                    style: TextStyle(
+                      color: context.artC.ink,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    item.$1,
+                    style: TextStyle(
+                      color: context.artC.ink.withValues(alpha: 0.42),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _ProfileShowcaseTabStrip extends StatelessWidget {
+  final List<String> tabs;
+  final int selectedIndex;
+  final ValueChanged<int> onChanged;
+
+  const _ProfileShowcaseTabStrip({
+    required this.tabs,
+    required this.selectedIndex,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: context.artC.silver.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: List.generate(tabs.length, (index) {
+          final active = selectedIndex == index;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(index),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: active ? context.artC.cardIconBg : Colors.transparent,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Text(
+                  tabs[index],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: active
+                        ? context.artC.ink
+                        : context.artC.ink.withValues(alpha: 0.46),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _ProfileWorksPreview extends StatelessWidget {
+  final String seed;
+
+  const _ProfileWorksPreview({super.key, required this.seed});
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: 9,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 4,
+        crossAxisSpacing: 4,
+      ),
+      itemBuilder: (_, index) {
+        final encoded = Uri.encodeComponent('$seed-$index');
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: Image.network(
+            'https://picsum.photos/seed/artsee_profile_$encoded/360/360',
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              color: [
+                const Color(0xFFE7EEF8),
+                const Color(0xFFF0ECE4),
+                const Color(0xFFE8F3EE),
+                const Color(0xFFF4E8EA),
+              ][index % 4],
+              child: Icon(
+                Icons.image_outlined,
+                color: kCobalt.withValues(alpha: 0.34),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ProfileTextPreview extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String text;
+
+  const _ProfileTextPreview({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.artC.cardIconBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: context.artC.silver.withValues(alpha: 0.32)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: kCobalt.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: kCobalt),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: context.artC.ink,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  text,
+                  style: TextStyle(
+                    color: context.artC.ink.withValues(alpha: 0.64),
+                    fontSize: 12,
+                    height: 1.48,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ProfileChip extends StatelessWidget {

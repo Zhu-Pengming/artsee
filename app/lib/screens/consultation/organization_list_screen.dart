@@ -8,6 +8,7 @@ import '../../theme/artsee_ui_colors.dart';
 import '../../utils/auth_gate.dart';
 import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
+import '../messages/light_message_screen.dart';
 import '../profile/consultation_detail_screen.dart';
 import '../profile/contract_archive_screen.dart';
 
@@ -922,6 +923,8 @@ class _OrganizationDetailScreenState extends State<OrganizationDetailScreen> {
   Map<String, dynamic>? _membership;
   bool _loading = true;
   bool _membershipLoading = false;
+  bool _following = false;
+  int _profileTab = 0;
   String? _error;
 
   bool get _isMember => _membership?['is_member'] == true;
@@ -1054,7 +1057,13 @@ class _OrganizationDetailScreenState extends State<OrganizationDetailScreen> {
   Future<void> _startOnlineConsultation() async {
     if (!await _ensureMember()) return;
     final orgId = _org['id']?.toString();
-    if (orgId == null || orgId.isEmpty) return;
+    if (orgId == null || orgId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('机构资料创建后可接收咨询')),
+      );
+      return;
+    }
     final orgName = _org['name']?.toString() ?? '机构';
     final targetName = widget.schoolName?.trim().isNotEmpty == true
         ? widget.schoolName!.trim()
@@ -1109,6 +1118,32 @@ class _OrganizationDetailScreenState extends State<OrganizationDetailScreen> {
     );
   }
 
+  void _openOrganizationMessage({
+    required String name,
+    required String? avatarUrl,
+    required String responseSpeed,
+  }) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => LightMessageScreen(
+          peer: LightMessagePeer.organization(
+            name: name,
+            avatarUrl: avatarUrl,
+            identityLabel: '机构认证',
+            serviceStatus: '服务中',
+            responseTime: responseSpeed,
+            profileBuilder: (_) => OrganizationDetailScreen(
+              initialOrg: _org,
+              schoolId: widget.schoolId,
+              schoolName: widget.schoolName,
+            ),
+          ),
+          initialMessage: '你好，可以先说说想咨询的方向、预算或合作需求。',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final name = _org['name']?.toString() ?? '未命名机构';
@@ -1118,11 +1153,17 @@ class _OrganizationDetailScreenState extends State<OrganizationDetailScreen> {
     final focusAreas = _stringList(_org['focus_areas']).take(8).toList();
     final rating = (_org['rating'] as num?)?.toDouble() ?? 0;
     final reviewCount = (_org['review_count'] as num?)?.toInt() ?? 0;
-    final contractCount = (_org['contract_count'] as num?)?.toInt() ?? 0;
     final reviews = _mapList(_org['reviews']).take(5).toList();
     final supportsOnline = _org['supports_online'] != false;
     final supportsOffline = _org['supports_offline'] == true;
-    final contactLocked = _org['contact_locked'] != false;
+    final typeLabel = _organizationTypeLabel(_org['type']?.toString());
+    final verified = _organizationVerified(_org);
+    final responseSpeed = _organizationResponseSpeed(_org);
+    final services = _organizationServices(_org);
+    final cases = _organizationCases(_org, schoolName: widget.schoolName);
+    final team = _organizationTeam(_org);
+    final activities = _organizationActivities(_org);
+    final qas = _organizationQas(_org);
     final location = [
       if (city != null && city.isNotEmpty) city,
       if (province != null && province.isNotEmpty && province != city) province,
@@ -1162,98 +1203,20 @@ class _OrganizationDetailScreenState extends State<OrganizationDetailScreen> {
                 ],
               ),
               const SizedBox(height: 14),
-              ArtseeSurface(
-                elevated: true,
-                radius: 24,
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        _OrgAvatar(
-                          name: name,
-                          avatarUrl: _org['avatar_url']?.toString(),
-                        ),
-                        const SizedBox(width: 13),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                name,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: context.artC.ink,
-                                  fontSize: 21,
-                                  fontFamily: 'Noto Serif SC',
-                                  fontWeight: FontWeight.w900,
-                                  height: 1.15,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                location.isEmpty ? '位置待完善' : location,
-                                style: TextStyle(
-                                  color:
-                                      context.artC.ink.withValues(alpha: 0.42),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (summary != null && summary.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        summary,
-                        style: TextStyle(
-                          color: context.artC.ink.withValues(alpha: 0.62),
-                          fontSize: 13,
-                          height: 1.55,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _RatingPill(rating: rating, reviewCount: reviewCount),
-                        if (contractCount > 0)
-                          _MiniTag(
-                            label: '$contractCount 份合同存档',
-                            color: const Color(0xFF047857),
-                          ),
-                      ],
-                    ),
-                    if (focusAreas.isNotEmpty) ...[
-                      const SizedBox(height: 14),
-                      Wrap(
-                        spacing: 7,
-                        runSpacing: 7,
-                        children: focusAreas
-                            .map(
-                              (tag) => _MiniTag(
-                                label: _focusLabel(tag),
-                                color: kCobalt,
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    ],
-                  ],
-                ),
+              _OrganizationPublicHeader(
+                name: name,
+                logoUrl: _org['avatar_url']?.toString(),
+                verified: verified,
+                typeLabel: typeLabel,
+                location: location.isEmpty ? '城市待完善' : location,
+                summary: summary,
+                rating: rating,
+                reviewCount: reviewCount,
+                responseSpeed: responseSpeed,
+                serviceCount: services.length,
+                caseCount: cases.length,
+                focusAreas: focusAreas,
               ),
-              if (reviews.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                _OrganizationReviewsPanel(reviews: reviews),
-              ],
               const SizedBox(height: 14),
               _MembershipBanner(
                 isMember: _isMember,
@@ -1262,84 +1225,34 @@ class _OrganizationDetailScreenState extends State<OrganizationDetailScreen> {
                 onTap: _isMember ? null : _showUpgradeSheet,
               ),
               const SizedBox(height: 14),
-              ArtseeSurface(
-                radius: 22,
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '服务方式',
-                      style: TextStyle(
-                        color: context.artC.ink,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        if (supportsOnline)
-                          const _ServiceTag(
-                            icon: Icons.chat_bubble_outline_rounded,
-                            label: '线上咨询',
-                          ),
-                        if (supportsOffline)
-                          const _ServiceTag(
-                            icon: Icons.storefront_outlined,
-                            label: '支持线下见面',
-                          ),
-                        if (contactLocked && supportsOffline)
-                          const _ServiceTag(
-                            icon: Icons.lock_outline_rounded,
-                            label: '会员解锁联系方式',
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        if (supportsOnline)
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: _startOnlineConsultation,
-                              icon: const Icon(Icons.send_rounded, size: 16),
-                              label: const Text('线上咨询'),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: kCobalt,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                            ),
-                          ),
-                        if (supportsOnline && supportsOffline)
-                          const SizedBox(width: 10),
-                        if (supportsOffline)
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _showOfflineContact,
-                              icon: const Icon(Icons.place_outlined, size: 16),
-                              label: Text(contactLocked ? '解锁线下方式' : '线下见面'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: context.artC.ink,
-                                side: BorderSide(
-                                  color: context.artC.silver
-                                      .withValues(alpha: 0.6),
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
+              _OrganizationPrimaryActions(
+                following: _following,
+                supportsOnline: supportsOnline,
+                supportsOffline: supportsOffline,
+                onConsult: supportsOnline
+                    ? _startOnlineConsultation
+                    : _showOfflineContact,
+                onMessage: () => _openOrganizationMessage(
+                  name: name,
+                  avatarUrl: _org['avatar_url']?.toString(),
+                  responseSpeed: responseSpeed,
                 ),
+                onFollow: () => setState(() => _following = !_following),
+              ),
+              const SizedBox(height: 16),
+              _OrganizationProfileTabs(
+                selectedIndex: _profileTab,
+                onChanged: (index) => setState(() => _profileTab = index),
+              ),
+              const SizedBox(height: 12),
+              _OrganizationTabContent(
+                selectedIndex: _profileTab,
+                services: services,
+                cases: cases,
+                team: team,
+                activities: activities,
+                reviews: reviews,
+                qas: qas,
               ),
               if (_error != null) ...[
                 const SizedBox(height: 14),
@@ -1359,10 +1272,740 @@ class _OrganizationDetailScreenState extends State<OrganizationDetailScreen> {
   }
 }
 
+class _OrganizationPublicHeader extends StatelessWidget {
+  final String name;
+  final String? logoUrl;
+  final bool verified;
+  final String typeLabel;
+  final String location;
+  final String? summary;
+  final double rating;
+  final int reviewCount;
+  final String responseSpeed;
+  final int serviceCount;
+  final int caseCount;
+  final List<String> focusAreas;
+
+  const _OrganizationPublicHeader({
+    required this.name,
+    required this.logoUrl,
+    required this.verified,
+    required this.typeLabel,
+    required this.location,
+    required this.summary,
+    required this.rating,
+    required this.reviewCount,
+    required this.responseSpeed,
+    required this.serviceCount,
+    required this.caseCount,
+    required this.focusAreas,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ArtseeSurface(
+      elevated: true,
+      radius: 24,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _OrgAvatar(name: name, avatarUrl: logoUrl, size: 66),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: context.artC.ink,
+                              fontSize: 22,
+                              fontFamily: 'Noto Serif SC',
+                              fontWeight: FontWeight.w900,
+                              height: 1.12,
+                            ),
+                          ),
+                        ),
+                        if (verified) ...[
+                          const SizedBox(width: 8),
+                          const Icon(Icons.verified_rounded,
+                              color: kCobalt, size: 18),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 7,
+                      children: [
+                        _MiniTag(
+                            label: verified ? '认证机构' : '入驻机构', color: kCobalt),
+                        _MiniTag(
+                            label: typeLabel, color: const Color(0xFF047857)),
+                      ],
+                    ),
+                    const SizedBox(height: 9),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 14,
+                          color: context.artC.ink.withValues(alpha: 0.34),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            location,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: context.artC.ink.withValues(alpha: 0.46),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (summary != null && summary!.isNotEmpty) ...[
+            const SizedBox(height: 15),
+            Text(
+              summary!,
+              style: TextStyle(
+                color: context.artC.ink.withValues(alpha: 0.66),
+                fontSize: 13,
+                height: 1.55,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          _OrganizationMetricStrip(
+            rating: rating,
+            reviewCount: reviewCount,
+            responseSpeed: responseSpeed,
+            serviceCount: serviceCount,
+            caseCount: caseCount,
+          ),
+          if (focusAreas.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 7,
+              runSpacing: 7,
+              children: focusAreas
+                  .map((tag) =>
+                      _MiniTag(label: _focusLabel(tag), color: kCobalt))
+                  .toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _OrganizationMetricStrip extends StatelessWidget {
+  final double rating;
+  final int reviewCount;
+  final String responseSpeed;
+  final int serviceCount;
+  final int caseCount;
+
+  const _OrganizationMetricStrip({
+    required this.rating,
+    required this.reviewCount,
+    required this.responseSpeed,
+    required this.serviceCount,
+    required this.caseCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _OrganizationMetric(
+          label: '评分',
+          value: rating > 0 ? rating.toStringAsFixed(1) : '新',
+          helper: reviewCount > 0 ? '$reviewCount 条评价' : '暂无评价',
+        ),
+        const SizedBox(width: 8),
+        _OrganizationMetric(
+          label: '响应',
+          value: responseSpeed,
+          helper: '咨询速度',
+        ),
+        const SizedBox(width: 8),
+        _OrganizationMetric(
+          label: '服务',
+          value: '$serviceCount',
+          helper: '可咨询',
+        ),
+        const SizedBox(width: 8),
+        _OrganizationMetric(
+          label: '案例',
+          value: '$caseCount',
+          helper: '已展示',
+        ),
+      ],
+    );
+  }
+}
+
+class _OrganizationMetric extends StatelessWidget {
+  final String label;
+  final String value;
+  final String helper;
+
+  const _OrganizationMetric({
+    required this.label,
+    required this.value,
+    required this.helper,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 62),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+        decoration: BoxDecoration(
+          color: context.artC.silver.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(8),
+          border:
+              Border.all(color: context.artC.silver.withValues(alpha: 0.26)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: context.artC.ink.withValues(alpha: 0.38),
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: context.artC.ink,
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              helper,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: context.artC.ink.withValues(alpha: 0.34),
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OrganizationPrimaryActions extends StatelessWidget {
+  final bool following;
+  final bool supportsOnline;
+  final bool supportsOffline;
+  final VoidCallback onConsult;
+  final VoidCallback onMessage;
+  final VoidCallback onFollow;
+
+  const _OrganizationPrimaryActions({
+    required this.following,
+    required this.supportsOnline,
+    required this.supportsOffline,
+    required this.onConsult,
+    required this.onMessage,
+    required this.onFollow,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: FilledButton.icon(
+            onPressed: onConsult,
+            icon: Icon(
+              supportsOnline
+                  ? Icons.chat_bubble_outline_rounded
+                  : Icons.place_outlined,
+              size: 17,
+            ),
+            label: Text(supportsOnline ? '咨询' : '线下联系'),
+            style: FilledButton.styleFrom(
+              backgroundColor: kCobalt,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              textStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: onMessage,
+            icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+            label: const Text('私信'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: context.artC.ink,
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              textStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+              side:
+                  BorderSide(color: context.artC.silver.withValues(alpha: 0.6)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: onFollow,
+            icon: Icon(
+              following ? Icons.check_rounded : Icons.add_rounded,
+              size: 18,
+            ),
+            label: Text(following ? '已关注' : '关注'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: context.artC.ink,
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              textStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+              side:
+                  BorderSide(color: context.artC.silver.withValues(alpha: 0.6)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OrganizationProfileTabs extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onChanged;
+
+  const _OrganizationProfileTabs({
+    required this.selectedIndex,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const tabs = ['服务', '案例', '团队 / 艺术家', '动态', '评价', '问答'];
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: List.generate(tabs.length, (index) {
+          final active = selectedIndex == index;
+          return Padding(
+            padding: EdgeInsets.only(right: index == tabs.length - 1 ? 0 : 8),
+            child: GestureDetector(
+              onTap: () => onChanged(index),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                height: 36,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: active ? kCobalt : context.artC.cardIconBg,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: active
+                        ? kCobalt
+                        : context.artC.silver.withValues(alpha: 0.42),
+                  ),
+                ),
+                child: Text(
+                  tabs[index],
+                  style: TextStyle(
+                    color: active ? Colors.white : context.artC.ink,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _OrganizationTabContent extends StatelessWidget {
+  final int selectedIndex;
+  final List<Map<String, dynamic>> services;
+  final List<Map<String, dynamic>> cases;
+  final List<Map<String, dynamic>> team;
+  final List<Map<String, dynamic>> activities;
+  final List<Map<String, dynamic>> reviews;
+  final List<Map<String, dynamic>> qas;
+
+  const _OrganizationTabContent({
+    required this.selectedIndex,
+    required this.services,
+    required this.cases,
+    required this.team,
+    required this.activities,
+    required this.reviews,
+    required this.qas,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 180),
+      child: switch (selectedIndex) {
+        0 => _OrganizationListPanel(
+            key: const ValueKey('services'),
+            items: services,
+            emptyTitle: '暂无服务',
+            emptyText: '机构完善服务后会在这里展示可咨询项目。',
+            itemBuilder: (item) => _OrganizationServiceCard(item: item),
+          ),
+        1 => _OrganizationListPanel(
+            key: const ValueKey('cases'),
+            items: cases,
+            emptyTitle: '暂无案例',
+            emptyText: '案例会用于判断机构擅长方向和服务人群。',
+            itemBuilder: (item) => _OrganizationCaseCard(item: item),
+          ),
+        2 => _OrganizationListPanel(
+            key: const ValueKey('team'),
+            items: team,
+            emptyTitle: '暂无团队信息',
+            emptyText: '顾问、老师和合作艺术家会在这里展示。',
+            itemBuilder: (item) => _OrganizationTeamCard(item: item),
+          ),
+        3 => _OrganizationListPanel(
+            key: const ValueKey('activities'),
+            items: activities,
+            emptyTitle: '暂无动态',
+            emptyText: '课程、活动、展览和机构更新会沉淀在这里。',
+            itemBuilder: (item) => _OrganizationTextCard(item: item),
+          ),
+        4 => reviews.isEmpty
+            ? const _OrganizationEmptyPanel(
+                key: ValueKey('reviews'),
+                title: '暂无评价',
+                text: '完成咨询或服务后，用户评价会展示在这里。',
+              )
+            : _OrganizationReviewsPanel(
+                key: const ValueKey('reviews'),
+                reviews: reviews,
+              ),
+        _ => _OrganizationListPanel(
+            key: const ValueKey('qa'),
+            items: qas,
+            emptyTitle: '暂无问答',
+            emptyText: '用户常问问题和机构回答会在这里展示。',
+            itemBuilder: (item) => _OrganizationQaCard(item: item),
+          ),
+      },
+    );
+  }
+}
+
+class _OrganizationListPanel extends StatelessWidget {
+  final List<Map<String, dynamic>> items;
+  final String emptyTitle;
+  final String emptyText;
+  final Widget Function(Map<String, dynamic> item) itemBuilder;
+
+  const _OrganizationListPanel({
+    super.key,
+    required this.items,
+    required this.emptyTitle,
+    required this.emptyText,
+    required this.itemBuilder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return _OrganizationEmptyPanel(title: emptyTitle, text: emptyText);
+    }
+    return Column(
+      children: [
+        for (var i = 0; i < items.length; i++) ...[
+          itemBuilder(items[i]),
+          if (i != items.length - 1) const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class _OrganizationEmptyPanel extends StatelessWidget {
+  final String title;
+  final String text;
+
+  const _OrganizationEmptyPanel({
+    super.key,
+    required this.title,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ArtseeSurface(
+      radius: 8,
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Icon(Icons.inventory_2_outlined,
+              color: context.artC.ink.withValues(alpha: 0.28), size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: context.artC.ink,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  text,
+                  style: TextStyle(
+                    color: context.artC.ink.withValues(alpha: 0.5),
+                    fontSize: 12,
+                    height: 1.45,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OrganizationServiceCard extends StatelessWidget {
+  final Map<String, dynamic> item;
+
+  const _OrganizationServiceCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final title = _itemText(item, ['title', 'name'], '服务项目');
+    final subtitle = _itemText(item, ['subtitle', 'description', 'summary'],
+        '适合需要明确路径、作品集节奏或申请判断的用户。');
+    final meta = _itemText(item, ['meta', 'mode', 'delivery'], '线上 / 线下可咨询');
+    return _OrganizationInfoCard(
+      icon: Icons.design_services_outlined,
+      title: title,
+      subtitle: subtitle,
+      trailing: meta,
+    );
+  }
+}
+
+class _OrganizationCaseCard extends StatelessWidget {
+  final Map<String, dynamic> item;
+
+  const _OrganizationCaseCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final title = _itemText(item, ['title', 'name'], '服务案例');
+    final subtitle = _itemText(
+        item, ['subtitle', 'description', 'summary'], '展示申请背景、服务过程和阶段结果。');
+    final result = _itemText(item, ['result', 'tag', 'school'], '案例');
+    return _OrganizationInfoCard(
+      icon: Icons.collections_bookmark_outlined,
+      title: title,
+      subtitle: subtitle,
+      trailing: result,
+    );
+  }
+}
+
+class _OrganizationTeamCard extends StatelessWidget {
+  final Map<String, dynamic> item;
+
+  const _OrganizationTeamCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final name = _itemText(item, ['name', 'title'], '团队成员');
+    final role = _itemText(item, ['role', 'position'], '顾问 / 艺术家');
+    final bio =
+        _itemText(item, ['bio', 'description', 'summary'], '负责作品集、院校判断或合作项目。');
+    return _OrganizationInfoCard(
+      icon: Icons.groups_2_outlined,
+      title: name,
+      subtitle: bio,
+      trailing: role,
+    );
+  }
+}
+
+class _OrganizationTextCard extends StatelessWidget {
+  final Map<String, dynamic> item;
+
+  const _OrganizationTextCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final title = _itemText(item, ['title', 'name'], '机构动态');
+    final text = _itemText(
+        item, ['body', 'description', 'summary'], '课程、案例、活动和团队动态会在这里更新。');
+    return _OrganizationInfoCard(
+      icon: Icons.campaign_outlined,
+      title: title,
+      subtitle: text,
+      trailing: _itemText(item, ['date', 'created_at'], '更新'),
+    );
+  }
+}
+
+class _OrganizationQaCard extends StatelessWidget {
+  final Map<String, dynamic> item;
+
+  const _OrganizationQaCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final question = _itemText(item, ['question', 'title'], '常见问题');
+    final answer = _itemText(
+        item, ['answer', 'body', 'description'], '机构会在这里回答用户关心的服务、费用和合作方式。');
+    return _OrganizationInfoCard(
+      icon: Icons.live_help_outlined,
+      title: question,
+      subtitle: answer,
+      trailing: '问答',
+    );
+  }
+}
+
+class _OrganizationInfoCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String trailing;
+
+  const _OrganizationInfoCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ArtseeSurface(
+      radius: 8,
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: kCobalt.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: kCobalt, size: 19),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: context.artC.ink,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _MiniTag(label: trailing, color: kCobalt),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: context.artC.ink.withValues(alpha: 0.62),
+                    fontSize: 12,
+                    height: 1.48,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _OrganizationReviewsPanel extends StatelessWidget {
   final List<Map<String, dynamic>> reviews;
 
-  const _OrganizationReviewsPanel({required this.reviews});
+  const _OrganizationReviewsPanel({super.key, required this.reviews});
 
   @override
   Widget build(BuildContext context) {
@@ -1470,18 +2113,23 @@ class _OrganizationReviewTile extends StatelessWidget {
 class _OrgAvatar extends StatelessWidget {
   final String name;
   final String? avatarUrl;
+  final double size;
 
-  const _OrgAvatar({required this.name, required this.avatarUrl});
+  const _OrgAvatar({
+    required this.name,
+    required this.avatarUrl,
+    this.size = 48,
+  });
 
   @override
   Widget build(BuildContext context) {
     final url = avatarUrl;
     return Container(
-      width: 48,
-      height: 48,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         color: kCobalt.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(size >= 60 ? 20 : 16),
         border: Border.all(color: kCobalt.withValues(alpha: 0.08)),
       ),
       clipBehavior: Clip.antiAlias,
@@ -2157,6 +2805,197 @@ List<Map<String, dynamic>> _mapList(Object? value) {
       .whereType<Map>()
       .map((item) => Map<String, dynamic>.from(item))
       .toList();
+}
+
+Map<String, dynamic> _objectMap(Object? value) {
+  if (value is Map) return Map<String, dynamic>.from(value);
+  return const {};
+}
+
+String _metadataText(
+  Map<String, dynamic> org,
+  List<String> keys, {
+  String fallback = '',
+}) {
+  final metadata = _objectMap(org['metadata']);
+  for (final key in keys) {
+    final raw = metadata[key] ?? org[key];
+    final text = raw?.toString().trim();
+    if (text != null && text.isNotEmpty) return text;
+  }
+  return fallback;
+}
+
+List<Map<String, dynamic>> _metadataCards(
+  Map<String, dynamic> org,
+  List<String> keys,
+) {
+  final metadata = _objectMap(org['metadata']);
+  for (final key in keys) {
+    final raw = metadata[key] ?? org[key];
+    final maps = _mapList(raw);
+    if (maps.isNotEmpty) return maps;
+    if (raw is List) {
+      final cards = raw
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .map((item) => {'title': item})
+          .toList();
+      if (cards.isNotEmpty) return cards;
+    }
+  }
+  return const [];
+}
+
+bool _organizationVerified(Map<String, dynamic> org) {
+  final status = org['verification_status']?.toString().toLowerCase() ?? '';
+  final active = org['status']?.toString().toLowerCase() == 'active';
+  return active ||
+      status == 'verified' ||
+      status == 'approved' ||
+      status == 'passed';
+}
+
+String _organizationTypeLabel(String? value) {
+  const labels = {
+    'study_abroad_agency': '艺术留学机构',
+    'portfolio_training': '作品集机构',
+    'gallery_exhibition': '画廊 / 展览机构',
+    'event_organizer': '活动主办方',
+    'hotel_culture_space': '文旅空间',
+    'brand_partner': '品牌合作方',
+    'art_media_community': '艺术媒体 / 社群',
+    'other_service': '艺术服务商',
+  };
+  final key = value?.trim();
+  if (key == null || key.isEmpty) return '机构 / 商家';
+  return labels[key] ?? key;
+}
+
+String _organizationResponseSpeed(Map<String, dynamic> org) {
+  final value = _metadataText(
+    org,
+    ['response_speed', 'response_time', 'reply_time'],
+  );
+  if (value.isNotEmpty) return value;
+  if (org['supports_online'] != false) return '2小时内';
+  return '24小时内';
+}
+
+List<Map<String, dynamic>> _organizationServices(Map<String, dynamic> org) {
+  final fromMetadata = _metadataCards(org, ['services', 'service_items']);
+  if (fromMetadata.isNotEmpty) return fromMetadata;
+  final focus = _stringList(org['focus_areas']);
+  final service = <Map<String, dynamic>>[
+    {
+      'title': '作品集初诊',
+      'description': '梳理作品集现状、申请阶段和下一步修改重点。',
+      'mode': org['supports_online'] != false ? '线上咨询' : '线下沟通',
+    },
+    {
+      'title': '院校申请路径规划',
+      'description': '结合目标国家、专业方向和时间线，拆解申请准备节奏。',
+      'mode': '规划服务',
+    },
+  ];
+  if (focus.contains('portfolio') || focus.contains('service_design')) {
+    service.add({
+      'title': '项目叙事与案例打磨',
+      'description': '帮助学生把调研、过程和最终呈现整理成可讲述的作品集项目。',
+      'mode': '作品集辅导',
+    });
+  } else {
+    service.add({
+      'title': '顾问答疑',
+      'description': '围绕学校选择、服务匹配和申请风险进行轻量咨询。',
+      'mode': '快速咨询',
+    });
+  }
+  return service;
+}
+
+List<Map<String, dynamic>> _organizationCases(
+  Map<String, dynamic> org, {
+  String? schoolName,
+}) {
+  final fromMetadata = _metadataCards(org, ['cases', 'case_studies']);
+  if (fromMetadata.isNotEmpty) return fromMetadata;
+  final school =
+      schoolName?.trim().isNotEmpty == true ? schoolName!.trim() : '目标院校';
+  return [
+    {
+      'title': '$school 申请路径复盘',
+      'description': '展示学生背景、作品集调整方向和申请过程中的关键节点。',
+      'result': '申请案例',
+    },
+    {
+      'title': '作品集项目叙事优化',
+      'description': '从调研线索、材料实验和最终排版三个层面梳理案例表达。',
+      'result': '作品集案例',
+    },
+  ];
+}
+
+List<Map<String, dynamic>> _organizationTeam(Map<String, dynamic> org) {
+  final fromMetadata = _metadataCards(org, ['team', 'members', 'artists']);
+  if (fromMetadata.isNotEmpty) return fromMetadata;
+  final type = _organizationTypeLabel(org['type']?.toString());
+  return [
+    {
+      'name': '主理顾问',
+      'role': type,
+      'bio': '负责前期评估、服务匹配和申请路径判断。',
+    },
+    {
+      'name': '作品集导师',
+      'role': '合作导师',
+      'bio': '负责作品集项目拆解、视觉呈现和面试表达训练。',
+    },
+  ];
+}
+
+List<Map<String, dynamic>> _organizationActivities(Map<String, dynamic> org) {
+  final fromMetadata = _metadataCards(org, ['activities', 'updates', 'posts']);
+  if (fromMetadata.isNotEmpty) return fromMetadata;
+  return [
+    {
+      'title': '机构主页已开放',
+      'description': '服务、案例、团队和评价会持续更新，用户可从这里发起咨询。',
+      'date': '最近更新',
+    },
+    {
+      'title': '案例资料整理中',
+      'description': '后续将补充更多已完成服务案例和合作艺术家信息。',
+      'date': '动态',
+    },
+  ];
+}
+
+List<Map<String, dynamic>> _organizationQas(Map<String, dynamic> org) {
+  final fromMetadata = _metadataCards(org, ['qas', 'faqs', 'questions']);
+  if (fromMetadata.isNotEmpty) return fromMetadata;
+  return const [
+    {
+      'question': '适合什么阶段的学生咨询？',
+      'answer': '从刚开始了解院校、作品集准备中到临近申请，都可以先发起一次轻咨询确认路径。',
+    },
+    {
+      'question': '咨询后会直接进入交易吗？',
+      'answer': '不会。机构页先提供信息展示与轻沟通，是否签约由用户和机构自行确认。',
+    },
+  ];
+}
+
+String _itemText(
+  Map<String, dynamic> item,
+  List<String> keys,
+  String fallback,
+) {
+  for (final key in keys) {
+    final value = item[key]?.toString().trim();
+    if (value != null && value.isNotEmpty) return value;
+  }
+  return fallback;
 }
 
 String? _formatReviewDate(String? value) {

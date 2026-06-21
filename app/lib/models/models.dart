@@ -74,6 +74,9 @@ class AppCommunityPost {
   final String title;
   final String? body;
   final List<String> imageUrls;
+  final String status;
+  final String? auditStatus;
+  final String? auditReason;
   final Map<String, dynamic> metadata;
   final int likeCount;
   final int commentCount;
@@ -88,6 +91,9 @@ class AppCommunityPost {
     required this.title,
     this.body,
     required this.imageUrls,
+    this.status = 'published',
+    this.auditStatus,
+    this.auditReason,
     this.metadata = const {},
     required this.likeCount,
     required this.commentCount,
@@ -115,6 +121,9 @@ class AppCommunityPost {
       title: json['title'] as String? ?? '',
       body: json['body'] as String?,
       imageUrls: urls is List ? urls.map((e) => e.toString()).toList() : [],
+      status: json['status'] as String? ?? 'published',
+      auditStatus: json['audit_status'] as String?,
+      auditReason: json['audit_reason'] as String?,
       metadata: rawMetadata is Map<String, dynamic> ? rawMetadata : {},
       likeCount: json['like_count'] as int? ?? 0,
       commentCount: json['comment_count'] as int? ?? 0,
@@ -182,16 +191,47 @@ class AppCommunityHotTopic {
 class AppCommunityHotTopicAnswer {
   final String stance;
   final String content;
+  final String? authorName;
+  final String? authorHandle;
+  final String? authorAvatarUrl;
+  final String? authorRole;
+  final int likeCount;
+  final int commentCount;
+  final int shareCount;
 
   const AppCommunityHotTopicAnswer({
     required this.stance,
     required this.content,
+    this.authorName,
+    this.authorHandle,
+    this.authorAvatarUrl,
+    this.authorRole,
+    this.likeCount = 0,
+    this.commentCount = 0,
+    this.shareCount = 0,
   });
 
   factory AppCommunityHotTopicAnswer.fromJson(Map<String, dynamic> json) {
+    final rawAuthor = json['author'];
+    final author = rawAuthor is Map<String, dynamic> ? rawAuthor : null;
     return AppCommunityHotTopicAnswer(
       stance: json['stance'] as String? ?? '',
       content: json['content'] as String? ?? '',
+      authorName: (json['author_name'] ?? author?['name']) as String?,
+      authorHandle: (json['author_handle'] ??
+          json['author_id'] ??
+          author?['handle'] ??
+          author?['id']) as String?,
+      authorAvatarUrl: (json['author_avatar_url'] ??
+          json['avatar_url'] ??
+          author?['avatar_url']) as String?,
+      authorRole: (json['author_role'] ??
+          json['author_type'] ??
+          author?['role'] ??
+          author?['type']) as String?,
+      likeCount: _intValue(json['like_count'] ?? json['likes']),
+      commentCount: _intValue(json['comment_count'] ?? json['comments']),
+      shareCount: _intValue(json['share_count'] ?? json['shares']),
     );
   }
 }
@@ -358,6 +398,13 @@ List<String> _stringList(dynamic value) {
         .toList();
   }
   return const [];
+}
+
+int _intValue(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.round();
+  if (value is String) return int.tryParse(value) ?? 0;
+  return 0;
 }
 
 class AppReply {

@@ -7,6 +7,8 @@ import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
 import 'ask_question_screen.dart';
 import '../community/community_post_detail_screen.dart';
+import '../messages/light_message_screen.dart';
+import '../profile/public_user_profile_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 
 class ForumScreen extends StatefulWidget {
@@ -1051,8 +1053,17 @@ class _ChatTabState extends State<_ChatTab> {
 
   bool _matchesConversationFilter(Map<String, dynamic> conversation) {
     if (_selectedFilter == '全部') return true;
-    final type = conversation['type']?.toString() ?? 'direct';
-    return _conversationTypeLabel(type) == _selectedFilter;
+    final isOrg = _conversationIsOrganization(conversation);
+    return _selectedFilter == '机构' ? isOrg : !isOrg;
+  }
+
+  Future<void> _openConversation(Map<String, dynamic> conversation) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => LightMessageScreen(conversation: conversation),
+      ),
+    );
+    if (mounted) _load();
   }
 
   @override
@@ -1088,7 +1099,7 @@ class _ChatTabState extends State<_ChatTab> {
       padding: EdgeInsets.fromLTRB(20, 0, 20, widget.bottom + 32),
       children: [
         _PillFilterRow(
-          values: const ['全部', '合作', '圈子', '沙龙', '系统'],
+          values: const ['全部', '个人', '机构'],
           selected: _selectedFilter,
           onSelected: (value) => setState(() => _selectedFilter = value),
         ),
@@ -1126,6 +1137,7 @@ class _ChatTabState extends State<_ChatTab> {
                   child: _ChatCard(
                     conversation: entry.value,
                     index: entry.key,
+                    onTap: () => _openConversation(entry.value),
                   ),
                 ),
               ),
@@ -1743,6 +1755,7 @@ class _HotTopicDiscussionScreen extends StatelessWidget {
     final theme = topic.metadata['theme']?.toString();
     final themeLabel = theme?.isNotEmpty == true ? theme! : topic.category;
     final bottom = MediaQuery.paddingOf(context).bottom;
+    final answers = topic.answers;
     return Scaffold(
       backgroundColor: context.artC.porcelain,
       appBar: AppBar(
@@ -1783,28 +1796,29 @@ class _HotTopicDiscussionScreen extends StatelessWidget {
           const SizedBox(height: 14),
           _HotTopicDiscussionStats(topic: topic),
           const SizedBox(height: 20),
-          const _CommunitySectionHeader(title: '立场速览'),
+          const _CommunitySectionHeader(title: '真实用户观点'),
           const SizedBox(height: 10),
-          if (topic.answers.isEmpty)
+          if (answers.isEmpty)
             _CommunityEmptyState(
               icon: Icons.forum_outlined,
-              title: '暂无立场内容',
+              title: '暂无观点内容',
               subtitle: '这个话题还在整理中，可以先发起一个具体问题。',
               actionLabel: '发起讨论',
               onRetry: () {
                 onAsk();
               },
             )
-          else
-            ...topic.answers.asMap().entries.map(
+          else ...[
+            ...answers.asMap().entries.map(
                   (entry) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.only(bottom: 12),
                     child: _HotTopicAnswerCard(
                       index: entry.key,
                       answer: entry.value,
                     ),
                   ),
                 ),
+          ],
           const SizedBox(height: 8),
           _HotTopicDiscussNowCard(
             topic: topic,
@@ -1865,7 +1879,7 @@ class _HotTopicDiscussionHero extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            '${topic.category} · 已有 ${topic.participantCount} 人参与 · ${topic.answers.length} 个立场',
+            '${topic.category} · 已有 ${topic.participantCount} 人参与 · ${topic.answers.length} 个观点',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.56),
               fontSize: 11,
@@ -1926,7 +1940,7 @@ class _HotTopicDiscussionStats extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: _HotTopicStatTile(
-            label: '立场',
+            label: '观点',
             value: '${topic.answers.length}',
             icon: Icons.forum_outlined,
           ),
@@ -1996,7 +2010,7 @@ class _HotTopicStatTile extends StatelessWidget {
   }
 }
 
-class _HotTopicAnswerCard extends StatelessWidget {
+class _HotTopicAnswerCard extends StatefulWidget {
   final int index;
   final AppCommunityHotTopicAnswer answer;
 
@@ -2006,64 +2020,452 @@ class _HotTopicAnswerCard extends StatelessWidget {
   });
 
   @override
+  State<_HotTopicAnswerCard> createState() => _HotTopicAnswerCardState();
+}
+
+class _HotTopicAnswerCardState extends State<_HotTopicAnswerCard> {
+  late int _likeCount;
+  late int _commentCount;
+  late int _shareCount;
+  bool _liked = false;
+  bool _showCommentBox = false;
+  final TextEditingController _commentController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _likeCount = widget.answer.likeCount > 0
+        ? widget.answer.likeCount
+        : 48 + widget.index * 19;
+    _commentCount = widget.answer.commentCount > 0
+        ? widget.answer.commentCount
+        : 6 + widget.index * 3;
+    _shareCount = widget.answer.shareCount > 0
+        ? widget.answer.shareCount
+        : 2 + widget.index;
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  void _toggleLike() {
+    setState(() {
+      _liked = !_liked;
+      _likeCount += _liked ? 1 : -1;
+    });
+  }
+
+  void _submitComment() {
+    if (_commentController.text.trim().isEmpty) return;
+    setState(() {
+      _commentCount += 1;
+      _showCommentBox = false;
+      _commentController.clear();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('评论已发布')),
+    );
+  }
+
+  void _share() {
+    setState(() => _shareCount += 1);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('已生成转发入口')),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final answer = widget.answer;
+    final index = widget.index;
+    final authorName = _hotTopicAuthorName(answer, index);
+    final handle = _hotTopicAuthorHandle(answer, index);
+    final role = _hotTopicAuthorRole(answer, index);
+    final color = _hotTopicAuthorAccent(role, index);
+    final avatarUrl = _hotTopicAuthorAvatar(answer, index);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: context.artC.silver.withValues(alpha: 0.34)),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 28,
-            height: 28,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: kCobalt.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              '${index + 1}',
-              style: const TextStyle(
-                color: kCobalt,
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  answer.stance,
-                  style: const TextStyle(
-                    color: kCobalt,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
+          InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () {
+              Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) => PublicUserProfileScreen(
+                    name: authorName,
+                    handle: handle,
+                    avatarUrl: avatarUrl,
+                    roleLabel: role,
+                    kind: _hotTopicProfileKind(role),
+                    bio: '$role，参与艺术讨论与作品观点分享。',
+                    featuredAnswerContext: '来自热议讨论的回答',
+                    featuredAnswer: answer.content,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  answer.content,
-                  style: TextStyle(
-                    color: context.artC.ink.withValues(alpha: 0.64),
-                    fontSize: 12,
-                    height: 1.55,
-                    fontWeight: FontWeight.w700,
+              );
+            },
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _HotTopicAvatar(
+                  url: avatarUrl,
+                  name: authorName,
+                  color: color,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              authorName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: context.artC.ink,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.verified_rounded,
+                            color: color,
+                            size: 15,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              handle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: context.artC.ink.withValues(alpha: 0.38),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _HotTopicIdentityChip(label: role, color: color),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 14),
+          Text(
+            answer.content,
+            style: TextStyle(
+              color: context.artC.ink.withValues(alpha: 0.68),
+              fontSize: 13,
+              height: 1.58,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              _HotTopicActionButton(
+                icon: _liked
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
+                label: '赞同',
+                value: _likeCount,
+                active: _liked,
+                onTap: _toggleLike,
+              ),
+              const SizedBox(width: 8),
+              _HotTopicActionButton(
+                icon: Icons.mode_comment_outlined,
+                label: '评论',
+                value: _commentCount,
+                onTap: () {
+                  setState(() => _showCommentBox = !_showCommentBox);
+                },
+              ),
+              const SizedBox(width: 8),
+              _HotTopicActionButton(
+                icon: Icons.ios_share_rounded,
+                label: '转发',
+                value: _shareCount,
+                onTap: _share,
+              ),
+            ],
+          ),
+          if (_showCommentBox) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+              decoration: BoxDecoration(
+                color: context.artC.porcelain,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: context.artC.silver.withValues(alpha: 0.32),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _commentController,
+                      minLines: 1,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: '回复 $authorName 的观点...',
+                        isDense: true,
+                      ),
+                      style: TextStyle(
+                        color: context.artC.ink,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: _submitComment,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: kCobalt,
+                      minimumSize: const Size(58, 34),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                    child: const Text(
+                      '发送',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
+}
+
+class _HotTopicAvatar extends StatelessWidget {
+  final String? url;
+  final String name;
+  final Color color;
+
+  const _HotTopicAvatar({
+    required this.url,
+    required this.name,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = Container(
+      width: 46,
+      height: 46,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        name.characters.take(1).toString(),
+        style: TextStyle(
+          color: color,
+          fontSize: 15,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+
+    if (url == null || url!.isEmpty) return fallback;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Image.network(
+        url!,
+        width: 46,
+        height: 46,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => fallback,
+      ),
+    );
+  }
+}
+
+class _HotTopicIdentityChip extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _HotTopicIdentityChip({
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _HotTopicActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int value;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _HotTopicActionButton({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onTap,
+    this.active = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? kCobalt : context.artC.ink.withValues(alpha: 0.44);
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: active
+                ? kCobalt.withValues(alpha: 0.08)
+                : context.artC.porcelain,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 15, color: color),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  '$label $value',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _hotTopicAuthorName(AppCommunityHotTopicAnswer answer, int index) {
+  final name = answer.authorName?.trim();
+  if (name != null && name.isNotEmpty) return name;
+  const names = ['沈予白', 'Mia Chen', '陆川霖 Lin', '王教授', '艺见心顾问团'];
+  return names[index % names.length];
+}
+
+String _hotTopicAuthorHandle(AppCommunityHotTopicAnswer answer, int index) {
+  final handle = answer.authorHandle?.trim();
+  if (handle != null && handle.isNotEmpty) {
+    return handle.startsWith('@') ? handle : '@$handle';
+  }
+  const handles = [
+    '@shen-yubai',
+    '@mia.chen',
+    '@lin-studio',
+    '@prof-wang',
+    '@artiqore-advisor'
+  ];
+  return handles[index % handles.length];
+}
+
+String _hotTopicAuthorRole(AppCommunityHotTopicAnswer answer, int index) {
+  final role = answer.authorRole?.trim();
+  if (role != null && role.isNotEmpty) return role;
+  const roles = ['认证艺术家', '在读学生', '认证艺术家', '认证导师', '机构顾问'];
+  return roles[index % roles.length];
+}
+
+PublicUserProfileKind _hotTopicProfileKind(String role) {
+  if (role.contains('艺术家')) return PublicUserProfileKind.artist;
+  if (role.contains('学生') || role.contains('在读')) {
+    return PublicUserProfileKind.student;
+  }
+  if (role.contains('导师') || role.contains('顾问')) {
+    return PublicUserProfileKind.mentor;
+  }
+  return PublicUserProfileKind.user;
+}
+
+Color _hotTopicAuthorAccent(String role, int index) {
+  if (role.contains('机构') || role.contains('顾问')) {
+    return const Color(0xFF8D5AD7);
+  }
+  if (role.contains('导师')) {
+    return kCobalt;
+  }
+  if (role.contains('艺术家')) {
+    return const Color(0xFF2F9B7A);
+  }
+  if (role.contains('学生')) {
+    return const Color(0xFF7A6A56);
+  }
+  const colors = [
+    kCobalt,
+    Color(0xFF2F9B7A),
+    Color(0xFF8D5AD7),
+    Color(0xFF7A6A56),
+  ];
+  return colors[index % colors.length];
+}
+
+String? _hotTopicAuthorAvatar(AppCommunityHotTopicAnswer answer, int index) {
+  final avatar = answer.authorAvatarUrl?.trim();
+  if (avatar != null && avatar.isNotEmpty) return avatar;
+  return 'https://i.pravatar.cc/160?u=artsee-hot-topic-$index';
 }
 
 class _HotTopicDiscussNowCard extends StatelessWidget {
@@ -5204,8 +5606,13 @@ List<({String time, String title, String body})> _salonItinerary(
 class _ChatCard extends StatelessWidget {
   final Map<String, dynamic> conversation;
   final int index;
+  final VoidCallback onTap;
 
-  const _ChatCard({required this.conversation, required this.index});
+  const _ChatCard({
+    required this.conversation,
+    required this.index,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -5213,12 +5620,14 @@ class _ChatCard extends StatelessWidget {
     final latest = conversation['latest_message'];
     final peerProfile = peer is Map<String, dynamic> ? peer : null;
     final latestMessage = latest is Map<String, dynamic> ? latest : null;
+    final isOrg = _conversationIsOrganization(conversation);
     final title = conversation['title']?.toString().isNotEmpty == true
         ? conversation['title'].toString()
         : peerProfile?['nickname']?.toString().isNotEmpty == true
             ? peerProfile!['nickname'].toString()
-            : '合作消息';
-    final type = conversation['type']?.toString() ?? 'direct';
+            : isOrg
+                ? '机构会话'
+                : 'Artsee 用户';
     final body = latestMessage?['body']?.toString() ?? '暂无消息内容';
     final time = _formatForumChatTime(
       latestMessage?['created_at'] ?? conversation['updated_at'],
@@ -5227,25 +5636,32 @@ class _ChatCard extends StatelessWidget {
         ? conversation['unread_count'] as int
         : int.tryParse(conversation['unread_count']?.toString() ?? '') ?? 0;
     final avatarUrl = peerProfile?['avatar_url']?.toString();
+    final identity = isOrg
+        ? _conversationOrganizationIdentity(conversation)
+        : _conversationPersonIdentityLabel(conversation);
 
     return ArtseeSurface(
+      onTap: onTap,
       padding: const EdgeInsets.all(15),
-      radius: 18,
+      radius: 8,
       child: Row(
         children: [
           Stack(
             children: [
-              ClipOval(
-                child: avatarUrl != null && avatarUrl.isNotEmpty
-                    ? Image.network(
-                        avatarUrl,
-                        width: 54,
-                        height: 54,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            _ChatAvatarFallback(seed: index),
-                      )
-                    : _ChatAvatarFallback(seed: index),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(isOrg ? 13 : 27),
+                child: SizedBox(
+                  width: 54,
+                  height: 54,
+                  child: avatarUrl != null && avatarUrl.isNotEmpty
+                      ? Image.network(
+                          avatarUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _ChatAvatarFallback(seed: index, org: isOrg),
+                        )
+                      : _ChatAvatarFallback(seed: index, org: isOrg),
+                ),
               ),
               Positioned(
                 right: 1,
@@ -5271,7 +5687,7 @@ class _ChatCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        '${_conversationTypeLabel(type)} · $title',
+                        title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -5281,6 +5697,7 @@ class _ChatCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       time,
                       style: TextStyle(
@@ -5291,7 +5708,9 @@ class _ChatCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 6),
+                _ChatIdentityTag(label: identity, org: isOrg),
+                const SizedBox(height: 6),
                 Row(
                   children: [
                     Expanded(
@@ -5337,8 +5756,9 @@ class _ChatCard extends StatelessWidget {
 
 class _ChatAvatarFallback extends StatelessWidget {
   final int seed;
+  final bool org;
 
-  const _ChatAvatarFallback({required this.seed});
+  const _ChatAvatarFallback({required this.seed, this.org = false});
 
   @override
   Widget build(BuildContext context) {
@@ -5354,7 +5774,43 @@ class _ChatAvatarFallback extends StatelessWidget {
       height: 54,
       alignment: Alignment.center,
       color: color.withOpacity(0.1),
-      child: Icon(Icons.person_outline, color: color, size: 24),
+      child: Icon(
+        org ? Icons.storefront_outlined : Icons.person_outline,
+        color: color,
+        size: 24,
+      ),
+    );
+  }
+}
+
+class _ChatIdentityTag extends StatelessWidget {
+  final String label;
+  final bool org;
+
+  const _ChatIdentityTag({required this.label, required this.org});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color:
+              (org ? const Color(0xFF047857) : kCobalt).withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: org ? const Color(0xFF047857) : kCobalt,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -5757,19 +6213,51 @@ List<String> _salonAudience(Map<String, dynamic> salon, int index) {
   return const ['准备艺术留学申请的学生', '想了解海外院校学习体验的人', '希望和校友交流的人'];
 }
 
-String _conversationTypeLabel(String type) {
-  switch (type) {
-    case 'opportunity':
-      return '合作';
-    case 'circle':
-      return '圈子';
-    case 'salon':
-      return '沙龙';
-    case 'system':
-      return '系统';
-    default:
-      return '私信';
+bool _conversationIsOrganization(Map<String, dynamic> conversation) {
+  final peer = conversation['peer_profile'];
+  final peerProfile = peer is Map<String, dynamic> ? peer : null;
+  final metadataRaw = conversation['metadata'];
+  final metadata =
+      metadataRaw is Map ? Map<String, dynamic>.from(metadataRaw) : {};
+  final type = conversation['type']?.toString() ?? 'direct';
+  final userType = peerProfile?['user_type']?.toString() ??
+      metadata['peer_type']?.toString() ??
+      metadata['target_type']?.toString();
+  return userType == 'business' ||
+      userType == 'institution' ||
+      type == 'organization' ||
+      type == 'cooperation' ||
+      metadata['organization_name'] != null;
+}
+
+String _conversationPersonIdentityLabel(Map<String, dynamic> conversation) {
+  final peer = conversation['peer_profile'];
+  final peerProfile = peer is Map<String, dynamic> ? peer : null;
+  final metadataRaw = conversation['metadata'];
+  final metadata =
+      metadataRaw is Map ? Map<String, dynamic>.from(metadataRaw) : {};
+  final role = peerProfile?['user_role']?.toString() ??
+      metadata['user_role']?.toString() ??
+      metadata['peer_role']?.toString();
+  return switch (role) {
+    'artist' => '认证艺术家',
+    'mentor' => '导师',
+    'student' => '学生',
+    _ => metadata['identity_label']?.toString() ?? '用户',
+  };
+}
+
+String _conversationOrganizationIdentity(Map<String, dynamic> conversation) {
+  final metadataRaw = conversation['metadata'];
+  final metadata =
+      metadataRaw is Map ? Map<String, dynamic>.from(metadataRaw) : {};
+  final serviceStatus = metadata['service_status']?.toString();
+  final responseTime = metadata['response_time']?.toString();
+  if (serviceStatus?.isNotEmpty == true && responseTime?.isNotEmpty == true) {
+    return '机构认证 · $serviceStatus · $responseTime';
   }
+  if (serviceStatus?.isNotEmpty == true) return '机构认证 · $serviceStatus';
+  return '机构认证 · 服务中';
 }
 
 String _formatForumFee(dynamic raw) {
