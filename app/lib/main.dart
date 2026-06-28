@@ -159,9 +159,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
   Future<void> _syncTencentImLogin() async {
     try {
       await TencentImService.ensureLoggedIn();
-    } catch (error, stackTrace) {
-      debugPrint('Tencent IM login skipped: $error');
-      debugPrintStack(stackTrace: stackTrace);
+    } catch (error) {
+      if (error is UnsupportedError && error.message?.contains('Web') == true) {
+        return;
+      }
+      debugPrint('Tencent IM login error: $error');
     }
   }
 

@@ -1099,6 +1099,14 @@ class _ChatTabState extends State<_ChatTab> {
       });
     } catch (e) {
       if (!mounted) return;
+      if (e is UnsupportedError && e.message?.contains('Web') == true) {
+        setState(() {
+          _imConnecting = false;
+          _imReady = false;
+          _imStatusText = '即时通讯功能仅在移动端可用';
+        });
+        return;
+      }
       setState(() {
         _imConnecting = false;
         _imReady = false;
