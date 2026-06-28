@@ -560,17 +560,16 @@ review_count    int DEFAULT 0
 
 ### Phase 1（MVP，4-6 周）— 核心可用
 
-**Web 端：**
+**BFF / 后台：**
 - [ ] Supabase 项目创建、数据库建表（users / universities / programs / cases）
-- [ ] 用户注册/登录（Supabase Auth，邮箱+Google）
-- [ ] 院校列表页 + 院校详情页（录入 7 所已调研院校数据）
-- [ ] 案例列表（瀑布流）+ 案例详情页
-- [ ] 案例发布（图片上传 + 文字）
+- [ ] 用户注册/登录接口（Supabase Auth，邮箱+Google）
+- [ ] 院校、专业、案例、发布接口（录入已调研院校数据）
+- [ ] 管理后台基础数据维护
 
-**App 端：**
+**App / Flutter Web 端：**
 - [ ] 接入 Supabase Flutter SDK
 - [ ] 底部导航 5 Tab 框架搭建
-- [ ] 复刻 Web 首页 & 探索页
+- [ ] 在 Flutter/Dart 中实现首页、探索页、院校详情与案例详情
 
 ---
 

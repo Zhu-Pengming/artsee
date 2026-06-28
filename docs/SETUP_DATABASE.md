@@ -6,10 +6,10 @@
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://nufrgmlhlfmhxsqbybfd.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51ZnJnbWxobGZtaHhzcWJ5YmZkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzkzMDY0NSwiZXhwIjoyMDg5NTA2NjQ1fQ._eDbIZJ9RhEGKxVU4vtO93cCWe3wb-Dn3_ClExc8Bf0
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
 ```
 
-✅ **连接测试**: 已成功连接到 Supabase!
+⚠️ **安全提示**: `service_role` 拥有绕过 RLS 的权限，只能放在本地 `.env` 或部署平台环境变量中，不能提交到仓库。
 
 ## 创建表
 

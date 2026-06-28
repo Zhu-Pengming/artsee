@@ -164,6 +164,7 @@ describe("POST /api/v1/auth/complete-onboarding", () => {
         businessChannel: "公众号：艺见留学",
         businessIntro: "专注英国艺术院校申请",
         businessMaterials: ["营业执照或机构证明", "成功案例"],
+        businessProofFiles: ["https://example.com/license.pdf"],
       })
     );
     const body = await res.json();
@@ -191,6 +192,7 @@ describe("POST /api/v1/auth/complete-onboarding", () => {
         summary: "专注英国艺术院校申请",
         needs: ["receive_leads", "create_profile"],
         materials: ["营业执照或机构证明", "成功案例"],
+        proof_files: ["https://example.com/license.pdf"],
       },
     });
     expect(db.organization_members[0]).toMatchObject({
@@ -216,6 +218,7 @@ describe("POST /api/v1/auth/complete-onboarding", () => {
         note: "专注英国艺术院校申请",
         business_needs: ["receive_leads", "create_profile"],
         business_materials: ["营业执照或机构证明", "成功案例"],
+        business_proof_files: ["https://example.com/license.pdf"],
       },
     });
     expect(body.businessReview.organization.id).toBe("organizations-1");

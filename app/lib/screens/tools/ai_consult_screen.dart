@@ -1,6 +1,9 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../data/mock_compare_schools.dart';
 import '../../services/backend_api_service.dart';
 import '../../services/supabase_service.dart';
@@ -41,6 +44,10 @@ class _AiConsultScreenState extends State<AiConsultScreen>
   List<Map<String, dynamic>> _conversations = [];
   String? _currentConversationId;
   bool _loadingHistory = false;
+  late stt.SpeechToText _speech;
+  bool _speechAvailable = false;
+  bool _isListening = false;
+  String? _speechLocaleId;
 
   final TextEditingController _compareSearch = TextEditingController();
   final Set<String> _selectedIds = {};
@@ -59,6 +66,8 @@ class _AiConsultScreenState extends State<AiConsultScreen>
       vsync: this,
       initialIndex: widget.initialTabIndex,
     );
+    _speech = stt.SpeechToText();
+    _initSpeech();
     _input.addListener(() => setState(() {}));
     _loadConversations();
     final initial = widget.initialQuery?.trim();
@@ -152,11 +161,219 @@ class _AiConsultScreenState extends State<AiConsultScreen>
 
   @override
   void dispose() {
+    _speech.stop();
     _tabCtrl.dispose();
     _input.dispose();
     _scrollCtrl.dispose();
     _compareSearch.dispose();
     super.dispose();
+  }
+
+  Future<void> _initSpeech() async {
+    try {
+      final available = await _speech.initialize(
+        onError: (error) {
+          if (!mounted) return;
+          final wasListening = _isListening;
+          setState(() => _isListening = false);
+          if (wasListening) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(_speechFailureMessage(error.errorMsg))),
+            );
+          }
+        },
+        onStatus: (status) {
+          if (status == 'done' || status == 'notListening') {
+            if (mounted && _isListening) {
+              setState(() => _isListening = false);
+            }
+          }
+        },
+      );
+      _speechAvailable = available;
+      if (available) {
+        _speechLocaleId = await _resolveSpeechLocaleId();
+      }
+      if (mounted) setState(() {});
+    } catch (_) {
+      _speechAvailable = false;
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<String?> _resolveSpeechLocaleId() async {
+    try {
+      final locales = await _speech.locales();
+      const preferredLocaleIds = [
+        'zh_CN',
+        'zh-Hans-CN',
+        'zh_Hans_CN',
+        'zh-Hans',
+        'zh_TW',
+        'zh-Hant-TW',
+        'zh_HK',
+        'cmn_Hans_CN',
+      ];
+
+      for (final preferred in preferredLocaleIds) {
+        for (final locale in locales) {
+          if (locale.localeId == preferred) return locale.localeId;
+        }
+      }
+
+      for (final locale in locales) {
+        final normalized = locale.localeId.toLowerCase().replaceAll('_', '-');
+        if (normalized == 'zh' ||
+            normalized.startsWith('zh-') ||
+            normalized.startsWith('cmn-')) {
+          return locale.localeId;
+        }
+      }
+
+      return (await _speech.systemLocale())?.localeId;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _toggleSpeechInput() async {
+    if (_isListening) {
+      await _stopSpeechInput();
+    } else {
+      await _startSpeechInput();
+    }
+  }
+
+  Future<void> _startSpeechInput() async {
+    if (_sending) return;
+
+    if (!kIsWeb) {
+      final micStatus = await Permission.microphone.request();
+      if (!micStatus.isGranted) {
+        if (!mounted) return;
+        final permanentlyDenied = micStatus.isPermanentlyDenied;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              permanentlyDenied
+                  ? '麦克风权限已关闭，请到系统设置中允许后再使用语音输入'
+                  : '需要麦克风权限才能使用语音输入',
+            ),
+            action: permanentlyDenied
+                ? const SnackBarAction(
+                    label: '去设置',
+                    onPressed: openAppSettings,
+                  )
+                : null,
+          ),
+        );
+        return;
+      }
+    }
+
+    FocusScope.of(context).unfocus();
+    if (!_speechAvailable) {
+      await _initSpeech();
+    }
+    if (!_speechAvailable) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_speechUnavailableMessage()),
+          action: kIsWeb
+              ? null
+              : const SnackBarAction(
+                  label: '去设置',
+                  onPressed: openAppSettings,
+                ),
+        ),
+      );
+      return;
+    }
+
+    if (kIsWeb && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('正在调用浏览器语音识别，请允许麦克风权限'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+
+    _speechLocaleId ??= await _resolveSpeechLocaleId();
+    try {
+      if (_speech.isListening) await _speech.stop();
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() {
+      _isListening = true;
+    });
+
+    try {
+      await _speech.listen(
+        onResult: (result) {
+          if (!mounted) return;
+          final recognizedWords = result.recognizedWords.trim();
+          if (recognizedWords.isEmpty) return;
+          _input.value = TextEditingValue(
+            text: recognizedWords,
+            selection: TextSelection.collapsed(offset: recognizedWords.length),
+          );
+        },
+        listenOptions: stt.SpeechListenOptions(
+          cancelOnError: true,
+          partialResults: true,
+          listenMode: stt.ListenMode.dictation,
+          listenFor: const Duration(seconds: 45),
+          pauseFor: const Duration(seconds: 3),
+          localeId: _speechLocaleId,
+          autoPunctuation: true,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isListening = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_speechFailureMessage(e))),
+      );
+    }
+  }
+
+  Future<void> _stopSpeechInput() async {
+    try {
+      await _speech.stop();
+    } catch (_) {}
+    if (mounted) setState(() => _isListening = false);
+  }
+
+  String _speechUnavailableMessage() {
+    if (kIsWeb) {
+      return '当前浏览器不支持语音识别。请使用 Chrome 或 Edge，并允许网页麦克风权限';
+    }
+    return '语音识别不可用。Android 请确认 Google/系统语音服务可用，iOS 请开启系统语音识别权限';
+  }
+
+  String _speechFailureMessage(Object error) {
+    final raw = error.toString().toLowerCase();
+    if (raw.contains('not-allowed') ||
+        raw.contains('service-not-allowed') ||
+        raw.contains('permission') ||
+        raw.contains('denied')) {
+      return kIsWeb
+          ? '浏览器麦克风权限被拒绝，请在地址栏允许麦克风后重试'
+          : '麦克风或语音识别权限被拒绝，请到系统设置中开启后重试';
+    }
+    if (raw.contains('no-speech') || raw.contains('no_match')) {
+      return '没有听清语音内容，请靠近麦克风后重试';
+    }
+    if (raw.contains('audio-capture')) {
+      return '没有检测到可用麦克风，请检查设备输入';
+    }
+    if (raw.contains('network')) {
+      return '语音识别网络连接失败，请稍后重试';
+    }
+    return '系统语音识别失败: $error';
   }
 
   Future<void> _send([String? preset]) async {
@@ -205,7 +422,21 @@ class _AiConsultScreenState extends State<AiConsultScreen>
     List<Map<String, dynamic>> sources = const [];
     try {
       if (_useKnowledge) {
-        final result = await BackendApiService.aiConsult(text, mode: 'chat');
+        final aiMessages = _messages
+            .map((m) => <String, dynamic>{
+                  'role': m['role'] == 'assistant' ? 'assistant' : 'user',
+                  'content': (m['text'] ?? m['content'] ?? '').toString(),
+                })
+            .where((m) => (m['content'] as String).trim().isNotEmpty)
+            .toList();
+        final result = await BackendApiService.aiConsult(
+          text,
+          mode: 'chat',
+          persona: 'general',
+          intent: 'tools_ai_chat',
+          context: {'surface': 'app_ai_consult'},
+          messages: aiMessages,
+        );
         reply = _formatConsultReply(result);
         sources = _extractSources(result);
       } else {
@@ -957,7 +1188,9 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                         autocorrect: true,
                         onSubmitted: (_) => _send(),
                         decoration: InputDecoration(
-                          hintText: '询问艺术留学、院校或作品集…',
+                          hintText: _isListening
+                              ? '正在听，请直接说出你的问题…'
+                              : '询问学习、创作、展览、收藏或申请…',
                           hintStyle: TextStyle(
                             fontSize: 13,
                             color: context.artC.ink.withOpacity(0.28),
@@ -988,6 +1221,34 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                     ),
                     const SizedBox(width: 8),
                     GestureDetector(
+                      onTap: _toggleSpeechInput,
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: _isListening
+                              ? kCobalt.withOpacity(0.14)
+                              : context.artC.porcelain,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: _isListening
+                                ? kCobalt.withOpacity(0.68)
+                                : context.artC.silver.withOpacity(0.6),
+                          ),
+                        ),
+                        child: Icon(
+                          _isListening
+                              ? Icons.mic_rounded
+                              : Icons.mic_none_rounded,
+                          color: _isListening
+                              ? kCobalt
+                              : context.artC.ink.withOpacity(0.52),
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
                       onTap: () => _send(),
                       child: Container(
                         width: 44,
@@ -1006,7 +1267,11 @@ class _AiConsultScreenState extends State<AiConsultScreen>
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '演示数据 · 正式算法匹配与院校库接入后续开放',
+                  _isListening
+                      ? (kIsWeb
+                          ? '浏览器语音识别中 · Chrome/Edge 效果最佳'
+                          : '系统语音识别中 · Android 可使用 Google 语音服务')
+                      : 'AI 支持学习、创作、展览、收藏与申请咨询',
                   style: TextStyle(
                     fontSize: 8,
                     fontWeight: FontWeight.w700,

@@ -16,6 +16,8 @@ web/out/
 # Production
 build/
 dist/
+*.tar.gz
+*.zip
 
 # Environment variables
 .env
@@ -67,3 +69,5 @@ supabase/.temp/
 
 # MCP config (contains access tokens)
 .mcp.json
+
+/tmp

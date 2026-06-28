@@ -9,6 +9,12 @@ import OpenAI from 'openai';
 import { NextRequest } from 'next/server';
 import { loadUserProfile, formatFullProfile, fireRecordFromTurn } from '@/lib/memory';
 import { getUserFromBearer } from '@/lib/api/auth-user';
+import {
+  buildEffectiveUserProfile,
+  buildGeneralContextPrompt,
+  normalizeAiPersona,
+  resolveAiConversation,
+} from '@/lib/ai/general-context';
 import { logChatInteraction } from '@/lib/logging/chat-logger';
 import { runConsultStages, streamGenerate } from '@/lib/pipelines/consult-pipeline';
 import { loadPersona } from '@/lib/knowledge/persona-loader';
@@ -24,65 +30,60 @@ function getClient() {
   });
 }
 
-// Legacy hardcoded prompt (Phase 1 will remove this)
-const LEGACY_SYSTEM_PROMPT = `你是「瓷言」，艺见心平台的 AI 艺术留学顾问助手。
+// Legacy hardcoded prompt, kept only for the USE_UNIFIED_CONSULT=false fallback.
+const LEGACY_SYSTEM_PROMPT = `你是「瓷言」，艺见心平台的 AI 艺术助手。
 
-【你的人设】
-- 名字：瓷言（小名：小瓷）
-- 风格：亲切、专业、有温度，像一位懂艺术的学姐
-- 专注领域：英国艺术院校申请，包括 RCA、UAL、Goldsmiths、Edinburgh 等顶级院校
-- 说话方式：中文为主，偶尔用英文院校名/专业名，语气温柔但专业
+【你的范围】
+- 艺术学习与申请规划
+- 作品集、创作叙事和艺术家展示
+- 展览活动、收藏入门和艺术鉴赏
+- 机构、画廊、空间与品牌的展示和运营建议
 
-【你的能力】
-1. 智能选校：根据用户的 GPA、作品集方向、语言成绩、预算，推荐最匹配的院校和专业
-2. 申请竞争力分析：分析用户的背景优劣势，给出切实可行的建议
-3. 自由问答：回答关于英国艺术留学的任何问题
-
-【平台数据 — 你收录的院校（32所英国艺术院校）】
-顶级院校：
-- Royal College of Art (RCA)：纯艺、设计类全球顶尖，QS艺术设计排名常年前2
-- University of the Arts London (UAL)：旗下6所学院（CSM, LCF, Chelsea, Camberwell, Wimbledon, LCC），时尚/纯艺/设计
-- Goldsmiths, University of London：当代艺术、策展、音乐
-- Slade School of Fine Art (UCL)：纯艺方向顶尖
-- Edinburgh College of Art (ECA)：苏格兰最佳艺术院校
-- Falmouth University：插画、游戏、动画见长
-- Bournemouth University：3D动画、VFX
-
-【69个硕士项目涵盖方向】
-纯艺（Fine Art）、建筑（Architecture）、平面设计（Graphic Design）、插画（Illustration）、摄影（Photography）、时装设计（Fashion Design）、室内设计（Interior Design）、产品设计（Product Design）、动画（Animation）、游戏设计（Game Design）、策展（Curating）、艺术与科技（Art & Technology）
-
-【申请一般要求】
-- 语言：雅思通常 6.5-7.0 总分，写作/听说 6.0+
-- 作品集：通常 10-20 件作品，PDF 或在线展示
-- 申请时间：英国艺术院校通常 10月-1月为主要申请窗口，部分学校滚动录取
-- 学费：约 £18,000 - £28,000/年（国际生）
-
-【重要提醒】
-- 如果用户提供了他们的申请清单，请帮助分析冲刺/匹配/保底比例
-- 如果信息不足，主动询问用户的背景信息（GPA、作品集方向、语言成绩）
-- 保持友好，不要给出过于悲观的评价，而是给出建设性的改进建议
-- 如果遇到无法确认的具体数据（如某校今年的录取率），请坦诚说明并建议用户官网核实
-
-记住：你的目标是帮助每一位有艺术梦想的同学找到最适合自己的留学路径 🎨`;
+【回答原则】
+- 先识别用户身份和目标，不要默认所有问题都是艺术留学申请
+- 信息不足时先问 2-4 个关键问题
+- 给出具体、可执行的下一步
+- 不编造数字、日期、链接或平台未提供的事实`;
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const { messages, context } = await request.json();
+    const body = await request.json();
+    const { context, intent, userProfile: providedProfile } = body;
+    const persona = normalizeAiPersona(body.persona ?? body.aiProfileKey ?? providedProfile?.aiProfileKey);
+    const conversation = resolveAiConversation(body);
 
     // Get user
     const user = await getUserFromBearer(request);
-    const userProfile = user ? await loadUserProfile(user.id) : null;
+    const loadedProfile = user ? await loadUserProfile(user.id) : null;
+    const userProfile = buildEffectiveUserProfile({
+      loadedProfile,
+      providedProfile,
+      context,
+      persona,
+    });
 
-    // Extract last user message
-    const lastUserMessage = messages[messages.length - 1]?.content || '';
+    if (!conversation.query) {
+      return new Response(
+        JSON.stringify({ error: 'Message is required' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Grayscale: Use unified pipeline or legacy path
     if (USE_UNIFIED_CONSULT) {
-      return await handleUnifiedPath(request, user, userProfile, messages, lastUserMessage, context, startTime);
+      return await handleUnifiedPath(
+        user,
+        userProfile,
+        conversation.history,
+        conversation.query,
+        context,
+        { persona, intent },
+        startTime
+      );
     } else {
-      return await handleLegacyPath(user, userProfile, messages, lastUserMessage, context);
+      return await handleLegacyPath(user, userProfile, conversation.messages, conversation.query, context);
     }
   } catch (error) {
     console.error('Chat API error:', error);
@@ -97,21 +98,15 @@ export async function POST(request: NextRequest) {
  * Unified path: Use consult pipeline + streaming
  */
 async function handleUnifiedPath(
-  request: NextRequest,
   user: any,
   userProfile: any,
-  messages: any[],
+  history: any[],
   lastUserMessage: string,
   context: any,
+  options: { persona?: string; intent?: unknown },
   startTime: number
 ) {
   console.log('[chat] Using unified pipeline');
-
-  // Convert messages to history format
-  const history = messages.slice(0, -1).map((msg: any) => ({
-    role: msg.role as 'user' | 'assistant' | 'system',
-    content: msg.content,
-  }));
 
   // Run unified consult pipeline
   const stages = await runConsultStages({
@@ -123,8 +118,13 @@ async function handleUnifiedPath(
   });
 
   // Load persona and inject into system prompt
-  const persona = loadPersona('artsee', 'v1');
-  let systemPrompt = persona + '\n\n' + stages.systemPrompt;
+  const basePersona = loadPersona('artsee', 'v1');
+  const generalContextPrompt = buildGeneralContextPrompt({
+    persona: options.persona,
+    requestedIntent: options.intent,
+    context,
+  });
+  let systemPrompt = [basePersona, generalContextPrompt, stages.systemPrompt].filter(Boolean).join('\n\n');
 
   // Inject tracker context if provided
   if (context?.trackerItems?.length > 0) {

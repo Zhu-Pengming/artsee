@@ -11,7 +11,7 @@
 | 层 | 路径 | 当前职责 | 后续定位 |
 |---|---|---|---|
 | Flutter App | `app/` | 移动端主入口，已有首页、发现、学习、合作、我的、登录、部分详情页 | 产品主战场，优先完善 |
-| Next.js Web | `web/` | 网站 UI + `/api/v1/*` BFF，已有学校、专业、案例、社区、上传、AI、首页内容接口 | 官网、Web 用户端、App 后端网关 |
+| Next.js Web | `web/` | `/admin` 管理后台 + `/api/v1/*` BFF，已有学校、专业、案例、社区、上传、AI、首页内容接口 | 管理后台、App/Flutter Web 后端网关 |
 | Supabase | `supabase/` | 部分迁移、Auth、Postgres、Storage | 统一数据源，敏感写操作由 BFF 代理 |
 | 原型目录 | `artiqore-艺见心-网页版前端与ui(1)` | Vite React UI 原型，展示目标功能和视觉 | 不单独上线，只作为设计与功能蓝图 |
 
@@ -335,7 +335,7 @@
 
 原型能力：
 
-- SocialView 中有话题、圈子、问答。
+- 原型 SocialView 中有话题、圈子、问答。
 - 有详情页和聊天入口。
 
 建议 MVP：
@@ -498,16 +498,16 @@
 
 ### 4.3 Web 技术方案
 
-- 保持 Next.js App Router。
-- UI 参考原型，但不要直接复制 Vite 架构。
+- 生产前台保持 Flutter Web / Flutter App 同源。
+- UI 参考原型，但不要直接复制 Vite/React 架构。
 - 数据读取统一通过 Supabase server client 或内部 service 层。
 - 对外 API 保持 `/api/v1/*`。
-- 详情页做 SSR/SEO。
-- 图片加 `next/image` 或明确 CDN 策略。
+- 详情页优先保证 Flutter Web 深链、分享与加载状态。
+- 图片明确 CDN/缓存策略。
 
 验收：
 
-- Web 首页和核心详情页可独立访问。
+- Flutter Web 首页和核心详情页可独立访问。
 - 分享链接打开不是空壳。
 - Lighthouse 基础指标达标。
 - API 与页面不互相阻塞。
@@ -791,7 +791,7 @@ App：
 - AI 咨询。
 - 社区图文发布/浏览。
 - 个人资料。
-- Web 首页 + 基础详情页。
+- Flutter Web 首页 + 基础详情页。
 - 后端测试全绿。
 
 估算：
@@ -871,9 +871,9 @@ App：
 - 保留 mock fallback。
 - 加加载态、错误态、限流提示。
 
-### 第 5-6 小时：Web 首页按原型改造第一版
+### 第 5-6 小时：Flutter Web 首页按原型改造第一版
 
-- 将原型首页视觉迁入 `web/app/page.tsx` 或组件。
+- 将原型首页视觉迁入 `app/lib` 对应 Flutter 页面。
 - 接真实首页/社区/院校数据。
 - 保持移动优先。
 
@@ -943,4 +943,3 @@ AI：
 - Stripe Connect docs: https://docs.stripe.com/connect
 - Stripe marketplace guide: https://docs.stripe.com/connect/end-to-end-marketplace
 - 中国人民银行《非银行支付机构监督管理条例》: https://www.pbc.gov.cn/tiaofasi/144941/144953/5174993/index.html
-

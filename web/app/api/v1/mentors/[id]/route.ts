@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAdminRole } from "@/lib/api/admin-roles";
 import { getUserFromBearer } from "@/lib/api/auth-user";
 import { errorResponse, invalidIdResponse, notFoundResponse } from "@/lib/api/route-helpers";
 import { createServiceClient } from "@/lib/api/supabase-service";
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
               .eq("id", user.id)
               .maybeSingle()
           : { data: null };
-        if (profile?.role !== "admin") return notFoundResponse();
+        if (!isAdminRole(profile?.role)) return notFoundResponse();
       }
     }
 

@@ -228,7 +228,9 @@ describe("PATCH /api/v1/me/organizations/:id", () => {
     expect(body.data.role).toBe("owner");
     expect(body.data.organization.name).toBe("艺见伦敦申请中心");
     expect(body.data.organization.focus_areas).toEqual(["uk", "portfolio"]);
-    expect(lastOrganizationUpdate?.metadata).toMatchObject({
+    expect(lastOrganizationUpdate).not.toBeNull();
+    const update: Record<string, unknown> = lastOrganizationUpdate ?? {};
+    expect(update.metadata).toMatchObject({
       logo_url: "https://cdn.example.test/logo.png",
       summary: "专注英国艺术院校申请",
       address: "上海市静安区 88 号",

@@ -60,7 +60,10 @@ class BackendApiService {
             '后端返回非 JSON：${preview.length > 120 ? '${preview.substring(0, 120)}...' : preview}',
       );
     }
-    final code = decoded['code'] as int? ?? r.statusCode;
+    final rawCode = decoded['code'];
+    final code = rawCode is int
+        ? rawCode
+        : int.tryParse(rawCode?.toString() ?? '') ?? r.statusCode;
     final message =
         (decoded['message'] is String ? decoded['message'] as String? : null) ??
             (decoded['error'] is String ? decoded['error'] as String? : null);
@@ -241,6 +244,73 @@ class BackendApiService {
     return list
         .map((e) => AppCommunityHotTopic.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  static Future<({bool liked, int likeCount})> likeHotTopicAnswer({
+    required String topicId,
+    required int answerIndex,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/community/hot-topics/$topicId/answers/$answerIndex/like',
+      withAuth: true,
+    );
+    final data = decoded['data'] as Map<String, dynamic>? ?? {};
+    return (
+      liked: data['liked'] as bool? ?? true,
+      likeCount: data['like_count'] as int? ?? 0,
+    );
+  }
+
+  static Future<({bool liked, int likeCount})> unlikeHotTopicAnswer({
+    required String topicId,
+    required int answerIndex,
+  }) async {
+    final decoded = await _requestJson(
+      'DELETE',
+      '/api/v1/community/hot-topics/$topicId/answers/$answerIndex/like',
+      withAuth: true,
+    );
+    final data = decoded['data'] as Map<String, dynamic>? ?? {};
+    return (
+      liked: data['liked'] as bool? ?? false,
+      likeCount: data['like_count'] as int? ?? 0,
+    );
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchHotTopicAnswerComments({
+    required String topicId,
+    required int answerIndex,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/community/hot-topics/$topicId/answers/$answerIndex/comments',
+      query: {'limit': '$limit', 'offset': '$offset'},
+    );
+    return (decoded['data'] as List<dynamic>? ?? [])
+        .map((e) => e as Map<String, dynamic>)
+        .toList();
+  }
+
+  static Future<Map<String, dynamic>> createHotTopicAnswerComment({
+    required String topicId,
+    required int answerIndex,
+    required String body,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/community/hot-topics/$topicId/answers/$answerIndex/comments',
+      withAuth: true,
+      body: {'body': body},
+    );
+    final data = decoded['data'] as Map<String, dynamic>? ?? {};
+    return {
+      ...data,
+      if (decoded['comment_count'] != null)
+        'comment_count': decoded['comment_count'],
+    };
   }
 
   static Future<AppCommunityPost?> fetchCommunityPost(String id) async {
@@ -1539,6 +1609,10 @@ class BackendApiService {
     String mode = 'short',
     String? schoolId,
     Map<String, dynamic>? userProfile,
+    String? persona,
+    String? intent,
+    Map<String, dynamic>? context,
+    List<Map<String, dynamic>>? messages,
   }) async {
     final decoded = await _requestJson(
       'POST',
@@ -1549,6 +1623,10 @@ class BackendApiService {
         'mode': mode,
         if (schoolId != null) 'schoolId': schoolId,
         if (userProfile != null) 'userProfile': userProfile,
+        if (persona != null) 'persona': persona,
+        if (intent != null) 'intent': intent,
+        if (context != null) 'context': context,
+        if (messages != null) 'messages': messages,
       },
     );
     return decoded;
@@ -1556,7 +1634,9 @@ class BackendApiService {
 
   /// 上传图片并获取 AI 分析
   static Future<Map<String, dynamic>> uploadImageAndAnalyze({
-    required dynamic file,
+    required List<int> bytes,
+    required String filename,
+    required String contentType,
     String? conversationId,
   }) async {
     final uri = _api('/api/v1/ai/image-analyze');
@@ -1566,11 +1646,12 @@ class BackendApiService {
     final authHeaders = await _authHeaders();
     request.headers.addAll(authHeaders);
 
-    // 添加图片文件
-    final multipartFile = await http.MultipartFile.fromPath(
+    // 添加图片文件。使用 bytes 而不是 path，兼容 Flutter Web 的浏览器文件。
+    final multipartFile = http.MultipartFile.fromBytes(
       'image',
-      file.path,
-      contentType: MediaType('image', 'jpeg'),
+      bytes,
+      filename: filename,
+      contentType: _mediaType(contentType),
     );
     request.files.add(multipartFile);
 
@@ -1890,6 +1971,25 @@ class BackendApiService {
     return decoded['data'] as Map<String, dynamic>;
   }
 
+  static Future<Map<String, dynamic>> createOrganizationConversation({
+    required String organizationId,
+    String? title,
+    Map<String, dynamic>? metadata,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/conversations',
+      withAuth: true,
+      body: {
+        'organization_id': organizationId,
+        'type': 'organization',
+        if (title != null) 'title': title,
+        if (metadata != null) 'metadata': metadata,
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
   static Future<
       ({
         List<Map<String, dynamic>> data,
@@ -1924,6 +2024,83 @@ class BackendApiService {
         'body': body,
         'message_type': messageType,
         if (metadata != null) 'metadata': metadata,
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> sendConversationAttachment({
+    required String conversationId,
+    required String url,
+    required String messageType,
+    String? filename,
+    String? contentType,
+    int? size,
+    Map<String, dynamic>? metadata,
+  }) async {
+    final normalizedType = messageType == 'image' ? 'image' : 'file';
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/conversations/$conversationId/messages',
+      withAuth: true,
+      body: {
+        'body': normalizedType == 'image'
+            ? '[图片]'
+            : '[文件]${filename?.trim().isNotEmpty == true ? ' ${filename!.trim()}' : ''}',
+        'message_type': normalizedType,
+        'attachment_url': url,
+        if (filename != null) 'attachment_name': filename,
+        if (contentType != null) 'content_type': contentType,
+        if (size != null) 'size': size,
+        'metadata': {
+          if (metadata != null) ...metadata,
+          'attachment_url': url,
+          if (filename != null) 'attachment_name': filename,
+          if (contentType != null) 'content_type': contentType,
+          if (size != null) 'size': size,
+          'provider': metadata?['provider'] ?? 'tencent_cos',
+        },
+      },
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> fetchTencentImConfig() async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/im/config',
+      withAuth: true,
+    );
+    return decoded['data'] as Map<String, dynamic>;
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchFriends({
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/friends',
+      withAuth: true,
+      query: _params(limit: limit, offset: offset),
+    );
+    return (decoded['data'] as List<dynamic>? ?? [])
+        .map((item) => item as Map<String, dynamic>)
+        .toList();
+  }
+
+  static Future<Map<String, dynamic>> addFriend({
+    required String targetUserId,
+    String? message,
+  }) async {
+    final decoded = await _requestJson(
+      'POST',
+      '/api/v1/me/friends',
+      withAuth: true,
+      body: {
+        'target_user_id': targetUserId,
+        if (message != null && message.trim().isNotEmpty)
+          'message': message.trim(),
       },
     );
     return decoded['data'] as Map<String, dynamic>;
@@ -3165,6 +3342,7 @@ class BackendApiService {
     required String email,
     required String password,
     required String nickname,
+    required String emailOtp,
   }) async {
     final r = await http.post(
       _api('/api/v1/auth/signup'),
@@ -3173,6 +3351,7 @@ class BackendApiService {
         'email': email,
         'password': password,
         'nickname': nickname,
+        'email_otp': emailOtp,
       }),
     );
     final decoded = jsonDecode(r.body) as Map<String, dynamic>;
@@ -3180,6 +3359,23 @@ class BackendApiService {
       throw Exception(decoded['error'] ?? '注册失败 ${r.statusCode}');
     }
     return decoded;
+  }
+
+  static Future<Map<String, dynamic>> sendEmailOtp({
+    required String email,
+    String? nickname,
+    String purpose = 'signup',
+  }) {
+    return _requestJson(
+      'POST',
+      '/api/v1/auth/send-email-otp',
+      body: {
+        'email': email.trim(),
+        'purpose': purpose,
+        if (nickname != null && nickname.trim().isNotEmpty)
+          'nickname': nickname.trim(),
+      },
+    );
   }
 
   static Future<Map<String, dynamic>> registerWithBff({
@@ -3258,6 +3454,13 @@ class BackendApiService {
     );
   }
 
+  static Future<Map<String, dynamic>> fetchPublicUserProfile(String userId) {
+    return _requestJson(
+      'GET',
+      '/api/v1/users/$userId/public-profile',
+    );
+  }
+
   static Future<Map<String, dynamic>> sendSms({
     required String phone,
     String countryCode = '+86',
@@ -3311,6 +3514,7 @@ class BackendApiService {
     String? businessChannel,
     String? businessIntro,
     List<String>? businessMaterials,
+    List<String>? businessProofFiles,
   }) async {
     final url = _api('/api/v1/auth/complete-onboarding');
     final body = jsonEncode({
@@ -3333,6 +3537,7 @@ class BackendApiService {
       if (businessChannel != null) 'businessChannel': businessChannel,
       if (businessIntro != null) 'businessIntro': businessIntro,
       if (businessMaterials != null) 'businessMaterials': businessMaterials,
+      if (businessProofFiles != null) 'businessProofFiles': businessProofFiles,
     });
     final headers = await _headers(withAuth: true);
     final r = await http.post(url, headers: headers, body: body);

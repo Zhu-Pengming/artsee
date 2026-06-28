@@ -83,6 +83,7 @@ class AppCommunityPost {
   final int viewCount;
   final bool likedByMe;
   final String createdAt;
+  final String? authorId;
   final String? authorNickname;
   final String? authorAvatarUrl;
 
@@ -100,6 +101,7 @@ class AppCommunityPost {
     required this.viewCount,
     this.likedByMe = false,
     required this.createdAt,
+    this.authorId,
     this.authorNickname,
     this.authorAvatarUrl,
   });
@@ -130,6 +132,7 @@ class AppCommunityPost {
       viewCount: json['view_count'] as int? ?? 0,
       likedByMe: json['liked_by_me'] as bool? ?? false,
       createdAt: json['created_at'] as String,
+      authorId: (json['author_id'] ?? json['user_id']) as String?,
       authorNickname: nick,
       authorAvatarUrl: avatarUrl,
     );
@@ -192,6 +195,7 @@ class AppCommunityHotTopicAnswer {
   final String stance;
   final String content;
   final String? authorName;
+  final String? authorId;
   final String? authorHandle;
   final String? authorAvatarUrl;
   final String? authorRole;
@@ -203,6 +207,7 @@ class AppCommunityHotTopicAnswer {
     required this.stance,
     required this.content,
     this.authorName,
+    this.authorId,
     this.authorHandle,
     this.authorAvatarUrl,
     this.authorRole,
@@ -218,6 +223,7 @@ class AppCommunityHotTopicAnswer {
       stance: json['stance'] as String? ?? '',
       content: json['content'] as String? ?? '',
       authorName: (json['author_name'] ?? author?['name']) as String?,
+      authorId: (json['author_id'] ?? author?['id']) as String?,
       authorHandle: (json['author_handle'] ??
           json['author_id'] ??
           author?['handle'] ??
@@ -241,6 +247,7 @@ class AppCommunityComment {
   final String body;
   final int likeCount;
   final String createdAt;
+  final String? authorId;
   final String? authorNickname;
   final String? authorAvatarUrl;
 
@@ -249,6 +256,7 @@ class AppCommunityComment {
     required this.body,
     required this.likeCount,
     required this.createdAt,
+    this.authorId,
     this.authorNickname,
     this.authorAvatarUrl,
   });
@@ -266,6 +274,7 @@ class AppCommunityComment {
       body: json['body'] as String? ?? '',
       likeCount: json['like_count'] as int? ?? 0,
       createdAt: json['created_at'] as String? ?? '',
+      authorId: (json['author_id'] ?? json['user_id']) as String?,
       authorNickname: nick,
       authorAvatarUrl: avatarUrl,
     );

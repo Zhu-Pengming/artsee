@@ -1,6 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { isAdminRole } from "./admin-roles";
 import { getUserFromBearer } from "./auth-user";
 import { createServiceClient } from "./supabase-service";
 
@@ -63,7 +64,7 @@ export async function requireWorkbenchUser(req: NextRequest): Promise<WorkbenchA
   const userRole = data?.user_role?.toString();
   const userType = data?.user_type?.toString();
   const canAccessPlatformPool =
-    role === "admin" ||
+    isAdminRole(role) ||
     role === "advisor" ||
     userRole === "advisor" ||
     userType === "advisor";

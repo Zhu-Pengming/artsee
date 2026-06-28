@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST as confirmOrder } from "@/app/api/v1/orders/[id]/confirm/route";
 
@@ -93,6 +93,7 @@ function ctx(id: string) {
 
 describe("POST /api/v1/orders/:id/confirm", () => {
   beforeEach(resetDb);
+  afterEach(() => vi.unstubAllEnvs());
 
   it("confirms internal checkout orders", async () => {
     const res = await confirmOrder(req(), ctx(INTERNAL_ORDER_ID));
@@ -110,6 +111,18 @@ describe("POST /api/v1/orders/:id/confirm", () => {
 
     expect(res.status).toBe(400);
     expect(body.error).toBe("外部支付订单需等待支付回调确认");
+    expect(markOrderPaid).not.toHaveBeenCalled();
+  });
+
+  it("blocks internal checkout confirmation in production unless explicitly enabled", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ALLOW_INTERNAL_PAYMENT", "");
+
+    const res = await confirmOrder(req(), ctx(INTERNAL_ORDER_ID));
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body.error).toBe("生产环境不允许手动确认内部支付订单");
     expect(markOrderPaid).not.toHaveBeenCalled();
   });
 });

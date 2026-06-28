@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromBearer } from "@/lib/api/auth-user";
 import { isOrderPayable, markOrderPaid } from "@/lib/api/order-payments";
+import { isInternalPaymentAllowed } from "@/lib/api/payment-checkout";
 import {
   errorResponse,
   invalidIdResponse,
@@ -49,6 +50,12 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       return NextResponse.json(
         { success: false, error: "外部支付订单需等待支付回调确认" },
         { status: 400 }
+      );
+    }
+    if (!isInternalPaymentAllowed()) {
+      return NextResponse.json(
+        { success: false, error: "生产环境不允许手动确认内部支付订单" },
+        { status: 403 }
       );
     }
     if (!isOrderPayable(status)) {

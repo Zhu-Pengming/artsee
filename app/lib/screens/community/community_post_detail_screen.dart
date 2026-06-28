@@ -174,6 +174,7 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (_) => PublicUserProfileScreen(
+          userId: post.authorId,
           name: name,
           handle: _publicHandleFromName(name),
           avatarUrl: post.authorAvatarUrl,
@@ -193,6 +194,7 @@ class _CommunityPostDetailScreenState extends State<CommunityPostDetailScreen> {
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (_) => PublicUserProfileScreen(
+          userId: comment.authorId,
           name: name,
           handle: _publicHandleFromName(name),
           avatarUrl: comment.authorAvatarUrl,

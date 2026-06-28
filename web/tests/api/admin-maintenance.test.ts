@@ -131,7 +131,7 @@ describe("POST /api/v1/admin/maintenance/expire-subscriptions", () => {
   beforeEach(resetDb);
 
   it("requires admin access without cron secret", async () => {
-    const res = await expireSubscriptions(req());
+    const res = (await expireSubscriptions(req()))!;
     const body = await res.json();
 
     expect(res.status).toBe(403);
@@ -139,9 +139,9 @@ describe("POST /api/v1/admin/maintenance/expire-subscriptions", () => {
   });
 
   it("expires stale user memberships and organization subscriptions", async () => {
-    const res = await expireSubscriptions(
+    const res = (await expireSubscriptions(
       req({ authorization: "Bearer admin-token" })
-    );
+    ))!;
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -156,9 +156,9 @@ describe("POST /api/v1/admin/maintenance/expire-subscriptions", () => {
 
   it("allows server cron calls with the configured secret", async () => {
     process.env.SUBSCRIPTION_EXPIRATION_CRON_SECRET = "secret-123";
-    const res = await expireSubscriptions(
+    const res = (await expireSubscriptions(
       req({ "x-artiqore-cron-secret": "secret-123" })
-    );
+    ))!;
     const body = await res.json();
 
     expect(res.status).toBe(200);

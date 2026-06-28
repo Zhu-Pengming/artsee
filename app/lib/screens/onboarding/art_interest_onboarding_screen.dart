@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../services/backend_api_service.dart';
@@ -29,13 +30,17 @@ class _ArtInterestOnboardingScreenState
   String? _stage;
 
   String? _businessType;
-  final Set<String> _businessNeeds = {};
-  final Set<String> _businessMaterials = {};
+  bool _uploadingBusinessCredential = false;
+  String? _businessCredentialUrl;
+  String? _businessCredentialFileName;
   final TextEditingController _businessNameCtrl = TextEditingController();
   final TextEditingController _businessCityCtrl = TextEditingController();
   final TextEditingController _businessContactCtrl = TextEditingController();
   final TextEditingController _businessChannelCtrl = TextEditingController();
   final TextEditingController _businessIntroCtrl = TextEditingController();
+
+  static const _businessReviewGoal = 'business_credential_review';
+  static const _businessCredentialMaterial = '营业执照或机构证明';
 
   static const _cities = [
     '北京',
@@ -227,41 +232,14 @@ class _ArtInterestOnboardingScreenState
             icon: Icons.more_horiz_outlined),
       ];
 
-  List<_Choice> get _businessNeedChoices => const [
-        _Choice(id: 'create_profile', title: '创建机构主页'),
-        _Choice(id: 'publish_course', title: '发布课程 / 服务'),
-        _Choice(id: 'publish_event', title: '发布活动 / 展览'),
-        _Choice(id: 'receive_leads', title: '接收用户咨询'),
-        _Choice(id: 'brand_collab', title: '对接品牌合作'),
-        _Choice(id: 'ai_page', title: 'AI 生成展示页'),
-      ];
-
-  List<String> get _businessMaterialChoices {
-    switch (_businessType) {
-      case 'gallery_exhibition':
-        return const ['机构证明', '展览记录', '合作艺术家', '展览现场图', '作品资源介绍', '策展 / 销售案例'];
-      case 'hotel_culture_space':
-        return const ['场地介绍', '空间图片', '可承办活动类型', '过往活动案例', '合作方式', '档期 / 容量信息'];
-      case 'brand_partner':
-        return const ['品牌介绍', '合作需求', '预算区间', '艺术家类型偏好', '过往联名案例'];
-      case 'study_abroad_agency':
-      case 'portfolio_training':
-        return const [
-          '营业执照或机构证明',
-          '课程介绍',
-          '导师介绍',
-          '成功案例',
-          '合作院校 / 项目说明',
-          '学生作品或 offer 案例'
-        ];
-      default:
-        return const ['机构证明', '服务介绍', '过往案例', '图片资料', '合作资源说明'];
-    }
-  }
-
   bool get _isBusiness => _entryType == 'business';
   int get _totalSteps => 4;
   bool get _isLastStep => _step == _totalSteps - 1;
+
+  List<String> get _businessProofFiles {
+    final url = _businessCredentialUrl?.trim();
+    return url == null || url.isEmpty ? const [] : [url];
+  }
 
   bool get _canContinue {
     switch (_step) {
@@ -277,7 +255,7 @@ class _ArtInterestOnboardingScreenState
             : _goals.isNotEmpty && _stage != null;
       case 3:
         return _isBusiness
-            ? _businessMaterials.isNotEmpty
+            ? _businessProofFiles.isNotEmpty && !_uploadingBusinessCredential
             : _directions.isNotEmpty;
       default:
         return false;
@@ -332,12 +310,14 @@ class _ArtInterestOnboardingScreenState
     try {
       final userId = SupabaseService.currentUser?.id;
       if (userId == null) throw Exception('用户未登录');
+      final businessProofFiles = _businessProofFiles;
+      final businessMaterials =
+          _isBusiness ? const [_businessCredentialMaterial] : const <String>[];
       final interestedCategories = _isBusiness
           ? [
               'business_onboarding',
               if (_businessType != null) _businessType!,
-              ..._businessNeeds,
-              ..._businessMaterials,
+              _businessCredentialMaterial,
             ]
           : [..._directions, ..._goals];
       final businessSummary = [
@@ -356,22 +336,19 @@ class _ArtInterestOnboardingScreenState
         userRole: _isBusiness ? _businessType : _role,
         userType: _isBusiness ? 'business' : 'personal',
         primaryGoal: _isBusiness
-            ? (_businessNeeds.isEmpty
-                ? 'business_settlement'
-                : _businessNeeds.first)
+            ? _businessReviewGoal
             : (_goals.isEmpty ? null : _goals.first),
-        goals: _isBusiness ? _businessNeeds.toList() : _goals.toList(),
+        goals: _isBusiness ? const [_businessReviewGoal] : _goals.toList(),
         targetDirections: _isBusiness
             ? ['business_settlement', if (_businessType != null) _businessType!]
             : _directions.toList(),
-        targetMajors: _isBusiness
-            ? [..._businessMaterials, ...businessSummary]
-            : const [],
+        targetMajors:
+            _isBusiness ? [...businessMaterials, ...businessSummary] : const [],
         cityPreference: _isBusiness ? _businessCityCtrl.text.trim() : _city,
         activityCities: _isBusiness
             ? [_businessCityCtrl.text.trim()]
             : (_city == null ? const [] : [_city!]),
-        eventPreferences: _isBusiness ? _businessNeeds.toList() : const [],
+        eventPreferences: _isBusiness ? const [] : const [],
         currentStage: _isBusiness ? 'pending_business_review' : _stage,
         verificationIntent: _isBusiness ? 'business_review' : 'later',
         businessName: _isBusiness ? _businessNameCtrl.text.trim() : null,
@@ -379,7 +356,9 @@ class _ArtInterestOnboardingScreenState
         businessContact: _isBusiness ? _businessContactCtrl.text.trim() : null,
         businessChannel: _isBusiness ? _businessChannelCtrl.text.trim() : null,
         businessIntro: _isBusiness ? _businessIntroCtrl.text.trim() : null,
-        businessMaterials: _isBusiness ? _businessMaterials.toList() : const [],
+        businessMaterials:
+            _isBusiness ? const [_businessCredentialMaterial] : const [],
+        businessProofFiles: _isBusiness ? businessProofFiles : const [],
       );
       widget.onCompleted();
     } catch (e) {
@@ -447,8 +426,8 @@ class _ArtInterestOnboardingScreenState
               _businessType = null;
               _goals.clear();
               _directions.clear();
-              _businessNeeds.clear();
-              _businessMaterials.clear();
+              _businessCredentialUrl = null;
+              _businessCredentialFileName = null;
               _stage = null;
             }),
           ),
@@ -564,10 +543,7 @@ class _ArtInterestOnboardingScreenState
       child: _ChoiceList(
         choices: _businessTypeChoices,
         selected: _businessType == null ? const {} : {_businessType!},
-        onTap: (id) => setState(() {
-          _businessType = id;
-          _businessMaterials.clear();
-        }),
+        onTap: (id) => setState(() => _businessType = id),
       ),
     );
   }
@@ -605,27 +581,73 @@ class _ArtInterestOnboardingScreenState
             minLines: 2,
             onChanged: () => setState(() {}),
           ),
-          const SizedBox(height: 8),
-          _ChipWrap(
-            choices: _businessNeedChoices,
-            selected: _businessNeeds,
-            onTap: (id) => _toggle(_businessNeeds, id, max: 4),
-          ),
         ],
       ),
     );
   }
 
+  Future<void> _uploadBusinessCredential() async {
+    if (_uploadingBusinessCredential) return;
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp'],
+      allowMultiple: false,
+      withData: true,
+    );
+    final file = result?.files.single;
+    if (file == null) return;
+    final bytes = file.bytes;
+    if (bytes == null) {
+      setState(() => _error = '无法读取所选文件');
+      return;
+    }
+    if (bytes.length > 10 * 1024 * 1024) {
+      setState(() => _error = '文件大小不能超过 10MB');
+      return;
+    }
+    setState(() {
+      _uploadingBusinessCredential = true;
+      _error = null;
+    });
+    try {
+      final upload = await BackendApiService.uploadFile(
+        bytes: bytes,
+        filename: file.name,
+        contentType: _mimeForFileName(file.name),
+        folder: 'submission-materials/business-onboarding',
+      );
+      final url = _text(upload['url']);
+      if (url.isEmpty) throw Exception('上传结果缺少文件链接');
+      if (!mounted) return;
+      setState(() {
+        _businessCredentialUrl = url;
+        _businessCredentialFileName = file.name;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('资质文件已上传')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = '上传资质失败：$e');
+    } finally {
+      if (mounted) setState(() => _uploadingBusinessCredential = false);
+    }
+  }
+
   Widget _buildBusinessMaterialsStep() {
     return _QuestionStep(
       eyebrow: 'Materials',
-      title: '上传资质和案例',
-      subtitle: '这里先记录你准备提交的材料类型，文件上传与审核可以后续接专门接口。',
-      child: _TextChipWrap(
-        items: _businessMaterialChoices,
-        selected: _businessMaterials,
-        onTap: (item) => _toggle(_businessMaterials, item, max: 6),
-        max: 6,
+      title: '上传资质',
+      subtitle: '机构用户先上传营业执照或机构证明即可，课程、案例和合作材料后续再补充。',
+      child: _BusinessCredentialUploadCard(
+        fileName: _businessCredentialFileName,
+        uploadedUrl: _businessCredentialUrl,
+        uploading: _uploadingBusinessCredential,
+        onUpload: _uploadBusinessCredential,
+        onRemove: () => setState(() {
+          _businessCredentialUrl = null;
+          _businessCredentialFileName = null;
+        }),
       ),
     );
   }
@@ -831,6 +853,152 @@ class _TextChipWrap extends StatelessWidget {
           },
         );
       }).toList(),
+    );
+  }
+}
+
+class _BusinessCredentialUploadCard extends StatelessWidget {
+  final String? fileName;
+  final String? uploadedUrl;
+  final bool uploading;
+  final VoidCallback onUpload;
+  final VoidCallback onRemove;
+
+  const _BusinessCredentialUploadCard({
+    required this.fileName,
+    required this.uploadedUrl,
+    required this.uploading,
+    required this.onUpload,
+    required this.onRemove,
+  });
+
+  bool get _hasFile => uploadedUrl?.trim().isNotEmpty == true;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _hasFile
+            ? kCobalt.withValues(alpha: 0.08)
+            : context.artC.cardIconBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: _hasFile
+              ? kCobalt.withValues(alpha: 0.28)
+              : context.artC.silver.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: _hasFile
+                      ? kCobalt.withValues(alpha: 0.1)
+                      : context.artC.porcelain,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  _hasFile
+                      ? Icons.verified_outlined
+                      : Icons.upload_file_outlined,
+                  color: kCobalt,
+                  size: 21,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _ArtInterestOnboardingScreenState
+                          ._businessCredentialMaterial,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: context.artC.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      _hasFile
+                          ? (fileName?.trim().isNotEmpty == true
+                              ? fileName!.trim()
+                              : '资质文件已上传')
+                          : '支持 PDF、JPG、PNG、WEBP，单个文件不超过 10MB',
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.35,
+                        color: context.artC.ink.withValues(alpha: 0.45),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                _hasFile ? Icons.check_circle : Icons.circle_outlined,
+                color: _hasFile ? kCobalt : context.artC.silver,
+                size: 21,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: OutlinedButton.icon(
+              onPressed: uploading ? null : onUpload,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: kCobalt,
+                side: BorderSide(color: kCobalt.withValues(alpha: 0.26)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: uploading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: kCobalt,
+                      ),
+                    )
+                  : Icon(
+                      _hasFile
+                          ? Icons.swap_horiz_outlined
+                          : Icons.upload_file_outlined,
+                      size: 18,
+                    ),
+              label: Text(uploading ? '上传中' : (_hasFile ? '重新上传' : '上传资质文件')),
+            ),
+          ),
+          if (_hasFile) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.center,
+              child: TextButton(
+                onPressed: uploading ? null : onRemove,
+                child: Text(
+                  '移除文件',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: context.artC.ink.withValues(alpha: 0.42),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -1154,4 +1322,17 @@ class _Choice {
     this.subtitle,
     this.icon,
   });
+}
+
+String _text(Object? value, {String fallback = ''}) {
+  final text = value?.toString().trim() ?? '';
+  return text.isEmpty ? fallback : text;
+}
+
+String _mimeForFileName(String name) {
+  final lower = name.toLowerCase();
+  if (lower.endsWith('.pdf')) return 'application/pdf';
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  return 'image/jpeg';
 }

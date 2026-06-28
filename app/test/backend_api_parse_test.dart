@@ -17,11 +17,13 @@ void main() {
       'view_count': 10,
       'liked_by_me': true,
       'created_at': '2026-01-01T00:00:00Z',
+      'author_id': 'user-1',
       'user_profiles': {'nickname': '小明', 'avatar_url': null},
     });
     expect(p.id, 'a1');
     expect(p.imageUrls.length, 1);
     expect(p.authorNickname, '小明');
+    expect(p.authorId, 'user-1');
     expect(p.authorAvatarUrl, null);
     expect(p.likedByMe, true);
     expect(p.status, 'reviewing');
@@ -35,11 +37,13 @@ void main() {
       'body': '很有启发',
       'like_count': 3,
       'created_at': '2026-01-01T01:00:00Z',
+      'author_id': 'user-2',
       'user_profiles': {'nickname': '小红', 'avatar_url': 'https://x/avatar.png'},
     });
     expect(c.id, 'c1');
     expect(c.body, '很有启发');
     expect(c.likeCount, 3);
+    expect(c.authorId, 'user-2');
     expect(c.authorNickname, '小红');
     expect(c.authorAvatarUrl, 'https://x/avatar.png');
   });
@@ -59,6 +63,7 @@ void main() {
           'stance': '正方·进步论',
           'content': 'AI是新的画笔。',
           'author': {
+            'id': 'artist-1',
             'name': '沈予白',
             'handle': 'shen-yubai',
             'avatar_url': 'https://x/avatar.png',
@@ -79,6 +84,7 @@ void main() {
     expect(topic.answers.length, 2);
     expect(topic.answers.first.stance, '正方·进步论');
     expect(topic.answers.first.authorName, '沈予白');
+    expect(topic.answers.first.authorId, 'artist-1');
     expect(topic.answers.first.authorHandle, 'shen-yubai');
     expect(topic.answers.first.authorAvatarUrl, 'https://x/avatar.png');
     expect(topic.answers.first.authorRole, '认证艺术家');

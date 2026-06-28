@@ -46,17 +46,33 @@ export async function POST(req: NextRequest) {
 
     const { data: profile } = await supabaseService
       .from("user_profiles")
-      .select("nickname")
+      .select("*")
       .eq("id", userId)
       .single();
 
-    return NextResponse.json({
+    const userPayload = {
+      id: userId,
+      email: signInData.user.email,
+      username: profile?.nickname || signInData.user.user_metadata?.username || "",
+      nickname: profile?.nickname || "",
+      avatar_url: profile?.avatar_url || null,
+      role: profile?.role || "user",
+      is_verified: profile?.is_verified === true,
+      profile,
+    };
+    const data = {
       token,
-      user: {
-        id: userId,
-        email: signInData.user.email,
-        username: profile?.nickname || signInData.user.user_metadata?.username || "",
-      },
+      session: signInData.session,
+      user: userPayload,
+      profile,
+    };
+
+    return NextResponse.json({
+      success: true,
+      data,
+      token,
+      session: signInData.session,
+      user: userPayload,
     });
   } catch (error: any) {
     console.error("登录错误:", error);

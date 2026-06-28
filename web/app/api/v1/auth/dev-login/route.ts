@@ -20,9 +20,11 @@ export async function POST(req: NextRequest) {
     // 检查是否为开发环境
     const isDev = process.env.NODE_ENV === "development";
     
-    // 只允许开发环境或带上特殊header的请求
+    // 只允许开发环境或显式配置的调试密钥请求
     const devSecret = req.headers.get("x-dev-secret");
-    const isDevRequest = isDev || devSecret === "artsee_dev_2024";
+    const configuredDevSecret = process.env.DEV_LOGIN_SECRET?.trim();
+    const isDevRequest =
+      isDev || (!!configuredDevSecret && devSecret === configuredDevSecret);
     
     if (!isDevRequest) {
       return NextResponse.json(
@@ -112,16 +114,27 @@ export async function POST(req: NextRequest) {
       .eq("id", userId)
       .single();
 
-    return NextResponse.json({
-      success: true,
+    const user = {
+      id: userId,
+      phone: DEV_PHONE,
+      role: profile?.role || "admin",
+      profile,
+    };
+    const data = {
+      user,
+      session: null,
+      token: "",
       isNewUser,
       isDevLogin: true,
-      user: {
-        id: userId,
-        phone: DEV_PHONE,
-        role: profile?.role || "admin",
-        profile,
-      },
+      message: isNewUser ? "开发者管理员账号创建成功" : "开发者登录成功",
+    };
+
+    return NextResponse.json({
+      success: true,
+      data,
+      isNewUser,
+      isDevLogin: true,
+      user,
       message: isNewUser ? "开发者管理员账号创建成功" : "开发者登录成功",
     });
   } catch (error: any) {

@@ -3,6 +3,29 @@ import { getUserFromBearer } from "@/lib/api/auth-user";
 import { createServiceClient } from "@/lib/api/supabase-service";
 import { errorResponse, parsePagination } from "@/lib/api/route-helpers";
 
+type Row = Record<string, unknown>;
+
+const ATTACHMENT_MESSAGE_TYPES = new Set(["image", "file"]);
+const ALLOWED_MESSAGE_TYPES = new Set(["text", "image", "file", "system"]);
+
+function cleanText(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function objectValue(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as Row;
+}
+
+function isHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -60,9 +83,44 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await req.json();
-    const text = String(body.body ?? "").trim();
+    const metadata = objectValue(body.metadata);
+    const messageType = cleanText(body.message_type) || "text";
+    if (!ALLOWED_MESSAGE_TYPES.has(messageType)) {
+      return NextResponse.json({ success: false, error: "消息类型无效" }, { status: 400 });
+    }
+
+    const attachmentUrl = cleanText(
+      body.attachment_url ??
+        body.url ??
+        metadata.attachment_url ??
+        metadata.asset_url ??
+        metadata.public_url ??
+        metadata.url
+    );
+    const attachmentName = cleanText(
+      body.attachment_name ??
+        body.file_name ??
+        body.filename ??
+        metadata.attachment_name ??
+        metadata.file_name ??
+        metadata.filename
+    );
+    const contentType = cleanText(
+      body.content_type ?? body.file_type ?? metadata.content_type ?? metadata.file_type
+    );
+    const size = Number(body.size ?? metadata.size);
+    const hasAttachment = ATTACHMENT_MESSAGE_TYPES.has(messageType);
+    const text = cleanText(body.body) || (hasAttachment
+      ? messageType === "image"
+        ? "[图片]"
+        : `[文件]${attachmentName ? ` ${attachmentName}` : ""}`
+      : "");
+
     if (!text) {
       return NextResponse.json({ success: false, error: "消息不能为空" }, { status: 400 });
+    }
+    if (hasAttachment && (!attachmentUrl || !isHttpUrl(attachmentUrl))) {
+      return NextResponse.json({ success: false, error: "附件链接无效" }, { status: 400 });
     }
 
     const supabase = createServiceClient();
@@ -82,8 +140,19 @@ export async function POST(
         conversation_id: id,
         sender_id: user.id,
         body: text,
-        message_type: body.message_type ?? "text",
-        metadata: body.metadata ?? {},
+        message_type: messageType,
+        metadata: {
+          ...metadata,
+          ...(hasAttachment
+            ? {
+                attachment_url: attachmentUrl,
+                attachment_name: attachmentName || null,
+                content_type: contentType || null,
+                size: Number.isFinite(size) && size > 0 ? size : null,
+                provider: cleanText(metadata.provider) || "tencent_cos",
+              }
+            : {}),
+        },
       })
       .select()
       .single();

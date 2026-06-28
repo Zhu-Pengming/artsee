@@ -66,6 +66,7 @@ async function ensureBusinessOnboardingReview(
     businessIntro?: string;
     businessNeeds: string[];
     businessMaterials: string[];
+    businessProofFiles: string[];
   }
 ) {
   const role = businessRole(input.userRole);
@@ -86,6 +87,7 @@ async function ensureBusinessOnboardingReview(
     summary: input.businessIntro,
     needs: input.businessNeeds,
     materials: input.businessMaterials,
+    proof_files: input.businessProofFiles,
   });
 
   const { data: existingOrganization, error: lookupError } = await supabase
@@ -183,6 +185,7 @@ async function ensureBusinessOnboardingReview(
     note: input.businessIntro,
     business_needs: input.businessNeeds,
     business_materials: input.businessMaterials,
+    business_proof_files: input.businessProofFiles,
   });
 
   const { data: verification, error: verificationError } = await supabase
@@ -229,6 +232,9 @@ export async function POST(req: NextRequest) {
       toStringArray(body.businessMaterials ?? body.business_materials).length > 0
         ? toStringArray(body.businessMaterials ?? body.business_materials)
         : targetMajors.filter((item) => !/^(机构名称|联系人|渠道|简介)：/u.test(item));
+    const businessProofFiles = toStringArray(
+      body.businessProofFiles ?? body.business_proof_files
+    );
     const businessName =
       toOptionalString(body.businessName ?? body.business_name) ??
       firstLabeledValue(targetMajors, "机构名称");
@@ -316,6 +322,7 @@ export async function POST(req: NextRequest) {
         businessIntro,
         businessNeeds: goals,
         businessMaterials,
+        businessProofFiles,
       });
     } catch (reviewError) {
       const msg = reviewError instanceof Error ? reviewError.message : String(reviewError);

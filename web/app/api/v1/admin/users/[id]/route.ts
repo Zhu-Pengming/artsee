@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAdminRole } from "@/lib/api/admin-roles";
 import { writeAdminAuditLog } from "@/lib/api/admin-audit";
 import { createNotification } from "@/lib/api/notifications";
 import { requireAdmin } from "@/lib/api/require-admin";
@@ -8,7 +9,7 @@ import { createServiceClient } from "@/lib/api/supabase-service";
 type Ctx = { params: Promise<{ id: string }> };
 
 const USER_STATUSES = new Set(["active", "banned", "disabled", "pending"]);
-const SYSTEM_ROLES = new Set(["user", "admin", "creator", "mentor", "institution"]);
+const SYSTEM_ROLES = new Set(["user", "admin", "super_admin", "creator", "mentor", "institution"]);
 
 function cleanText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -39,7 +40,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
       if (!SYSTEM_ROLES.has(role)) {
         return NextResponse.json({ success: false, error: "无效系统角色" }, { status: 400 });
       }
-      if (id === admin.user.id && role !== "admin") {
+      if (id === admin.user.id && !isAdminRole(role)) {
         return NextResponse.json(
           { success: false, error: "不能移除自己的管理员权限" },
           { status: 400 }

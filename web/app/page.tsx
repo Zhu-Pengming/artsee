@@ -1,7 +1,5 @@
-"use client";
-
-import ArtiqoreApp from "./artiqore-ui/App";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return <ArtiqoreApp />;
+  redirect("/admin");
 }

@@ -196,8 +196,15 @@ export async function runConsultStages(input: ConsultInput): Promise<ConsultStag
 
   // Load user profile if authenticated
   let userProfile = providedProfile;
-  if (userId && !providedProfile) {
-    userProfile = await loadUserProfile(userId);
+  if (userId) {
+    const loadedProfile = await loadUserProfile(userId);
+    userProfile = {
+      ...(loadedProfile && typeof loadedProfile === 'object' ? loadedProfile : {}),
+      ...(providedProfile && typeof providedProfile === 'object' ? providedProfile : {}),
+    };
+    if (Object.keys(userProfile).length === 0) {
+      userProfile = undefined;
+    }
   }
 
   // Step 1: Rewrite query with conversation history (Phase 1.5)

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST as createCheckout } from "@/app/api/v1/payments/checkout/route";
 
@@ -44,6 +44,8 @@ function req(body: Record<string, unknown>, token = "valid-token") {
 }
 
 describe("POST /api/v1/payments/checkout", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
   it("creates checkout orders for regular products", async () => {
     insertedOrders = [];
     const res = await createCheckout(
@@ -88,6 +90,26 @@ describe("POST /api/v1/payments/checkout", () => {
       })
     );
     expect(organization.status).toBe(400);
+    expect(insertedOrders).toHaveLength(0);
+  });
+
+  it("blocks internal checkout orders in production unless explicitly enabled", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("ALLOW_INTERNAL_PAYMENT", "");
+    insertedOrders = [];
+
+    const res = await createCheckout(
+      req({
+        subject: "作品集评估",
+        amount_total: 50000,
+        product_type: "mentor_booking",
+        item_id: "booking-1",
+      })
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(503);
+    expect(body.error).toBe("生产环境未配置支付渠道，无法创建内部支付订单");
     expect(insertedOrders).toHaveLength(0);
   });
 });

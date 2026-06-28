@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../config/api_config.dart';
 import '../../services/backend_api_service.dart';
 import '../../widgets/common.dart';
+import '../consultation/organization_list_screen.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
 import 'workbench_consultation_detail_screen.dart';
 import 'workbench_contracts_screen.dart';
@@ -169,6 +170,10 @@ class _InstitutionWorkspaceScreenState
     return _canManageContractsFor(_organizations);
   }
 
+  _OrganizationMembership? get _primaryOrganization {
+    return _firstOrganization(_organizations);
+  }
+
   String get _contractActionSubtitle {
     if (_orgLoading) return '同步机构权限';
     if (_orgError != null) return '机构权限待恢复';
@@ -208,6 +213,23 @@ class _InstitutionWorkspaceScreenState
         onCreated: _loadOrganizations,
       ),
     );
+  }
+
+  Future<void> _openPublicOrganizationPreview() async {
+    final organization = _primaryOrganization;
+    if (organization == null) {
+      await _openOrganizationProfile();
+      return;
+    }
+    final initialOrg = _organizationPreviewPayload(organization.organization);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => OrganizationDetailScreen(initialOrg: initialOrg),
+      ),
+    );
+    if (mounted) {
+      _loadOrganizations();
+    }
   }
 
   Future<void> _openTeamManagement() async {
@@ -280,11 +302,27 @@ class _InstitutionWorkspaceScreenState
   @override
   Widget build(BuildContext context) {
     final verified = widget.profile?['is_verified'] == true;
+    final primaryOrganization = _primaryOrganization;
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+            child: _WorkspaceIdentityPanel(
+              profile: widget.profile,
+              organization: primaryOrganization,
+              organizationCount: _organizations.length,
+              loading: _orgLoading,
+              error: _orgError,
+              onManage: _openOrganizationProfile,
+              onPreview: _openPublicOrganizationPreview,
+              onRetry: _loadOrganizations,
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
             child: _LeadStatusStrip(
               items: [
                 _WorkbenchMetric(
@@ -412,6 +450,433 @@ class _LeadStatusStrip extends StatelessWidget {
               ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _WorkspaceIdentityPanel extends StatelessWidget {
+  final Map<String, dynamic>? profile;
+  final _OrganizationMembership? organization;
+  final int organizationCount;
+  final bool loading;
+  final String? error;
+  final Future<void> Function() onManage;
+  final Future<void> Function() onPreview;
+  final Future<void> Function() onRetry;
+
+  const _WorkspaceIdentityPanel({
+    required this.profile,
+    required this.organization,
+    required this.organizationCount,
+    required this.loading,
+    required this.error,
+    required this.onManage,
+    required this.onPreview,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final org = organization?.organization;
+    final name = _cleanText(org?['name']).isNotEmpty
+        ? _cleanText(org?['name'])
+        : '尚未创建机构档案';
+    final role =
+        organization == null ? '个人账号' : _memberRoleLabel(organization!.role);
+    final verification = org?['verification_status']?.toString();
+    final subscription = org?['subscription_status']?.toString() ?? 'inactive';
+    final status = org?['status']?.toString();
+    final profileName = _cleanText(profile?['nickname']).isNotEmpty
+        ? _cleanText(profile?['nickname'])
+        : '个人账号';
+    final canPreview = organization != null;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(15, 15, 15, 14),
+      decoration: _panelDecoration(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: kCobalt.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.switch_account_outlined,
+                  color: kCobalt,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '当前机构视角',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: context.artC.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '个人账号保留，工作台只处理机构服务与协作',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        color: context.artC.ink.withValues(alpha: 0.42),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (loading)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    color: kCobalt,
+                    strokeWidth: 2,
+                  ),
+                )
+              else if (error != null)
+                TextButton.icon(
+                  style: TextButton.styleFrom(
+                    foregroundColor: kCobalt,
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                  ),
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text('重试'),
+                )
+              else
+                _StatusPill(
+                  label: organization == null ? '待创建' : '已关联',
+                  strong: organization != null,
+                ),
+            ],
+          ),
+          const SizedBox(height: 13),
+          _IdentitySegmentStrip(
+            personalLabel: profileName,
+            organizationLabel: name,
+            organizationCount: organizationCount,
+          ),
+          const SizedBox(height: 13),
+          if (error != null)
+            _LeadInlineError(error: error!, onRetry: onRetry)
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: context.artC.porcelain,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: context.artC.silver.withValues(alpha: 0.22),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: context.artC.ink,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _MiniLeadTag(label: role, strong: true),
+                    ],
+                  ),
+                  const SizedBox(height: 9),
+                  Wrap(
+                    spacing: 7,
+                    runSpacing: 7,
+                    children: [
+                      _MiniLeadTag(label: _verificationLabel(verification)),
+                      _MiniLeadTag(label: _organizationStatusLabel(status)),
+                      _MiniLeadTag(
+                        label: _subscriptionStatusLabel(subscription, null),
+                        strong: subscription == 'active',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _OrganizationExposureSteps(
+                    hasOrganization: organization != null,
+                    verified: verification == 'verified',
+                    subscribed: subscription == 'active',
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onManage,
+                  icon: const Icon(Icons.tune_outlined, size: 18),
+                  label: Text(canPreview ? '管理资料' : '创建机构'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(backgroundColor: kCobalt),
+                  onPressed: canPreview ? onPreview : onManage,
+                  icon: Icon(
+                    canPreview
+                        ? Icons.visibility_outlined
+                        : Icons.add_business_outlined,
+                    size: 18,
+                  ),
+                  label: Text(canPreview ? '预览主页' : '先建档案'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IdentitySegmentStrip extends StatelessWidget {
+  final String personalLabel;
+  final String organizationLabel;
+  final int organizationCount;
+
+  const _IdentitySegmentStrip({
+    required this.personalLabel,
+    required this.organizationLabel,
+    required this.organizationCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: context.artC.silver.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _IdentitySegment(
+              label: personalLabel,
+              subtitle: '个人',
+              icon: Icons.person_outline_rounded,
+              selected: false,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: _IdentitySegment(
+              label: organizationLabel,
+              subtitle:
+                  organizationCount > 1 ? '机构 · $organizationCount 个' : '机构',
+              icon: Icons.apartment_rounded,
+              selected: true,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IdentitySegment extends StatelessWidget {
+  final String label;
+  final String subtitle;
+  final IconData icon;
+  final bool selected;
+
+  const _IdentitySegment({
+    required this.label,
+    required this.subtitle,
+    required this.icon,
+    required this.selected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
+      decoration: BoxDecoration(
+        color: selected ? Colors.white : Colors.transparent,
+        borderRadius: BorderRadius.circular(7),
+        border: selected
+            ? Border.all(color: kCobalt.withValues(alpha: 0.16))
+            : null,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 17,
+            color:
+                selected ? kCobalt : context.artC.ink.withValues(alpha: 0.38),
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: selected
+                        ? kCobalt
+                        : context.artC.ink.withValues(alpha: 0.38),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w900,
+                    color: selected
+                        ? context.artC.ink
+                        : context.artC.ink.withValues(alpha: 0.48),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OrganizationExposureSteps extends StatelessWidget {
+  final bool hasOrganization;
+  final bool verified;
+  final bool subscribed;
+
+  const _OrganizationExposureSteps({
+    required this.hasOrganization,
+    required this.verified,
+    required this.subscribed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _ExposureStep(
+            label: '建档',
+            done: hasOrganization,
+          ),
+        ),
+        _ExposureConnector(active: hasOrganization),
+        Expanded(
+          child: _ExposureStep(
+            label: '认证',
+            done: verified,
+          ),
+        ),
+        _ExposureConnector(active: verified),
+        Expanded(
+          child: _ExposureStep(
+            label: '入驻曝光',
+            done: subscribed,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ExposureStep extends StatelessWidget {
+  final String label;
+  final bool done;
+
+  const _ExposureStep({
+    required this.label,
+    required this.done,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: done ? kCobalt : context.artC.silver.withValues(alpha: 0.2),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            done ? Icons.check_rounded : Icons.more_horiz_rounded,
+            size: 15,
+            color:
+                done ? Colors.white : context.artC.ink.withValues(alpha: 0.4),
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            color: done ? kCobalt : context.artC.ink.withValues(alpha: 0.42),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ExposureConnector extends StatelessWidget {
+  final bool active;
+
+  const _ExposureConnector({required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 22,
+      height: 2,
+      margin: const EdgeInsets.only(bottom: 19),
+      decoration: BoxDecoration(
+        color: active
+            ? kCobalt.withValues(alpha: 0.55)
+            : context.artC.silver.withValues(alpha: 0.24),
+        borderRadius: BorderRadius.circular(99),
       ),
     );
   }
@@ -3457,6 +3922,33 @@ String _organizationActionSubtitle(
   return organization.organization['name']?.toString() ?? '查看机构资料';
 }
 
+Map<String, dynamic> _organizationPreviewPayload(
+  Map<String, dynamic> organization,
+) {
+  final metadata = _mapValue(organization['metadata']);
+  final summary = _firstCleanText(
+    organization['summary'],
+    metadata['summary'],
+    metadata['description'],
+  );
+  final avatarUrl = _firstCleanText(
+    organization['avatar_url'],
+    organization['logo_url'],
+    metadata['avatar_url'],
+    metadata['logo_url'],
+  );
+  return {
+    ...organization,
+    if (summary.isNotEmpty) 'summary': summary,
+    if (avatarUrl.isNotEmpty) 'avatar_url': avatarUrl,
+    'metadata': {
+      ...metadata,
+      if (summary.isNotEmpty) 'summary': summary,
+      if (avatarUrl.isNotEmpty) 'avatar_url': avatarUrl,
+    },
+  };
+}
+
 const _organizationTypes = {
   'study_abroad_agency': '留学机构',
   'portfolio_training': '作品集机构',
@@ -3702,6 +4194,19 @@ String _checkoutOrderId(Map<String, dynamic> checkout) {
 
 String _cleanText(dynamic value) {
   return value?.toString().trim() ?? '';
+}
+
+String _firstCleanText(
+  Object? first, [
+  Object? second,
+  Object? third,
+  Object? fourth,
+]) {
+  for (final value in [first, second, third, fourth]) {
+    final text = _cleanText(value);
+    if (text.isNotEmpty) return text;
+  }
+  return '';
 }
 
 Map<String, dynamic> _mapValue(dynamic value) {

@@ -44,15 +44,19 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _nicknameCtrl = TextEditingController();
+  final _emailOtpCtrl = TextEditingController();
 
   final _emailFocus = FocusNode();
   final _passwordFocus = FocusNode();
   final _nicknameFocus = FocusNode();
+  final _emailOtpFocus = FocusNode();
 
   bool _isLogin = true;
   bool _loading = false;
+  bool _sendingEmailOtp = false;
   bool _isColorful = false;
   String? _error;
+  String? _emailOtpHint;
 
   @override
   void initState() {
@@ -61,6 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailCtrl.addListener(_updateColorfulState);
     _passwordCtrl.addListener(_updateColorfulState);
     _nicknameCtrl.addListener(_updateColorfulState);
+    _emailOtpCtrl.addListener(_updateColorfulState);
 
     _emailFocus.addListener(() {
       print('📧 Email focus changed: ${_emailFocus.hasFocus}');
@@ -74,6 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
       print('👤 Nickname focus changed: ${_nicknameFocus.hasFocus}');
       _updateColorfulState();
     });
+    _emailOtpFocus.addListener(_updateColorfulState);
 
     print('✅ LoginScreen initState completed');
   }
@@ -81,10 +87,12 @@ class _LoginScreenState extends State<LoginScreen> {
   void _updateColorfulState() {
     final hasFocus = _emailFocus.hasFocus ||
         _passwordFocus.hasFocus ||
-        _nicknameFocus.hasFocus;
+        _nicknameFocus.hasFocus ||
+        _emailOtpFocus.hasFocus;
     final hasText = _emailCtrl.text.isNotEmpty ||
         _passwordCtrl.text.isNotEmpty ||
-        _nicknameCtrl.text.isNotEmpty;
+        _nicknameCtrl.text.isNotEmpty ||
+        _emailOtpCtrl.text.isNotEmpty;
     final colorful = hasFocus || hasText;
     if (colorful != _isColorful) {
       setState(() => _isColorful = colorful);
@@ -96,18 +104,22 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailCtrl.removeListener(_updateColorfulState);
     _passwordCtrl.removeListener(_updateColorfulState);
     _nicknameCtrl.removeListener(_updateColorfulState);
+    _emailOtpCtrl.removeListener(_updateColorfulState);
 
     _emailFocus.removeListener(_updateColorfulState);
     _passwordFocus.removeListener(_updateColorfulState);
     _nicknameFocus.removeListener(_updateColorfulState);
+    _emailOtpFocus.removeListener(_updateColorfulState);
 
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _nicknameCtrl.dispose();
+    _emailOtpCtrl.dispose();
 
     _emailFocus.dispose();
     _passwordFocus.dispose();
     _nicknameFocus.dispose();
+    _emailOtpFocus.dispose();
     super.dispose();
   }
 
@@ -127,12 +139,16 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) Navigator.pop(context);
       } else {
         if (_nicknameCtrl.text.trim().isEmpty) throw Exception('请填写昵称');
+        if (_emailOtpCtrl.text.trim().isEmpty) {
+          throw Exception('请填写邮箱验证码');
+        }
 
         // 通过 API 注册（统一处理 Auth 和 user_profiles）
         final result = await BackendApiService.signup(
           email: _emailCtrl.text.trim(),
           password: _passwordCtrl.text,
           nickname: _nicknameCtrl.text.trim(),
+          emailOtp: _emailOtpCtrl.text.trim(),
         );
 
         if (result['success'] != true) {
@@ -156,6 +172,43 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _sendEmailOtp() async {
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _error = '请先填写有效邮箱');
+      FocusScope.of(context).requestFocus(_emailFocus);
+      return;
+    }
+    setState(() {
+      _sendingEmailOtp = true;
+      _error = null;
+      _emailOtpHint = null;
+    });
+    try {
+      final result = await BackendApiService.sendEmailOtp(
+        email: email,
+        nickname: _nicknameCtrl.text.trim(),
+      );
+      final code = result['code']?.toString();
+      if (!mounted) return;
+      setState(() {
+        _emailOtpHint =
+            code == null || code.isEmpty ? '验证码已发送，请查看邮箱' : '开发验证码：$code';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_emailOtpHint!)),
+      );
+      FocusScope.of(context).requestFocus(_emailOtpFocus);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (mounted) setState(() => _sendingEmailOtp = false);
     }
   }
 
@@ -336,7 +389,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         children: [
                           if (!_isLogin)
                             GestureDetector(
-                              onTap: () => setState(() => _isLogin = true),
+                              onTap: () => setState(() {
+                                _isLogin = true;
+                                _emailOtpHint = null;
+                              }),
                               child: Container(
                                 padding: const EdgeInsets.all(8),
                                 child: Icon(
@@ -409,6 +465,70 @@ class _LoginScreenState extends State<LoginScreen> {
                               obscureText: true,
                               validator: (v) => v!.length < 6 ? '密码至少6位' : null,
                             ),
+                            if (!_isLogin) ...[
+                              const SizedBox(height: 16),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: _buildInput(
+                                      controller: _emailOtpCtrl,
+                                      focusNode: _emailOtpFocus,
+                                      hint: '邮箱验证码',
+                                      icon: Icons.mark_email_read_outlined,
+                                      keyboardType: TextInputType.number,
+                                      validator: (v) =>
+                                          v!.trim().isEmpty ? '请填写邮箱验证码' : null,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  SizedBox(
+                                    height: 56,
+                                    child: OutlinedButton(
+                                      onPressed: _sendingEmailOtp || _loading
+                                          ? null
+                                          : _sendEmailOtp,
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: kCobalt,
+                                        side: BorderSide(
+                                          color: kCobalt.withOpacity(0.38),
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(14),
+                                        ),
+                                      ),
+                                      child: _sendingEmailOtp
+                                          ? const SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            )
+                                          : const Text(
+                                              '发送',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_emailOtpHint != null) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  _emailOtpHint!,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: context.artC.ink.withOpacity(0.45),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ],
                             if (_error != null) ...[
                               const SizedBox(height: 16),
                               Text(
@@ -467,8 +587,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                     subtitle:
                                         _isLogin ? '创建你的艺术身份档案' : '返回邮箱密码登录',
                                     action: _isLogin ? '去注册' : '去登录',
-                                    onTap: () =>
-                                        setState(() => _isLogin = !_isLogin),
+                                    onTap: () => setState(() {
+                                      _isLogin = !_isLogin;
+                                      _emailOtpHint = null;
+                                    }),
                                   ),
                                   if (_isLogin) ...[
                                     const SizedBox(height: 10),

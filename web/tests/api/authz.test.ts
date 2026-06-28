@@ -24,6 +24,7 @@ const userIds: Record<string, string> = {
   student: "student-user",
   business: "business-user",
   admin: "admin-user",
+  super: "super-admin-user",
   org: "org-member-user",
 };
 
@@ -44,6 +45,12 @@ function resetDb() {
     {
       id: userIds.admin,
       role: "admin",
+      user_role: null,
+      user_type: null,
+    },
+    {
+      id: userIds.super,
+      role: "super_admin",
       user_role: null,
       user_type: null,
     },
@@ -247,6 +254,18 @@ describe("business content authz", () => {
     const res = await postEvent(
       req("/api/v1/events", "admin", {
         title: "官方活动",
+        status: "published",
+      })
+    );
+    const body = await res.json();
+    expect(res.status).toBe(201);
+    expect(body.data.status).toBe("published");
+  });
+
+  it("allows super admins to publish events directly", async () => {
+    const res = await postEvent(
+      req("/api/v1/events", "super", {
+        title: "超级管理员活动",
         status: "published",
       })
     );

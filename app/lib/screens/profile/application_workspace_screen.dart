@@ -275,7 +275,7 @@ class _ApplicationWorkspaceScreenState
   }
 
   Widget _buildSchoolCard(Map<String, dynamic> school) {
-    final id = school['id']?.toString();
+    final id = (school['school_id'] ?? school['id'])?.toString();
     final name = school['name_zh']?.toString().isNotEmpty == true
         ? school['name_zh'].toString()
         : (school['name_en']?.toString() ?? '未知院校');
@@ -432,6 +432,21 @@ class _ApplicationWorkspaceScreenState
     List<Map<String, dynamic>> schools, {
     String? initialId,
   }) {
+    // 过滤掉无效的院校（非 UUID 的 ID）
+    final uuidRegex = RegExp(
+      r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+      caseSensitive: false,
+    );
+    final validSchools = schools.where((school) {
+      final id = (school['school_id'] ?? school['id'])?.toString();
+      return id != null && uuidRegex.hasMatch(id);
+    }).toList();
+    
+    if (validSchools.length < 2) {
+      _showToast('可用于对比的院校不足 2 所，请先添加更多院校到目标池');
+      return;
+    }
+    
     final selected = <String>{if (initialId != null) initialId};
     var generating = false;
     showModalBottomSheet<void>(
@@ -449,8 +464,25 @@ class _ApplicationWorkspaceScreenState
               }
               setSheetState(() => generating = true);
               try {
+                final schoolIds = selected.toList();
+                debugPrint('Comparing schools with IDs: $schoolIds');
+                
+                // 验证所有 ID 都是有效的 UUID
+                final uuidRegex = RegExp(
+                  r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+                  caseSensitive: false,
+                );
+                final invalidIds = schoolIds.where((id) => !uuidRegex.hasMatch(id)).toList();
+                
+                if (invalidIds.isNotEmpty) {
+                  if (!mounted || !context.mounted) return;
+                  setSheetState(() => generating = false);
+                  _showToast('部分院校数据不完整，请重新选择（${invalidIds.join(', ')}）');
+                  return;
+                }
+                
                 final result = await BackendApiService.compareSchools(
-                  schoolIds: selected.toList(),
+                  schoolIds: schoolIds,
                 );
                 if (!mounted || !sheetContext.mounted) return;
                 Navigator.of(sheetContext).pop();
@@ -515,9 +547,9 @@ class _ApplicationWorkspaceScreenState
                       ),
                     ),
                     const SizedBox(height: 14),
-                    ...schools.map((school) {
+                    ...validSchools.map((school) {
                       final id =
-                          (school['id'] ?? school['school_id'])?.toString();
+                          (school['school_id'] ?? school['id'])?.toString();
                       final name =
                           school['name_zh']?.toString().isNotEmpty == true
                               ? school['name_zh'].toString()

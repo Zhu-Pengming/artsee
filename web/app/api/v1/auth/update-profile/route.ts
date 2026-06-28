@@ -175,10 +175,15 @@ export async function POST(req: NextRequest) {
 
     console.log('✅ 更新成功，返回数据中的完成度:', profile?.profile_completion_score);
 
-    return NextResponse.json({
+    const data = {
       id: user.id,
       email: user.email,
       username: profile?.nickname || user.user_metadata?.username || "",
+      nickname: profile?.nickname || "",
+      avatar_url: profile?.avatar_url || null,
+      bio: profile?.bio || null,
+      role: profile?.role || "user",
+      is_verified: profile?.is_verified === true,
       targetCountries: profile?.target_countries || [],
       targetMajors: profile?.target_majors || [],
       budgetRange: profile?.total_budget_range || "",
@@ -207,6 +212,13 @@ export async function POST(req: NextRequest) {
       favoriteArtistsOrStyles: profile?.favorite_artists_or_styles || null,
       priorityFactors: profile?.priority_factors || null,
       onboardingCompletedAt: profile?.onboarding_completed_at || null,
+      profile,
+    };
+
+    return NextResponse.json({
+      success: true,
+      data,
+      ...data,
     });
   } catch (error: any) {
     console.error("更新用户资料错误:", error);
@@ -216,3 +228,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const PATCH = POST;

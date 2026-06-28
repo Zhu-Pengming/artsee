@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAdminRole } from "@/lib/api/admin-roles";
 import { writeAdminAuditLog } from "@/lib/api/admin-audit";
 import { createNotification } from "@/lib/api/notifications";
 import { requireAdmin } from "@/lib/api/require-admin";
@@ -111,7 +112,7 @@ async function applyModerationAction(
       .maybeSingle();
     if (readError) return { error: readError };
     if (!targetUser) return { error: new Error("被举报用户不存在") };
-    if (cleanText(targetUser.role) === "admin") {
+    if (isAdminRole(cleanText(targetUser.role))) {
       return { error: new Error("不能通过举报流程限制管理员账号") };
     }
     const now = new Date().toISOString();

@@ -18,6 +18,14 @@ export function errorResponse(error: unknown, status = 500) {
       : typeof error === "object" && error !== null
         ? JSON.stringify(error)
         : String(error);
+  
+  // 记录错误详情
+  console.error('[errorResponse]', {
+    status,
+    message,
+    error: error instanceof Error ? { name: error.name, stack: error.stack } : error
+  });
+  
   return NextResponse.json({ success: false, error: message }, { status });
 }
 

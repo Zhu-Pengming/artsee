@@ -924,6 +924,7 @@ class _OrganizationDetailScreenState extends State<OrganizationDetailScreen> {
   bool _loading = true;
   bool _membershipLoading = false;
   bool _following = false;
+  bool _messageOpening = false;
   int _profileTab = 0;
   String? _error;
 
@@ -1118,30 +1119,70 @@ class _OrganizationDetailScreenState extends State<OrganizationDetailScreen> {
     );
   }
 
-  void _openOrganizationMessage({
+  Future<void> _openOrganizationMessage({
     required String name,
     required String? avatarUrl,
     required String responseSpeed,
-  }) {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => LightMessageScreen(
-          peer: LightMessagePeer.organization(
-            name: name,
-            avatarUrl: avatarUrl,
-            identityLabel: '机构认证',
-            serviceStatus: '服务中',
-            responseTime: responseSpeed,
-            profileBuilder: (_) => OrganizationDetailScreen(
-              initialOrg: _org,
-              schoolId: widget.schoolId,
-              schoolName: widget.schoolName,
+  }) async {
+    if (!await _ensureMember()) return;
+    final orgId = _org['id']?.toString();
+    if (orgId == null || orgId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('机构资料创建后可接收消息')),
+      );
+      return;
+    }
+    if (_messageOpening) return;
+    setState(() => _messageOpening = true);
+    try {
+      final conversation =
+          await BackendApiService.createOrganizationConversation(
+        organizationId: orgId,
+        title: name,
+        metadata: {
+          'source': _hasSchoolContext
+              ? 'school_detail_organization_message'
+              : 'organization_detail_message',
+          'organization_name': name,
+          if (avatarUrl != null) 'organization_avatar_url': avatarUrl,
+          if (widget.schoolId != null) 'school_id': widget.schoolId,
+          if (widget.schoolName != null) 'school_name': widget.schoolName,
+        },
+      );
+      if (!mounted) return;
+      setState(() => _messageOpening = false);
+      Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => LightMessageScreen(
+            conversation: conversation,
+            peer: LightMessagePeer.organization(
+              name: name,
+              avatarUrl: avatarUrl,
+              identityLabel: '机构群聊',
+              serviceStatus: '服务中',
+              responseTime: responseSpeed,
+              profileBuilder: (_) => OrganizationDetailScreen(
+                initialOrg: _org,
+                schoolId: widget.schoolId,
+                schoolName: widget.schoolName,
+              ),
             ),
+            initialMessage: '你好，可以先说说想咨询的方向、预算或合作需求。',
           ),
-          initialMessage: '你好，可以先说说想咨询的方向、预算或合作需求。',
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _messageOpening = false);
+      if (e is ApiException && e.code == 402) {
+        await _showUpgradeSheet();
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('打开机构群聊失败：$e')),
+      );
+    }
   }
 
   @override
@@ -1232,11 +1273,13 @@ class _OrganizationDetailScreenState extends State<OrganizationDetailScreen> {
                 onConsult: supportsOnline
                     ? _startOnlineConsultation
                     : _showOfflineContact,
-                onMessage: () => _openOrganizationMessage(
-                  name: name,
-                  avatarUrl: _org['avatar_url']?.toString(),
-                  responseSpeed: responseSpeed,
-                ),
+                onMessage: () {
+                  _openOrganizationMessage(
+                    name: name,
+                    avatarUrl: _org['avatar_url']?.toString(),
+                    responseSpeed: responseSpeed,
+                  );
+                },
                 onFollow: () => setState(() => _following = !_following),
               ),
               const SizedBox(height: 16),

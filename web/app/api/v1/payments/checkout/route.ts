@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromBearer } from "@/lib/api/auth-user";
+import { isInternalPaymentAllowed } from "@/lib/api/payment-checkout";
 import { createServiceClient } from "@/lib/api/supabase-service";
 
 const VALID_CURRENCY_RE = /^[a-z]{3}$/;
@@ -29,6 +30,12 @@ export async function POST(req: NextRequest) {
     const user = await getUserFromBearer(req);
     if (!user) {
       return NextResponse.json({ success: false, error: "未授权" }, { status: 401 });
+    }
+    if (!isInternalPaymentAllowed()) {
+      return NextResponse.json(
+        { success: false, error: "生产环境未配置支付渠道，无法创建内部支付订单" },
+        { status: 503 }
+      );
     }
 
     const body = await req.json();

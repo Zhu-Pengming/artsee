@@ -460,9 +460,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               _buildProfileHeader(),
               const SizedBox(height: 18),
-              _buildProfileShowcaseSection(),
-              const SizedBox(height: 18),
-              _buildMenuList(),
+              if (_isBusinessUser)
+                _buildMenuList()
+              else
+                _buildProfileShowcaseSection(),
               SizedBox(height: bottomSpacer),
             ],
           ),
@@ -472,22 +473,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfileHeader() {
-    final directions = _directionSummary();
     final title = _isBusinessUser ? _businessName : _nickname;
-    final primaryAction = _primaryAction();
-    final statusItems = _isBusinessUser
-        ? [
-            ('入驻状态', _statusLabel),
-            ('所在城市', _cityLabel),
-            ('机构类型', _roleLabel),
-            ('主页状态', _isVerified ? '已开放' : '待审核'),
-          ]
-        : [
-            ('当前阶段', _stageShortLabel),
-            ('关注方向', directions),
-            ('常用城市', _cityLabel),
-            ('画像状态', _hasCompletedOnboarding ? '已完成' : '待完善'),
-          ];
 
     return Container(
       padding: const EdgeInsets.fromLTRB(17, 16, 17, 14),
@@ -503,131 +489,130 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Row(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _InstagramAvatar(
-                imageUrl: _avatarUrl,
-                fallback: _nickname,
-                verified: _isVerified,
-                business: _isBusinessUser,
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: context.artC.ink,
-                        fontFamily: 'Noto Serif SC',
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _profileHandle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: context.artC.ink.withValues(alpha: 0.42),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _InstagramAvatar(
+                    imageUrl: _avatarUrl,
+                    fallback: _nickname,
+                    verified: _isVerified,
+                    business: _isBusinessUser,
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _ProfileChip(label: _roleLabel, strong: true),
-                        _ProfileChip(label: _statusLabel),
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: context.artC.ink,
+                            fontFamily: 'Noto Serif SC',
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _profileHandle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: context.artC.ink.withValues(alpha: 0.42),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            _ProfileChip(label: _roleLabel, strong: true),
+                            _ProfileChip(label: _statusLabel),
+                          ],
+                        ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 12),
+              _ProfilePublicStats(
+                followers: _followersCount,
+                views: _profileViews,
+                following: _followingCount,
+                works: _worksCount,
+              ),
+              if (_isBusinessUser && !_isVerified) ...[
+                const SizedBox(height: 10),
+                const _NoticeStrip(
+                  text: '完成身份认证后，可发布活动、服务和合作机会',
+                  icon: Icons.verified_outlined,
+                ),
+              ] else if (!_isBusinessUser && !_isVerified) ...[
+                const SizedBox(height: 10),
+                const _NoticeStrip(
+                  text: '认证后可解锁完整申请工具、院校数据和咨询服务',
+                  icon: Icons.verified_outlined,
+                ),
+              ] else if (!_isBusinessUser && !_hasCompletedOnboarding) ...[
+                const SizedBox(height: 10),
+                const _NoticeStrip(
+                  text: '完善画像，获得更准确推荐',
+                  icon: Icons.auto_awesome_outlined,
+                ),
+              ],
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            _profileBio,
-            style: TextStyle(
-              fontSize: 13,
-              height: 1.5,
-              fontWeight: FontWeight.w700,
-              color: context.artC.ink.withValues(alpha: 0.68),
-            ),
-          ),
-          const SizedBox(height: 13),
-          _ProfilePublicStats(
-            followers: _followersCount,
-            views: _profileViews,
-            following: _followingCount,
-            works: _worksCount,
-          ),
-          const SizedBox(height: 8),
-          GridView.count(
-            crossAxisCount: 2,
-            mainAxisSpacing: 6,
-            crossAxisSpacing: 6,
-            childAspectRatio: 4.05,
-            padding: EdgeInsets.zero,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            children: statusItems
-                .map((item) =>
-                    _ProfileStatusItem(label: item.$1, value: item.$2))
-                .toList(),
-          ),
-          if (_isBusinessUser && !_isVerified) ...[
-            const SizedBox(height: 10),
-            const _NoticeStrip(
-              text: '完成身份认证后，可发布活动、服务和合作机会',
-              icon: Icons.verified_outlined,
-            ),
-          ] else if (!_isBusinessUser && !_isVerified) ...[
-            const SizedBox(height: 10),
-            const _NoticeStrip(
-              text: '认证后可解锁完整申请工具、院校数据和咨询服务',
-              icon: Icons.verified_outlined,
-            ),
-          ] else if (!_isBusinessUser && !_hasCompletedOnboarding) ...[
-            const SizedBox(height: 10),
-            const _NoticeStrip(
-              text: '完善画像，获得更准确推荐',
-              icon: Icons.auto_awesome_outlined,
-            ),
-          ],
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _HeaderActionButton(
-                  label: primaryAction.label,
-                  onTap: primaryAction.onTap,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _HeaderActionButton(
-                  label: _isBusinessUser
-                      ? '编辑机构资料'
-                      : (_hasCompletedOnboarding ? '编辑个人资料' : '完善画像'),
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
                   onTap: !_isBusinessUser && !_hasCompletedOnboarding
                       ? _openOnboardingEditor
                       : _openEditProfile,
-                  secondary: true,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: context.artC.silver.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.edit_outlined,
+                      size: 18,
+                      color: context.artC.ink.withValues(alpha: 0.68),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: _openSettings,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: context.artC.silver.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.settings_outlined,
+                      size: 18,
+                      color: context.artC.ink.withValues(alpha: 0.68),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -702,6 +687,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
     _load();
+  }
+
+  void _openSettings() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => _SettingsScreen(
+          isBusinessUser: _isBusinessUser,
+          onSignOut: _signOut,
+        ),
+      ),
+    );
   }
 
   void _closeWorkspaceThen(VoidCallback action) {
@@ -854,48 +850,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _isBusinessUser ? '机构展示预览' : '个人主页预览',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    color: context.artC.ink.withValues(alpha: 0.86),
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: _openPublicProfile,
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '查看主页',
-                      style: TextStyle(
-                        color: kCobalt,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    SizedBox(width: 3),
-                    Icon(Icons.arrow_forward_ios_rounded,
-                        size: 12, color: kCobalt),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
         _ProfileShowcaseTabStrip(
           tabs: tabs,
           selectedIndex: _profileShowcaseTab,
           onChanged: (index) => setState(() => _profileShowcaseTab = index),
         ),
-        const SizedBox(height: 12),
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 180),
           child: _buildProfileShowcaseBody(),
@@ -951,25 +910,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _MenuAction(
                 '身份认证', Icons.verified_outlined, _openIdentityVerification),
             _MenuAction('机构资料', Icons.storefront_outlined, _openEditProfile),
-            _MenuAction('AI 展示页预览', Icons.auto_awesome_outlined,
-                () => _openPlaceholder('AI 展示页预览')),
+            _MenuAction('查看机构主页', Icons.open_in_new_rounded,
+                _openBusinessPublicProfile),
           ]),
-          _buildMenuSection('内容管理', [
-            _MenuAction('案例与作品管理', Icons.layers_outlined,
-                () => _openPlaceholder('案例与作品管理')),
-            _MenuAction('服务 / 课程管理', Icons.menu_book_outlined,
-                () => _openPlaceholder('服务 / 课程管理')),
-            _MenuAction('活动 / 展览管理', Icons.event_available_outlined,
-                () => _openPlaceholder('活动 / 展览管理')),
+          _buildMenuSection('业务管理', [
             _MenuAction(
                 '发布记录', Icons.history_outlined, _openContentSubmissions),
-          ]),
-          _buildMenuSection('商务与合作', [
             _MenuAction('咨询与订单', Icons.receipt_long_outlined, _openOrders),
-            _MenuAction('咨询线索', Icons.support_agent_outlined,
-                () => _openPlaceholder('咨询线索')),
-            _MenuAction('合作追踪', Icons.business_center_outlined,
-                () => _openPlaceholder('合作追踪')),
             _MenuAction(
                 '合同 / 报价', Icons.description_outlined, _openContractArchive),
           ]),
@@ -982,8 +929,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? '$_unreadNotificationCount'
                   : null),
           _MenuAction('团队邀请', Icons.group_add_outlined, _openTeamInvitations),
-          _MenuAction('导师中心', Icons.school_outlined, _openMentorCenter),
-          _MenuAction('导师预约', Icons.event_note_outlined, _openMentorBookings),
+          if (!_isBusinessUser) ...[
+            _MenuAction('导师中心', Icons.school_outlined, _openMentorCenter),
+            _MenuAction('导师预约', Icons.event_note_outlined, _openMentorBookings),
+          ],
           _MenuAction(
             '深色模式',
             ArtseeThemeController.instance.isDark
@@ -1526,6 +1475,7 @@ class _ProfileWorksPreview extends StatelessWidget {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
       itemCount: 9,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
@@ -1859,6 +1809,197 @@ class _HeaderActionButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SettingsScreen extends StatelessWidget {
+  final bool isBusinessUser;
+  final VoidCallback onSignOut;
+
+  const _SettingsScreen({
+    required this.isBusinessUser,
+    required this.onSignOut,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('设置'),
+        centerTitle: true,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: [
+          _SettingsSection(
+            title: '账号与安全',
+            items: [
+              _SettingsItem(
+                icon: Icons.lock_outline,
+                title: '修改密码',
+                onTap: () => _showComingSoon(context),
+              ),
+              _SettingsItem(
+                icon: Icons.phone_outlined,
+                title: '手机号绑定',
+                onTap: () => _showComingSoon(context),
+              ),
+              _SettingsItem(
+                icon: Icons.email_outlined,
+                title: '邮箱绑定',
+                onTap: () => _showComingSoon(context),
+              ),
+            ],
+          ),
+          _SettingsSection(
+            title: '通知设置',
+            items: [
+              _SettingsItem(
+                icon: Icons.notifications_outlined,
+                title: '推送通知',
+                onTap: () => _showComingSoon(context),
+              ),
+              _SettingsItem(
+                icon: Icons.message_outlined,
+                title: '消息通知',
+                onTap: () => _showComingSoon(context),
+              ),
+            ],
+          ),
+          _SettingsSection(
+            title: '显示与偏好',
+            items: [
+              _SettingsItem(
+                icon: ArtseeThemeController.instance.isDark
+                    ? Icons.wb_sunny_outlined
+                    : Icons.nightlight_round,
+                title: '深色模式',
+                trailing: Switch(
+                  value: ArtseeThemeController.instance.isDark,
+                  onChanged: (_) => ArtseeThemeController.instance.toggle(),
+                  activeColor: kCobalt,
+                ),
+                onTap: () => ArtseeThemeController.instance.toggle(),
+              ),
+            ],
+          ),
+          _SettingsSection(
+            title: '关于',
+            items: [
+              _SettingsItem(
+                icon: Icons.info_outline,
+                title: '关于艺见心',
+                onTap: () => _showComingSoon(context),
+              ),
+              _SettingsItem(
+                icon: Icons.description_outlined,
+                title: '用户协议',
+                onTap: () => _showComingSoon(context),
+              ),
+              _SettingsItem(
+                icon: Icons.privacy_tip_outlined,
+                title: '隐私政策',
+                onTap: () => _showComingSoon(context),
+              ),
+              _SettingsItem(
+                icon: Icons.help_outline,
+                title: '帮助与反馈',
+                onTap: () => _showComingSoon(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: OutlinedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                onSignOut();
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: const Text(
+                '退出登录',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+          const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+
+  void _showComingSoon(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('功能开发中...')),
+    );
+  }
+}
+
+class _SettingsSection extends StatelessWidget {
+  final String title;
+  final List<_SettingsItem> items;
+
+  const _SettingsSection({required this.title, required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: context.artC.ink.withValues(alpha: 0.5),
+            ),
+          ),
+        ),
+        ...items,
+      ],
+    );
+  }
+}
+
+class _SettingsItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final Widget? trailing;
+  final VoidCallback onTap;
+
+  const _SettingsItem({
+    required this.icon,
+    required this.title,
+    this.trailing,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon, color: context.artC.ink.withValues(alpha: 0.7)),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: context.artC.ink,
+        ),
+      ),
+      trailing: trailing ??
+          Icon(
+            Icons.chevron_right,
+            color: context.artC.ink.withValues(alpha: 0.3),
+          ),
+      onTap: onTap,
     );
   }
 }

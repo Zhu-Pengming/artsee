@@ -15,6 +15,17 @@ function internalCheckoutUrl(orderId: string) {
   return `/orders/${orderId}`;
 }
 
+export function isInternalPaymentAllowed() {
+  return (
+    process.env.NODE_ENV !== "production" ||
+    process.env.ALLOW_INTERNAL_PAYMENT === "true"
+  );
+}
+
+function internalPaymentUnavailableMessage() {
+  return "生产环境未配置支付渠道，无法创建内部支付订单";
+}
+
 function checkoutSignature(rawBody: string) {
   const secret = process.env.PAYMENT_CHECKOUT_SECRET || "";
   if (!secret) return null;
@@ -35,6 +46,9 @@ export async function createCheckoutSession(order: Row): Promise<CheckoutSession
   const endpoint = cleanText(process.env.PAYMENT_CHECKOUT_ENDPOINT);
   const orderId = cleanText(order.id);
   if (!endpoint || provider === "internal") {
+    if (!isInternalPaymentAllowed()) {
+      throw new Error(internalPaymentUnavailableMessage());
+    }
     return {
       provider: "internal",
       checkoutUrl: internalCheckoutUrl(orderId),

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import type { User } from "@supabase/supabase-js";
+import { isAdminRole } from "./admin-roles";
 import { getUserFromBearer } from "./auth-user";
 import { createServiceClient } from "./supabase-service";
 
@@ -69,7 +70,7 @@ export function isAuthzResponse(
 }
 
 export function isAdminProfile(profile: AuthzProfile | null | undefined) {
-  return profile?.role === "admin";
+  return isAdminRole(profile?.role);
 }
 
 export async function requireUser(req: NextRequest): Promise<AuthzResult> {

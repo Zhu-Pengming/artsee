@@ -4,9 +4,16 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-# UI reference source of truth
+# Web scope
 
-For frontend UI work, use `../artiqore-艺见心-网页版前端与ui(1)/src` as the source reference. The Next.js UI currently lives in `app/artiqore-ui/`, copied from that Chinese folder and adapted for Next. Do not use `../artlink-reference/` as the current UI baseline.
+Production `web/` is the Next.js BFF and admin surface:
+
+- `/api/*` and `/api/v1/*` are backend-for-frontend API routes.
+- `/admin/*` is the management console.
+- The public frontend `/` is Flutter Web built from `../app/`, not `app/artiqore-ui/`.
+- Do not treat `app/artiqore-ui/` as the live product frontend. It is an older/adapted React reference shell.
+- For public product UI changes, edit `../app/lib/`. Use `../artiqore-艺见心-网页版前端与ui(1)/src` only as visual reference.
+- Do not use `../artlink-reference/` as the current UI baseline.
 
 # Artsee Next.js（`web/`）
 

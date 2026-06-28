@@ -395,7 +395,7 @@ export default function AdminUsersPage() {
                           <ActionButton
                             label="设为管理员"
                             icon={<UserCog size={14} />}
-                            disabled={row.role === "admin"}
+                            disabled={row.role === "admin" || row.role === "super_admin"}
                             loading={actingId === `${row.id}:admin`}
                             onClick={() => patchUser(row, { role: "admin" }, "admin")}
                           />

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../services/backend_api_service.dart';
 import '../messages/light_message_screen.dart';
 import '../../widgets/common.dart';
 import 'package:artsee_app/theme/artsee_ui_colors.dart';
@@ -7,6 +8,7 @@ import 'package:artsee_app/theme/artsee_ui_colors.dart';
 enum PublicUserProfileKind { artist, student, mentor, user }
 
 class PublicUserProfileScreen extends StatefulWidget {
+  final String? userId;
   final String name;
   final String? handle;
   final String? avatarUrl;
@@ -19,6 +21,7 @@ class PublicUserProfileScreen extends StatefulWidget {
 
   const PublicUserProfileScreen({
     super.key,
+    this.userId,
     required this.name,
     this.handle,
     this.avatarUrl,
@@ -38,16 +41,57 @@ class PublicUserProfileScreen extends StatefulWidget {
 class _PublicUserProfileScreenState extends State<PublicUserProfileScreen> {
   late int _selectedTab;
   bool _following = false;
+  bool _friendBusy = false;
+  bool _messageBusy = false;
+  bool _isSelf = false;
+  bool _loadingRemoteProfile = false;
+  Map<String, dynamic>? _remoteProfile;
 
   @override
   void initState() {
     super.initState();
     _selectedTab = _initialTabFor(widget.kind);
+    _loadRemoteProfile();
+  }
+
+  @override
+  void didUpdateWidget(covariant PublicUserProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userId != widget.userId) {
+      _remoteProfile = null;
+      _loadRemoteProfile();
+    }
+  }
+
+  Future<void> _loadRemoteProfile() async {
+    final userId = widget.userId?.trim();
+    if (userId == null || userId.isEmpty) return;
+    setState(() => _loadingRemoteProfile = true);
+    try {
+      final response = await BackendApiService.fetchPublicUserProfile(userId);
+      if (!mounted) return;
+      final data = response['data'];
+      final remote = data is Map<String, dynamic> ? data : response;
+      final friendship = _mapValue(remote['friendship']);
+      setState(() {
+        _remoteProfile = remote;
+        _following = friendship?['is_friend'] == true;
+        _isSelf = friendship?['is_self'] == true;
+        _loadingRemoteProfile = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loadingRemoteProfile = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final profile = _PublicProfileData.fromWidget(widget);
+    final profile = _PublicProfileData.fromWidget(
+      widget,
+      remote: _remoteProfile,
+    );
     return Scaffold(
       backgroundColor: context.artC.porcelain,
       appBar: AppBar(
@@ -79,35 +123,19 @@ class _PublicUserProfileScreenState extends State<PublicUserProfileScreen> {
               _PublicProfileHeader(
                 profile: profile,
                 following: _following,
-                onFollow: () => setState(() => _following = !_following),
-                onMessage: () {
-                  Navigator.of(context).push<void>(
-                    MaterialPageRoute<void>(
-                      builder: (_) => LightMessageScreen(
-                        peer: LightMessagePeer.person(
-                          name: profile.name,
-                          avatarUrl: profile.avatarUrl,
-                          handle: profile.handle,
-                          identityLabel: profile.roleLabel,
-                          profileBuilder: (_) => PublicUserProfileScreen(
-                            name: profile.name,
-                            handle: profile.handle,
-                            avatarUrl: profile.avatarUrl,
-                            roleLabel: profile.roleLabel,
-                            bio: profile.bio,
-                            kind: profile.kind,
-                            featuredAnswer: profile.featuredAnswer,
-                            featuredAnswerContext:
-                                profile.featuredAnswerContext,
-                            featuredActivity: profile.featuredActivity,
-                          ),
-                        ),
-                        initialMessage: '你好，我对你的作品和主页内容感兴趣，想先简单聊聊。',
-                      ),
-                    ),
-                  );
-                },
+                isSelf: _isSelf,
+                friendBusy: _friendBusy,
+                messageBusy: _messageBusy,
+                onFollow: () => _addFriend(profile),
+                onMessage: () => _openMessage(profile),
               ),
+              if (_loadingRemoteProfile) ...[
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: const LinearProgressIndicator(minHeight: 2),
+                ),
+              ],
               const SizedBox(height: 18),
               _PublicProfileTabs(
                 selectedIndex: _selectedTab,
@@ -133,6 +161,107 @@ class _PublicUserProfileScreenState extends State<PublicUserProfileScreen> {
       _ => _ExperienceList(profile: profile, key: const ValueKey('saved')),
     };
   }
+
+  Future<void> _addFriend(_PublicProfileData profile) async {
+    final userId = widget.userId?.trim();
+    if (_isSelf) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('这是你自己的主页')),
+      );
+      return;
+    }
+    if (userId == null || userId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('这个用户资料还没有完成同步')),
+      );
+      return;
+    }
+    if (_following || _friendBusy) return;
+    setState(() => _friendBusy = true);
+    try {
+      await BackendApiService.addFriend(
+        targetUserId: userId,
+        message: '你好，我在 Artsee 艺见心看到了你的主页。',
+      );
+      if (!mounted) return;
+      setState(() {
+        _following = true;
+        _friendBusy = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('已添加 ${profile.name} 为好友')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _friendBusy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('添加好友失败：$e')),
+      );
+    }
+  }
+
+  Future<void> _openMessage(_PublicProfileData profile) async {
+    final userId = widget.userId?.trim();
+    if (_isSelf) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('不能给自己发私信')),
+      );
+      return;
+    }
+    if (_messageBusy) return;
+    setState(() => _messageBusy = true);
+    try {
+      Map<String, dynamic>? conversation;
+      if (userId != null && userId.isNotEmpty) {
+        conversation = await BackendApiService.createConversation(
+          participantIds: [userId],
+          type: 'direct',
+          metadata: {
+            'source': 'public_profile',
+            'target_user_id': userId,
+          },
+        );
+      }
+      if (!mounted) return;
+      setState(() => _messageBusy = false);
+      Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => LightMessageScreen(
+            conversation: conversation,
+            peer: conversation == null
+                ? LightMessagePeer.person(
+                    name: profile.name,
+                    avatarUrl: profile.avatarUrl,
+                    handle: profile.handle,
+                    identityLabel: profile.roleLabel,
+                    peerUserId: userId,
+                    imIdentifier: profile.imIdentifier,
+                    profileBuilder: (_) => PublicUserProfileScreen(
+                      userId: widget.userId,
+                      name: profile.name,
+                      handle: profile.handle,
+                      avatarUrl: profile.avatarUrl,
+                      roleLabel: profile.roleLabel,
+                      bio: profile.bio,
+                      kind: profile.kind,
+                      featuredAnswer: profile.featuredAnswer,
+                      featuredAnswerContext: profile.featuredAnswerContext,
+                      featuredActivity: profile.featuredActivity,
+                    ),
+                  )
+                : null,
+            initialMessage: '你好，我对你的作品和主页内容感兴趣，想先简单聊聊。',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _messageBusy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('打开私信失败：$e')),
+      );
+    }
+  }
 }
 
 class _PublicProfileData {
@@ -147,9 +276,12 @@ class _PublicProfileData {
   final int following;
   final int works;
   final String seed;
+  final List<String> workImageUrls;
+  final List<String> activities;
   final String? featuredAnswer;
   final String? featuredAnswerContext;
   final String? featuredActivity;
+  final String? imIdentifier;
 
   const _PublicProfileData({
     required this.name,
@@ -163,34 +295,86 @@ class _PublicProfileData {
     required this.following,
     required this.works,
     required this.seed,
+    this.workImageUrls = const [],
+    this.activities = const [],
     this.featuredAnswer,
     this.featuredAnswerContext,
     this.featuredActivity,
+    this.imIdentifier,
   });
 
-  factory _PublicProfileData.fromWidget(PublicUserProfileScreen widget) {
+  factory _PublicProfileData.fromWidget(
+    PublicUserProfileScreen widget, {
+    Map<String, dynamic>? remote,
+  }) {
     final cleanName =
         widget.name.trim().isEmpty ? 'Artsee 用户' : widget.name.trim();
-    final seed = _stableSeed(widget.handle ?? cleanName);
+    final remoteProfile = _mapValue(remote?['public_profile']) ??
+        _mapValue(remote?['user']) ??
+        const <String, dynamic>{};
+    final stats = _mapValue(remote?['stats']) ?? const <String, dynamic>{};
+    final friendship =
+        _mapValue(remote?['friendship']) ?? const <String, dynamic>{};
+    final remoteName = _stringValue(remoteProfile['nickname']) ??
+        _stringValue(remoteProfile['name']);
+    final name = remoteName?.isNotEmpty == true ? remoteName! : cleanName;
+    final remoteKind = _kindFromApi(_stringValue(remoteProfile['kind']));
+    final seed = _stableSeed(
+      _stringValue(remoteProfile['handle']) ?? widget.handle ?? name,
+    );
+    final workImageUrls = _listOfMaps(remote?['artworks'])
+        .map((item) => _stringValue(item['image_url']))
+        .whereType<String>()
+        .where((item) => item.isNotEmpty)
+        .toList();
+    final activities = _listOfMaps(remote?['activities'])
+        .map(
+            (item) => _stringValue(item['title']) ?? _stringValue(item['body']))
+        .whereType<String>()
+        .where((item) => item.isNotEmpty)
+        .toList();
     return _PublicProfileData(
-      name: cleanName,
-      handle: _normalizeHandle(widget.handle, seed),
-      avatarUrl: widget.avatarUrl?.trim() ?? '',
-      roleLabel: widget.roleLabel?.trim().isNotEmpty == true
-          ? widget.roleLabel!.trim()
-          : _defaultRoleLabel(widget.kind),
-      bio: widget.bio?.trim().isNotEmpty == true
-          ? widget.bio!.trim()
-          : _defaultBio(widget.kind, cleanName),
-      kind: widget.kind,
-      followers: 180 + (seed.hashCode.abs() % 8200),
-      views: 1200 + (seed.hashCode.abs() % 78000),
-      following: 24 + (seed.hashCode.abs() % 240),
-      works: _defaultWorksCount(widget.kind, seed),
+      name: name,
+      handle: _normalizeHandle(
+        _stringValue(remoteProfile['handle']) ?? widget.handle,
+        seed,
+      ),
+      avatarUrl: _stringValue(remoteProfile['avatar_url']) ??
+          widget.avatarUrl?.trim() ??
+          '',
+      roleLabel: _stringValue(remoteProfile['role_label']) ??
+          (widget.roleLabel?.trim().isNotEmpty == true
+              ? widget.roleLabel!.trim()
+              : _defaultRoleLabel(remoteKind ?? widget.kind)),
+      bio: _stringValue(remoteProfile['bio']) ??
+          (widget.bio?.trim().isNotEmpty == true
+              ? widget.bio!.trim()
+              : _defaultBio(remoteKind ?? widget.kind, name)),
+      kind: remoteKind ?? widget.kind,
+      followers: _intValue(
+        stats['followers'],
+        180 + (seed.hashCode.abs() % 8200),
+      ),
+      views: _intValue(
+        stats['profile_views'],
+        1200 + (seed.hashCode.abs() % 78000),
+      ),
+      following:
+          _intValue(stats['following'], 24 + (seed.hashCode.abs() % 240)),
+      works: _intValue(
+        stats['works'],
+        workImageUrls.isNotEmpty
+            ? workImageUrls.length
+            : _defaultWorksCount(remoteKind ?? widget.kind, seed),
+      ),
       seed: seed,
+      workImageUrls: workImageUrls,
+      activities: activities,
       featuredAnswer: widget.featuredAnswer?.trim(),
       featuredAnswerContext: widget.featuredAnswerContext?.trim(),
       featuredActivity: widget.featuredActivity?.trim(),
+      imIdentifier: _stringValue(friendship['im_identifier']) ??
+          _stringValue(remoteProfile['im_identifier']),
     );
   }
 }
@@ -198,12 +382,18 @@ class _PublicProfileData {
 class _PublicProfileHeader extends StatelessWidget {
   final _PublicProfileData profile;
   final bool following;
+  final bool isSelf;
+  final bool friendBusy;
+  final bool messageBusy;
   final VoidCallback onFollow;
   final VoidCallback onMessage;
 
   const _PublicProfileHeader({
     required this.profile,
     required this.following,
+    required this.isSelf,
+    required this.friendBusy,
+    required this.messageBusy,
     required this.onFollow,
     required this.onMessage,
   });
@@ -268,9 +458,16 @@ class _PublicProfileHeader extends StatelessWidget {
           children: [
             Expanded(
               child: _ProfileCommandButton(
-                label: following ? '已关注' : '关注',
-                icon: following ? Icons.check_rounded : Icons.add_rounded,
-                filled: !following,
+                label: isSelf
+                    ? '本人'
+                    : following
+                        ? '已是好友'
+                        : '加好友',
+                icon: following
+                    ? Icons.check_rounded
+                    : Icons.person_add_alt_1_outlined,
+                filled: !following && !isSelf,
+                busy: friendBusy,
                 onTap: onFollow,
               ),
             ),
@@ -280,6 +477,7 @@ class _PublicProfileHeader extends StatelessWidget {
                 label: '私信',
                 icon: Icons.chat_bubble_outline_rounded,
                 filled: false,
+                busy: messageBusy,
                 onTap: onMessage,
               ),
             ),
@@ -425,19 +623,21 @@ class _ProfileCommandButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final bool filled;
-  final VoidCallback onTap;
+  final bool busy;
+  final VoidCallback? onTap;
 
   const _ProfileCommandButton({
     required this.label,
     required this.icon,
     required this.filled,
+    this.busy = false,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: busy ? null : onTap,
       child: Container(
         height: 42,
         decoration: BoxDecoration(
@@ -450,11 +650,21 @@ class _ProfileCommandButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 17,
-              color: filled ? Colors.white : context.artC.ink,
-            ),
+            if (busy)
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: filled ? Colors.white : context.artC.ink,
+                ),
+              )
+            else
+              Icon(
+                icon,
+                size: 17,
+                color: filled ? Colors.white : context.artC.ink,
+              ),
             const SizedBox(width: 6),
             Text(
               label,
@@ -540,10 +750,12 @@ class _WorksGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final itemCount =
+        profile.workImageUrls.isEmpty ? 9 : profile.workImageUrls.length;
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: 9,
+      itemCount: itemCount > 9 ? 9 : itemCount,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         mainAxisSpacing: 4,
@@ -562,6 +774,9 @@ class _WorkTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final remoteImage = index < profile.workImageUrls.length
+        ? profile.workImageUrls[index]
+        : null;
     final seed = Uri.encodeComponent('${profile.seed}_${index + 1}');
     return ClipRRect(
       borderRadius: BorderRadius.circular(4),
@@ -569,7 +784,7 @@ class _WorkTile extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           Image.network(
-            'https://picsum.photos/seed/artsee_$seed/420/420',
+            remoteImage ?? 'https://picsum.photos/seed/artsee_$seed/420/420',
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => _WorkFallback(index: index),
           ),
@@ -629,14 +844,16 @@ class _ActivityList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activity = profile.featuredActivity?.isNotEmpty == true
-        ? profile.featuredActivity!
-        : switch (profile.kind) {
-            PublicUserProfileKind.artist => '更新了 3 张装置作品过程图，正在整理展览现场记录。',
-            PublicUserProfileKind.student => '发布了最新作品集进度，并补充了申请时间线。',
-            PublicUserProfileKind.mentor => '分享了一组作品集面试复盘和案例拆解。',
-            PublicUserProfileKind.user => '参与了社区讨论，并收藏了新的院校案例。',
-          };
+    final activity = profile.activities.isNotEmpty
+        ? profile.activities.first
+        : profile.featuredActivity?.isNotEmpty == true
+            ? profile.featuredActivity!
+            : switch (profile.kind) {
+                PublicUserProfileKind.artist => '更新了 3 张装置作品过程图，正在整理展览现场记录。',
+                PublicUserProfileKind.student => '发布了最新作品集进度，并补充了申请时间线。',
+                PublicUserProfileKind.mentor => '分享了一组作品集面试复盘和案例拆解。',
+                PublicUserProfileKind.user => '参与了社区讨论，并收藏了新的院校案例。',
+              };
     return Column(
       key: key,
       children: [
@@ -646,10 +863,12 @@ class _ActivityList extends StatelessWidget {
           subtitle: activity,
         ),
         const SizedBox(height: 10),
-        const _TextCard(
+        _TextCard(
           icon: Icons.photo_library_outlined,
-          title: '作品更新',
-          subtitle: '新增作品图集，包含草图、过程稿和最终呈现。',
+          title: profile.activities.length > 1 ? '更多动态' : '作品更新',
+          subtitle: profile.activities.length > 1
+              ? profile.activities.skip(1).take(2).join('\n')
+              : '新增作品图集，包含草图、过程稿和最终呈现。',
         ),
       ],
     );
@@ -864,4 +1083,43 @@ String _compact(int value) {
     return '${v.toStringAsFixed(v >= 10 ? 0 : 1)}k';
   }
   return '$value';
+}
+
+Map<String, dynamic>? _mapValue(Object? value) {
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) {
+    return value.map((key, item) => MapEntry(key.toString(), item));
+  }
+  return null;
+}
+
+List<Map<String, dynamic>> _listOfMaps(Object? value) {
+  if (value is! List) return const [];
+  return value
+      .whereType<Map>()
+      .map((item) => item.map((key, value) => MapEntry(key.toString(), value)))
+      .toList();
+}
+
+String? _stringValue(Object? value) {
+  if (value == null) return null;
+  final text = value.toString().trim();
+  return text.isEmpty ? null : text;
+}
+
+int _intValue(Object? value, int fallback) {
+  if (value is int) return value;
+  if (value is num) return value.round();
+  if (value is String) return int.tryParse(value) ?? fallback;
+  return fallback;
+}
+
+PublicUserProfileKind? _kindFromApi(String? value) {
+  return switch (value) {
+    'artist' => PublicUserProfileKind.artist,
+    'student' => PublicUserProfileKind.student,
+    'mentor' => PublicUserProfileKind.mentor,
+    'user' => PublicUserProfileKind.user,
+    _ => null,
+  };
 }

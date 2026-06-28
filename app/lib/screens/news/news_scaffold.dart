@@ -1090,8 +1090,26 @@ class _CompareTabState extends State<_CompareTab> {
 
     setState(() => _comparing = true);
     try {
+      final schoolIds = _selected.map(_schoolId).whereType<String>().toList();
+      
+      // 验证所有 ID 都是有效的 UUID
+      final uuidRegex = RegExp(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+        caseSensitive: false,
+      );
+      final validIds = schoolIds.where((id) => uuidRegex.hasMatch(id)).toList();
+      
+      if (validIds.length < 2) {
+        if (!mounted) return;
+        setState(() => _comparing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('可用于对比的院校不足 2 所，请重新选择')),
+        );
+        return;
+      }
+      
       final report = await BackendApiService.compareSchools(
-        schoolIds: _selected.map(_schoolId).whereType<String>().toList(),
+        schoolIds: validIds,
       );
       if (!mounted) return;
 
@@ -1305,7 +1323,7 @@ class _TargetPoolPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final candidates = schools.take(4).toList();
+    final candidates = schools.take(5).toList();
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -2629,10 +2647,10 @@ String _schoolName(Map<String, dynamic> school) {
 }
 
 String? _schoolId(Map<String, dynamic> school) {
-  final id = school['id']?.toString();
-  if (id != null && id.isNotEmpty) return id;
   final schoolId = school['school_id']?.toString();
   if (schoolId != null && schoolId.isNotEmpty) return schoolId;
+  final id = school['id']?.toString();
+  if (id != null && id.isNotEmpty) return id;
   return null;
 }
 

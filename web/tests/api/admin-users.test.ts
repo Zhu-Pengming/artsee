@@ -6,11 +6,13 @@ import { PATCH as patchAdminUser } from "@/app/api/v1/admin/users/[id]/route";
 type Row = Record<string, unknown>;
 
 const ADMIN_ID = "admin-user";
+const SUPER_ADMIN_ID = "super-admin-user";
 const STUDENT_ID = "student-user";
 const OTHER_ID = "other-user";
 
 const tokenUsers: Record<string, string> = {
   admin: ADMIN_ID,
+  super: SUPER_ADMIN_ID,
   student: STUDENT_ID,
   other: OTHER_ID,
 };
@@ -31,6 +33,15 @@ function resetDb() {
       user_type: null,
       user_role: null,
       created_at: "2026-06-12T09:00:00.000Z",
+    },
+    {
+      id: SUPER_ADMIN_ID,
+      nickname: "超级管理员",
+      role: "super_admin",
+      status: "active",
+      user_type: null,
+      user_role: null,
+      created_at: "2026-06-12T09:30:00.000Z",
     },
     {
       id: STUDENT_ID,
@@ -180,8 +191,23 @@ describe("admin user management", () => {
     const listed = await getAdminUsers(req("/api/v1/admin/users?status=active", "admin"));
     const body = await listed.json();
     expect(listed.status).toBe(200);
-    expect(body.data).toHaveLength(2);
-    expect(body.count).toBe(2);
+    expect(body.data).toHaveLength(3);
+    expect(body.count).toBe(3);
+  });
+
+  it("allows super admins to use admin user APIs", async () => {
+    const listed = await getAdminUsers(req("/api/v1/admin/users", "super"));
+    expect(listed.status).toBe(200);
+
+    const promoted = await patchAdminUser(
+      req(`/api/v1/admin/users/${STUDENT_ID}`, "super", "PATCH", {
+        role: "super_admin",
+      }),
+      ctx(STUDENT_ID)
+    );
+    const body = await promoted.json();
+    expect(promoted.status).toBe(200);
+    expect(body.data.role).toBe("super_admin");
   });
 
   it("updates roles and user moderation status", async () => {

@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../models/models.dart';
 import '../../services/backend_api_service.dart';
+import '../../services/supabase_service.dart';
+import '../../services/tencent_im_service.dart';
 import '../../utils/auth_gate.dart';
 import '../../widgets/artsee_ui.dart';
 import '../../widgets/common.dart';
@@ -1020,14 +1024,20 @@ class _ChatTab extends StatefulWidget {
 
 class _ChatTabState extends State<_ChatTab> {
   List<Map<String, dynamic>> _items = const [];
+  List<Map<String, dynamic>> _friends = const [];
   bool _loading = true;
+  bool _imConnecting = false;
+  bool _imReady = false;
   String? _error;
+  String? _imStatusText;
   String _selectedFilter = '全部';
+  String? _openingFriendId;
 
   @override
   void initState() {
     super.initState();
     _load();
+    unawaited(_warmTencentIm());
   }
 
   Future<void> _load() async {
@@ -1037,9 +1047,16 @@ class _ChatTabState extends State<_ChatTab> {
     });
     try {
       final result = await BackendApiService.fetchConversations(limit: 30);
+      var friends = const <Map<String, dynamic>>[];
+      try {
+        friends = await BackendApiService.fetchFriends(limit: 30);
+      } catch (e) {
+        debugPrint('Friend shortcuts not loaded: $e');
+      }
       if (!mounted) return;
       setState(() {
         _items = result.data;
+        _friends = friends;
         _loading = false;
       });
     } catch (e) {
@@ -1051,10 +1068,58 @@ class _ChatTabState extends State<_ChatTab> {
     }
   }
 
+  Future<void> _refreshAll() async {
+    unawaited(_warmTencentIm());
+    await _load();
+  }
+
+  Future<void> _warmTencentIm() async {
+    if (_imConnecting) return;
+    if (!SupabaseService.isLoggedIn) {
+      if (!mounted) return;
+      setState(() {
+        _imReady = false;
+        _imStatusText = '登录后启用腾讯云即时通讯';
+      });
+      return;
+    }
+
+    setState(() {
+      _imConnecting = true;
+      _imStatusText = '正在连接腾讯云 IM...';
+    });
+    try {
+      final state = await TencentImService.ensureLoggedIn();
+      if (!mounted) return;
+      setState(() {
+        _imConnecting = false;
+        _imReady = true;
+        _imStatusText =
+            state == null ? '腾讯云 IM 已连接' : '腾讯云 IM 已连接：${state.identifier}';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _imConnecting = false;
+        _imReady = false;
+        _imStatusText =
+            '腾讯云 IM 未连接：${e.toString().replaceFirst('Exception: ', '')}';
+      });
+    }
+  }
+
   bool _matchesConversationFilter(Map<String, dynamic> conversation) {
     if (_selectedFilter == '全部') return true;
     final isOrg = _conversationIsOrganization(conversation);
     return _selectedFilter == '机构' ? isOrg : !isOrg;
+  }
+
+  bool _matchesFriendSearch(Map<String, dynamic> friend) {
+    if (widget.searchKeyword.isEmpty) return true;
+    return _matchesSearch(
+      '${_friendName(friend)} ${_friendRoleLabel(friend)} ${friend['friend_id'] ?? ''}',
+      widget.searchKeyword,
+    );
   }
 
   Future<void> _openConversation(Map<String, dynamic> conversation) async {
@@ -1063,7 +1128,45 @@ class _ChatTabState extends State<_ChatTab> {
         builder: (_) => LightMessageScreen(conversation: conversation),
       ),
     );
-    if (mounted) _load();
+    if (mounted) unawaited(_refreshAll());
+  }
+
+  Future<void> _openFriend(Map<String, dynamic> friend) async {
+    final loggedIn = await ensureLoggedIn(context, message: '请先登录后打开私信');
+    if (!mounted || !loggedIn) return;
+    final friendId = friend['friend_id']?.toString();
+    if (friendId == null || friendId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('好友资料还没有完成同步')),
+      );
+      return;
+    }
+    if (_openingFriendId != null) return;
+    setState(() => _openingFriendId = friendId);
+    try {
+      final conversation = await BackendApiService.createConversation(
+        participantIds: [friendId],
+        type: 'direct',
+        metadata: {
+          'source': 'message_friend_shortcut',
+          'target_user_id': friendId,
+        },
+      );
+      if (!mounted) return;
+      setState(() => _openingFriendId = null);
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => LightMessageScreen(conversation: conversation),
+        ),
+      );
+      if (mounted) unawaited(_refreshAll());
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _openingFriendId = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('打开私信失败：$e')),
+      );
+    }
   }
 
   @override
@@ -1088,11 +1191,12 @@ class _ChatTabState extends State<_ChatTab> {
         ? _items
         : _items
             .where((conversation) => _matchesSearch(
-                  '${conversation['title'] ?? ''} ${conversation['type'] ?? ''} ${conversation['latest_message'] ?? ''}',
+                  _conversationSearchText(conversation),
                   widget.searchKeyword,
                 ))
             .toList();
     final visibleItems = searchItems.where(_matchesConversationFilter).toList();
+    final visibleFriends = _friends.where(_matchesFriendSearch).toList();
     final isFiltered = _selectedFilter != '全部';
 
     return ListView(
@@ -1104,10 +1208,28 @@ class _ChatTabState extends State<_ChatTab> {
           onSelected: (value) => setState(() => _selectedFilter = value),
         ),
         const SizedBox(height: 16),
+        _TencentImStatusStrip(
+          connecting: _imConnecting,
+          ready: _imReady,
+          text: _imStatusText ?? '腾讯云 IM 待连接',
+          onRetry: _warmTencentIm,
+        ),
+        if (visibleFriends.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _FriendShortcutPanel(
+            friends: visibleFriends.take(12).toList(),
+            openingFriendId: _openingFriendId,
+            onOpenFriend: _openFriend,
+          ),
+        ],
+        const SizedBox(height: 14),
         if (visibleItems.isEmpty)
           Column(
             children: [
-              const _MessageEmptyActions(),
+              _MessageEmptyActions(
+                hasFriends: visibleFriends.isNotEmpty,
+                onRefresh: _refreshAll,
+              ),
               const SizedBox(height: 12),
               _CommunityEmptyState(
                 icon: Icons.mark_chat_unread_outlined,
@@ -1120,13 +1242,15 @@ class _ChatTabState extends State<_ChatTab> {
                     ? '换个联系人、合作或通知关键词试试。'
                     : isFiltered
                         ? '切回全部，或等待新的$_selectedFilter消息。'
-                        : '当你加入圈子、预约沙龙或收到合作邀约后，消息会显示在这里。',
+                        : visibleFriends.isNotEmpty
+                            ? '选择上方好友即可开始腾讯云 IM 单聊。'
+                            : '先从公开主页添加好友，或等待合作邀约后在这里沟通。',
                 actionLabel: widget.searchKeyword.isEmpty && isFiltered
                     ? '查看全部'
                     : '刷新消息',
                 onRetry: widget.searchKeyword.isEmpty && isFiltered
                     ? () => setState(() => _selectedFilter = '全部')
-                    : _load,
+                    : _refreshAll,
               ),
             ],
           )
@@ -1813,6 +1937,7 @@ class _HotTopicDiscussionScreen extends StatelessWidget {
                   (entry) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: _HotTopicAnswerCard(
+                      topicId: topic.id,
                       index: entry.key,
                       answer: entry.value,
                     ),
@@ -2011,10 +2136,12 @@ class _HotTopicStatTile extends StatelessWidget {
 }
 
 class _HotTopicAnswerCard extends StatefulWidget {
+  final String topicId;
   final int index;
   final AppCommunityHotTopicAnswer answer;
 
   const _HotTopicAnswerCard({
+    required this.topicId,
     required this.index,
     required this.answer,
   });
@@ -2029,6 +2156,10 @@ class _HotTopicAnswerCardState extends State<_HotTopicAnswerCard> {
   late int _shareCount;
   bool _liked = false;
   bool _showCommentBox = false;
+  bool _commentsLoaded = false;
+  bool _commentsLoading = false;
+  bool _submittingComment = false;
+  List<Map<String, dynamic>> _comments = const [];
   final TextEditingController _commentController = TextEditingController();
 
   @override
@@ -2051,23 +2182,109 @@ class _HotTopicAnswerCardState extends State<_HotTopicAnswerCard> {
     super.dispose();
   }
 
-  void _toggleLike() {
+  Future<void> _toggleLike() async {
+    if (!await ensureLoggedIn(context, message: '请先登录后赞同观点')) return;
+    final previousLiked = _liked;
+    final previousCount = _likeCount;
+    final nextLiked = !previousLiked;
     setState(() {
-      _liked = !_liked;
-      _likeCount += _liked ? 1 : -1;
+      _liked = nextLiked;
+      _likeCount += nextLiked ? 1 : -1;
     });
+
+    try {
+      final result = nextLiked
+          ? await BackendApiService.likeHotTopicAnswer(
+              topicId: widget.topicId,
+              answerIndex: widget.index,
+            )
+          : await BackendApiService.unlikeHotTopicAnswer(
+              topicId: widget.topicId,
+              answerIndex: widget.index,
+            );
+      if (!mounted) return;
+      setState(() {
+        _liked = result.liked;
+        if (widget.answer.likeCount > 0 || result.likeCount > previousCount) {
+          _likeCount = result.likeCount;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _liked = previousLiked;
+        _likeCount = previousCount;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('赞同失败：$e')),
+      );
+    }
   }
 
-  void _submitComment() {
-    if (_commentController.text.trim().isEmpty) return;
-    setState(() {
-      _commentCount += 1;
-      _showCommentBox = false;
-      _commentController.clear();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('评论已发布')),
-    );
+  Future<void> _toggleCommentBox() async {
+    setState(() => _showCommentBox = !_showCommentBox);
+    if (_showCommentBox) {
+      await _loadComments();
+    }
+  }
+
+  Future<void> _loadComments() async {
+    if (_commentsLoaded || _commentsLoading) return;
+    setState(() => _commentsLoading = true);
+    try {
+      final comments = await BackendApiService.fetchHotTopicAnswerComments(
+        topicId: widget.topicId,
+        answerIndex: widget.index,
+        limit: 20,
+      );
+      if (!mounted) return;
+      setState(() {
+        _comments = comments;
+        _commentsLoaded = true;
+        _commentsLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _commentsLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('评论加载失败：$e')),
+      );
+    }
+  }
+
+  Future<void> _submitComment() async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty || _submittingComment) return;
+    if (!await ensureLoggedIn(context, message: '请先登录后评论观点')) return;
+
+    setState(() => _submittingComment = true);
+    try {
+      final comment = await BackendApiService.createHotTopicAnswerComment(
+        topicId: widget.topicId,
+        answerIndex: widget.index,
+        body: text,
+      );
+      final nextCount = comment['comment_count'] is int
+          ? comment['comment_count'] as int
+          : _commentCount + 1;
+      if (!mounted) return;
+      setState(() {
+        _commentCount = nextCount;
+        _comments = [..._comments, comment];
+        _commentsLoaded = true;
+        _submittingComment = false;
+        _commentController.clear();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('评论已发布')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submittingComment = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('评论失败：$e')),
+      );
+    }
   }
 
   void _share() {
@@ -2102,6 +2319,7 @@ class _HotTopicAnswerCardState extends State<_HotTopicAnswerCard> {
               Navigator.of(context).push<void>(
                 MaterialPageRoute<void>(
                   builder: (_) => PublicUserProfileScreen(
+                    userId: answer.authorId,
                     name: authorName,
                     handle: handle,
                     avatarUrl: avatarUrl,
@@ -2201,9 +2419,7 @@ class _HotTopicAnswerCardState extends State<_HotTopicAnswerCard> {
                 icon: Icons.mode_comment_outlined,
                 label: '评论',
                 value: _commentCount,
-                onTap: () {
-                  setState(() => _showCommentBox = !_showCommentBox);
-                },
+                onTap: _toggleCommentBox,
               ),
               const SizedBox(width: 8),
               _HotTopicActionButton(
@@ -2246,7 +2462,7 @@ class _HotTopicAnswerCardState extends State<_HotTopicAnswerCard> {
                   ),
                   const SizedBox(width: 8),
                   FilledButton(
-                    onPressed: _submitComment,
+                    onPressed: _submittingComment ? null : _submitComment,
                     style: FilledButton.styleFrom(
                       backgroundColor: kCobalt,
                       minimumSize: const Size(58, 34),
@@ -2263,6 +2479,15 @@ class _HotTopicAnswerCardState extends State<_HotTopicAnswerCard> {
                 ],
               ),
             ),
+            if (_commentsLoading) ...[
+              const SizedBox(height: 10),
+              const LinearProgressIndicator(minHeight: 2, color: kCobalt),
+            ] else if (_comments.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              ..._comments.take(3).map(
+                    (comment) => _HotTopicCommentPreview(comment: comment),
+                  ),
+            ],
           ],
         ],
       ),
@@ -2310,6 +2535,50 @@ class _HotTopicAvatar extends StatelessWidget {
         height: 46,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => fallback,
+      ),
+    );
+  }
+}
+
+class _HotTopicCommentPreview extends StatelessWidget {
+  final Map<String, dynamic> comment;
+
+  const _HotTopicCommentPreview({required this.comment});
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = comment['user_profiles'];
+    final profileMap = profile is Map<String, dynamic> ? profile : null;
+    final name = profileMap?['nickname']?.toString().trim();
+    final body = comment['body']?.toString().trim() ?? '';
+    if (body.isEmpty) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: context.artC.porcelain,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.artC.silver.withValues(alpha: 0.24)),
+      ),
+      child: RichText(
+        text: TextSpan(
+          style: TextStyle(
+            color: context.artC.ink.withValues(alpha: 0.66),
+            fontSize: 12,
+            height: 1.35,
+            fontWeight: FontWeight.w700,
+          ),
+          children: [
+            TextSpan(
+              text: '${name?.isNotEmpty == true ? name! : '社区用户'}：',
+              style: TextStyle(
+                color: context.artC.ink,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            TextSpan(text: body),
+          ],
+        ),
       ),
     );
   }
@@ -5754,6 +6023,253 @@ class _ChatCard extends StatelessWidget {
   }
 }
 
+class _TencentImStatusStrip extends StatelessWidget {
+  final bool connecting;
+  final bool ready;
+  final String text;
+  final VoidCallback onRetry;
+
+  const _TencentImStatusStrip({
+    required this.connecting,
+    required this.ready,
+    required this.text,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = ready ? const Color(0xFF047857) : kCobalt;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.16)),
+      ),
+      child: Row(
+        children: [
+          connecting
+              ? SizedBox(
+                  width: 15,
+                  height: 15,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: color,
+                  ),
+                )
+              : Icon(
+                  ready
+                      ? Icons.check_circle_outline_rounded
+                      : Icons.info_outline_rounded,
+                  color: color,
+                  size: 17,
+                ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: context.artC.ink.withValues(alpha: 0.58),
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: '重新连接',
+            visualDensity: VisualDensity.compact,
+            onPressed: connecting ? null : onRetry,
+            icon: Icon(Icons.sync_rounded, color: color, size: 18),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FriendShortcutPanel extends StatelessWidget {
+  final List<Map<String, dynamic>> friends;
+  final String? openingFriendId;
+  final ValueChanged<Map<String, dynamic>> onOpenFriend;
+
+  const _FriendShortcutPanel({
+    required this.friends,
+    required this.openingFriendId,
+    required this.onOpenFriend,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ArtseeSurface(
+      padding: const EdgeInsets.fromLTRB(14, 13, 14, 14),
+      radius: 8,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.people_alt_outlined, size: 17, color: kCobalt),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '好友快捷聊天',
+                  style: TextStyle(
+                    color: context.artC.ink,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Text(
+                '${friends.length} 位',
+                style: TextStyle(
+                  color: context.artC.ink.withValues(alpha: 0.34),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 94,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: friends.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, index) {
+                final friend = friends[index];
+                final friendId = friend['friend_id']?.toString();
+                return _FriendShortcutChip(
+                  friend: friend,
+                  busy: friendId != null && friendId == openingFriendId,
+                  onTap: () => onOpenFriend(friend),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FriendShortcutChip extends StatelessWidget {
+  final Map<String, dynamic> friend;
+  final bool busy;
+  final VoidCallback onTap;
+
+  const _FriendShortcutChip({
+    required this.friend,
+    required this.busy,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final avatarUrl = _friendAvatarUrl(friend);
+    final name = _friendName(friend);
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: busy ? null : onTap,
+      child: SizedBox(
+        width: 78,
+        child: Column(
+          children: [
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: avatarUrl != null && avatarUrl.isNotEmpty
+                        ? Image.network(
+                            avatarUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                _FriendShortcutFallback(name: name),
+                          )
+                        : _FriendShortcutFallback(name: name),
+                  ),
+                ),
+                if (busy)
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: kCobalt,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 7),
+            Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: context.artC.ink,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              _friendRoleLabel(friend),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: context.artC.ink.withValues(alpha: 0.38),
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FriendShortcutFallback extends StatelessWidget {
+  final String name;
+
+  const _FriendShortcutFallback({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: kCobalt.withValues(alpha: 0.09),
+      alignment: Alignment.center,
+      child: Text(
+        name.isEmpty ? '艺' : name.characters.first,
+        style: const TextStyle(
+          color: kCobalt,
+          fontSize: 16,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
 class _ChatAvatarFallback extends StatelessWidget {
   final int seed;
   final bool org;
@@ -5816,7 +6332,13 @@ class _ChatIdentityTag extends StatelessWidget {
 }
 
 class _MessageEmptyActions extends StatelessWidget {
-  const _MessageEmptyActions();
+  final bool hasFriends;
+  final VoidCallback onRefresh;
+
+  const _MessageEmptyActions({
+    required this.hasFriends,
+    required this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -5825,23 +6347,26 @@ class _MessageEmptyActions extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: context.artC.silver.withOpacity(0.32)),
+        border: Border.all(color: context.artC.silver.withValues(alpha: 0.32)),
       ),
       child: Row(
         children: [
           Expanded(
             child: _ActionTile(
-              icon: Icons.groups_outlined,
-              title: '去加入圈子',
-              subtitle: '产生社群消息',
+              icon: hasFriends
+                  ? Icons.chat_bubble_outline_rounded
+                  : Icons.person_add_alt_1_outlined,
+              title: hasFriends ? '选择好友' : '先加好友',
+              subtitle: hasFriends ? '开始单聊' : '从公开主页添加',
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: _ActionTile(
-              icon: Icons.event_available_outlined,
-              title: '查看沙龙',
-              subtitle: '接收预约通知',
+              icon: Icons.sync_rounded,
+              title: '刷新消息',
+              subtitle: '同步会话状态',
+              onTap: onRefresh,
             ),
           ),
         ],
@@ -5854,44 +6379,50 @@ class _ActionTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final VoidCallback? onTap;
 
   const _ActionTile({
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: context.artC.silver.withOpacity(0.28),
-        borderRadius: BorderRadius.circular(17),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: kCobalt, size: 18),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            style: TextStyle(
-              color: context.artC.ink,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
+    return InkWell(
+      borderRadius: BorderRadius.circular(17),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: context.artC.silver.withValues(alpha: 0.28),
+          borderRadius: BorderRadius.circular(17),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: kCobalt, size: 18),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: TextStyle(
+                color: context.artC.ink,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
             ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: context.artC.ink.withOpacity(0.38),
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
+            const SizedBox(height: 3),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: context.artC.ink.withValues(alpha: 0.38),
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -6073,6 +6604,57 @@ bool _matchesSearch(String text, String keyword) {
   final query = keyword.trim().toLowerCase();
   if (query.isEmpty) return true;
   return text.toLowerCase().contains(query);
+}
+
+String _conversationSearchText(Map<String, dynamic> conversation) {
+  final peer = _stringMap(conversation['peer_profile']);
+  final latest = _stringMap(conversation['latest_message']);
+  final metadata = _stringMap(conversation['metadata']);
+  return [
+    conversation['title'],
+    conversation['type'],
+    latest?['body'],
+    peer?['nickname'],
+    peer?['user_role'],
+    peer?['user_type'],
+    metadata?['organization_name'],
+    metadata?['identity_label'],
+  ].whereType<Object>().join(' ');
+}
+
+String _friendName(Map<String, dynamic> friend) {
+  final profile = _stringMap(friend['profile']);
+  final nickname = profile?['nickname']?.toString().trim();
+  if (nickname != null && nickname.isNotEmpty) return nickname;
+  final id = friend['friend_id']?.toString();
+  if (id != null && id.length >= 8) return '用户 ${id.substring(0, 8)}';
+  return 'Artsee 用户';
+}
+
+String? _friendAvatarUrl(Map<String, dynamic> friend) {
+  final profile = _stringMap(friend['profile']);
+  final raw = profile?['avatar_url']?.toString().trim();
+  return raw == null || raw.isEmpty ? null : raw;
+}
+
+String _friendRoleLabel(Map<String, dynamic> friend) {
+  final profile = _stringMap(friend['profile']);
+  final role =
+      profile?['user_role']?.toString() ?? profile?['user_type']?.toString();
+  return switch (role) {
+    'artist' => '艺术家',
+    'mentor' => '导师',
+    'student' => '学生',
+    'business' => '机构',
+    'institution' => '机构',
+    _ => '好友',
+  };
+}
+
+Map<String, dynamic>? _stringMap(dynamic raw) {
+  if (raw is Map<String, dynamic>) return raw;
+  if (raw is Map) return Map<String, dynamic>.from(raw);
+  return null;
 }
 
 String _salonTypeLabel(Map<String, dynamic> salon, int index) {

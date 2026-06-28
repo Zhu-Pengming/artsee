@@ -1,10 +1,5 @@
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: process.env.OPENAI_BASE_URL,
-});
-
 interface TranscribeAudioOptions {
   audioBuffer: Uint8Array;
   userId: string;
@@ -17,6 +12,39 @@ interface TranscriptionResult {
   duration: number;
 }
 
+function audioClientConfig() {
+  const explicitKey = process.env.OPENAI_AUDIO_API_KEY?.trim();
+  const explicitBaseURL = process.env.OPENAI_AUDIO_BASE_URL?.trim();
+  if (explicitKey) {
+    return {
+      apiKey: explicitKey,
+      baseURL: explicitBaseURL || 'https://api.openai.com/v1',
+      model: process.env.OPENAI_AUDIO_MODEL?.trim() || 'whisper-1',
+    };
+  }
+
+  const fallbackBaseURL = process.env.OPENAI_BASE_URL?.trim() || 'https://api.openai.com/v1';
+  const canUseOpenAiFallback =
+    !process.env.OPENAI_BASE_URL || fallbackBaseURL.includes('openai.com');
+  const fallbackKey = canUseOpenAiFallback
+    ? process.env.OPENAI_API_KEY?.trim()
+    : '';
+
+  return {
+    apiKey: fallbackKey,
+    baseURL: fallbackBaseURL,
+    model: process.env.OPENAI_AUDIO_MODEL?.trim() || 'whisper-1',
+  };
+}
+
+export function assertAudioTranscriptionConfigured() {
+  const config = audioClientConfig();
+  if (!config.apiKey) {
+    throw new Error('未配置语音识别服务，请配置 OPENAI_AUDIO_API_KEY');
+  }
+  return config;
+}
+
 /**
  * 使用 OpenAI Whisper API 转录音频为文字
  */
@@ -26,6 +54,12 @@ export async function transcribeAudioWithAI(
   const { audioBuffer } = options;
 
   try {
+    const config = assertAudioTranscriptionConfigured();
+    const openai = new OpenAI({
+      apiKey: config.apiKey,
+      baseURL: config.baseURL,
+    });
+
     // 将 Uint8Array 转换为 Buffer
     const buffer = Buffer.from(audioBuffer);
     
@@ -36,7 +70,7 @@ export async function transcribeAudioWithAI(
 
     const response = await openai.audio.transcriptions.create({
       file: audioFile,
-      model: 'whisper-1',
+      model: config.model,
       language: 'zh', // 中文优先，也支持英文
       response_format: 'verbose_json',
     });

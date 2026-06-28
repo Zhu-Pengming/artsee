@@ -212,7 +212,7 @@ artsee/
 │   │   │   ├── me/               # 用户工作区（计划/任务/目标池）
 │   │   │   └── auth/             # 认证与用户资料
 │   │   ├── admin/                # 管理后台
-│   │   └── artiqore-ui/          # 网站 UI（参考设计）
+│   │   └── artiqore-ui/          # 旧 React 参考 shell（非生产主站）
 │   ├── lib/
 │   │   ├── supabase/             # Supabase 服务端配置
 │   │   ├── ai/                   # AI 管道（OpenAI + RAG）

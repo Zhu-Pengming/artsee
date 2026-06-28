@@ -229,15 +229,33 @@ function makeSnapshot(
   };
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const schoolIds = Array.isArray(body.school_ids)
       ? body.school_ids.map(String).filter(Boolean).slice(0, 5)
       : [];
+    
+    console.log('[schools/compare] Received school IDs:', schoolIds);
+    
     if (schoolIds.length < 2) {
       return NextResponse.json(
         { success: false, error: "请至少选择两所院校" },
+        { status: 400 }
+      );
+    }
+
+    const invalidIds = schoolIds.filter((id: string) => !UUID_REGEX.test(id));
+    if (invalidIds.length > 0) {
+      console.error('[schools/compare] Invalid IDs detected:', invalidIds);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `无效的院校 ID 格式：${invalidIds.join(', ')}。请确保使用正确的院校 UUID。`,
+          details: { invalidIds }
+        },
         { status: 400 }
       );
     }
@@ -247,7 +265,11 @@ export async function POST(req: NextRequest) {
       .from("schools")
       .select("*")
       .in("id", schoolIds);
-    if (error) return errorResponse(error);
+    
+    if (error) {
+      console.error('[schools/compare] Supabase query error:', error);
+      return errorResponse(error);
+    }
 
     const ordered = schoolIds
       .map((id: string) => (schools ?? []).find((school: { id: string }) => school.id === id))

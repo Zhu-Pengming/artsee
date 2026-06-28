@@ -802,7 +802,6 @@ class _ArtistTabState extends State<_ArtistTab> {
             (item['cooperation_status']?.toString() ?? 'available') ==
             'available')
         .length;
-    final verifiedCount = certifiedItems.length;
 
     if (visibleItems.isEmpty) {
       return ListView(
@@ -811,7 +810,6 @@ class _ArtistTabState extends State<_ArtistTab> {
           _ArtistLibraryHeader(
             totalCount: certifiedItems.length,
             availableCount: availableCount,
-            verifiedCount: verifiedCount,
             onApply: _openArtistOnboarding,
           ),
           const SizedBox(height: 14),
@@ -851,7 +849,6 @@ class _ArtistTabState extends State<_ArtistTab> {
         _ArtistLibraryHeader(
           totalCount: certifiedItems.length,
           availableCount: availableCount,
-          verifiedCount: verifiedCount,
           onApply: _openArtistOnboarding,
         ),
         const SizedBox(height: 14),
@@ -1875,6 +1872,7 @@ class _ArtistCard extends StatelessWidget {
         Navigator.of(context).push<void>(
           MaterialPageRoute<void>(
             builder: (_) => PublicUserProfileScreen(
+              userId: artist['user_id']?.toString(),
               name: name,
               handle: handle,
               avatarUrl: avatarUrl,
@@ -2471,85 +2469,68 @@ class _ArtistOnboardingPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: context.artC.cardIconBg,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: context.artC.silver.withValues(alpha: 0.34)),
-        boxShadow: [
-          BoxShadow(
-            color: context.artC.ink.withValues(alpha: 0.026),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
           Container(
-            width: 54,
-            height: 54,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: kCobalt.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.palette_outlined, color: kCobalt),
+            child: const Icon(Icons.verified_user_outlined, color: kCobalt),
           ),
-          const SizedBox(height: 18),
-          Text(
-            '成为 Artiqore 入驻艺术家',
-            style: TextStyle(
-              color: context.artC.ink,
-              fontSize: 24,
-              height: 1.12,
-              fontWeight: FontWeight.w900,
-              fontFamily: 'Noto Serif SC',
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '展示作品集、获得展览曝光、接收品牌合作邀约。',
-            style: TextStyle(
-              color: context.artC.ink.withOpacity(0.48),
-              fontSize: 13,
-              height: 1.55,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 18),
-          ...[
-            '创建个人艺术家主页',
-            '上传作品集与履历',
-            '申请展览 / 驻留 / 联名项目',
-            '被品牌方和策展人发现',
-          ].map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle_rounded,
-                      size: 17, color: kCobalt),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      item,
-                      style: TextStyle(
-                        color: context.artC.ink,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '申请成为入驻艺术家',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: context.artC.ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
                   ),
-                ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '创建主页、上传作品，审核通过后进入艺术家库。',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: context.artC.ink.withOpacity(0.48),
+                    fontSize: 11,
+                    height: 1.35,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          OutlinedButton.icon(
+            onPressed: onStart,
+            icon: const Icon(Icons.add_rounded, size: 17),
+            label: const Text('入驻'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: kCobalt,
+              side: BorderSide(color: kCobalt.withValues(alpha: 0.32)),
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              textStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
               ),
             ),
-          ),
-          const SizedBox(height: 10),
-          FilledButton.icon(
-            onPressed: onStart,
-            icon: const Icon(Icons.arrow_upward_rounded, size: 16),
-            label: const Text('立即入驻'),
           ),
         ],
       ),
@@ -4357,111 +4338,79 @@ List<String> _artistWorkUrls(Map<String, dynamic> artist, String? coverUrl) {
 class _ArtistLibraryHeader extends StatelessWidget {
   final int totalCount;
   final int availableCount;
-  final int verifiedCount;
   final VoidCallback onApply;
 
   const _ArtistLibraryHeader({
     required this.totalCount,
     required this.availableCount,
-    required this.verifiedCount,
     required this.onApply,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 13),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            context.artC.ink,
-            context.artC.ink.withOpacity(0.88),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
+        color: context.artC.cardIconBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: context.artC.silver.withValues(alpha: 0.32)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: Colors.white.withOpacity(0.3)),
-                ),
-                child: Text(
-                  'ARTIST ARCHIVE',
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: kCobalt.withValues(alpha: 0.09),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.palette_outlined, color: kCobalt),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '已入驻艺术家',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                    fontSize: 8,
+                    color: context.artC.ink,
+                    fontSize: 16,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 0,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '认证艺术家库',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              fontFamily: 'Noto Serif SC',
+                const SizedBox(height: 4),
+                Text(
+                  '$totalCount 位已审核 · $availableCount 位可合作',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: context.artC.ink.withValues(alpha: 0.46),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            '先展示已认证艺术家，浏览作品、方向与合作状态',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _StatChip(
-                icon: Icons.people_outline,
-                label: '$totalCount 位认证',
+          const SizedBox(width: 10),
+          OutlinedButton.icon(
+            onPressed: onApply,
+            icon: const Icon(Icons.add_rounded, size: 17),
+            label: const Text('入驻'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: kCobalt,
+              side: BorderSide(color: kCobalt.withValues(alpha: 0.32)),
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              textStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
               ),
-              _StatChip(
-                icon: Icons.handshake_outlined,
-                label: '$availableCount 位可合作',
-              ),
-              _StatChip(
-                icon: Icons.verified,
-                label: '$verifiedCount 已审核',
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: onApply,
-              icon: const Icon(Icons.verified_user_outlined, size: 17),
-              label: const Text('成为艺术家 / 申请入驻'),
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: context.artC.ink,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                textStyle: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
           ),

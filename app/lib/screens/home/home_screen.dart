@@ -1,6 +1,6 @@
 import 'dart:math' as math;
-import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:image_picker/image_picker.dart';
@@ -501,9 +501,23 @@ class _HomeScreenState extends State<HomeScreen> {
     String reply;
     List<Map<String, dynamic>> sources = const [];
     try {
+      final aiMessages = _messages
+          .map((m) => <String, dynamic>{
+                'role': m['role'] == 'assistant' ? 'assistant' : 'user',
+                'content': (m['text'] ?? m['content'] ?? '').toString(),
+              })
+          .where((m) => (m['content'] as String).trim().isNotEmpty)
+          .toList();
       final result = await BackendApiService.aiConsult(
         text,
         mode: _aiConfig.aiMode,
+        persona: _aiConfig.profileKey,
+        intent: 'home_${_aiConfig.profileKey}_chat',
+        context: {
+          'surface': 'app_home_ai',
+          'profileKey': _aiConfig.profileKey,
+        },
+        messages: aiMessages,
         userProfile: {
           if (_profile != null) ..._profile!,
           'aiProfileKey': _aiConfig.profileKey,
@@ -710,7 +724,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       if (image != null) {
-        await _sendImage(image.path);
+        await _sendImage(image);
       }
     } catch (e) {
       if (mounted) {
@@ -721,7 +735,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _sendImage(String imagePath) async {
+  Future<void> _sendImage(XFile image) async {
     if (_sending) return;
 
     _normalizeMessagesForHotReload();
@@ -742,9 +756,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     String reply;
     try {
-      final file = File(imagePath);
       final result = await BackendApiService.uploadImageAndAnalyze(
-        file: file,
+        bytes: await image.readAsBytes(),
+        filename: image.name.isNotEmpty ? image.name : 'artsee-image.jpg',
+        contentType: image.mimeType ?? 'image/jpeg',
         conversationId: _currentConversationId,
       );
 
@@ -796,27 +811,29 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _startRecording() async {
     if (_isRecording || _recordingStopPending) return;
 
-    final micStatus = await Permission.microphone.request();
-    if (!micStatus.isGranted) {
-      if (mounted) {
-        final permanentlyDenied = micStatus.isPermanentlyDenied;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              permanentlyDenied
-                  ? '麦克风权限已关闭，请到系统设置中允许后再使用语音输入'
-                  : '需要麦克风权限才能使用语音输入',
+    if (!kIsWeb) {
+      final micStatus = await Permission.microphone.request();
+      if (!micStatus.isGranted) {
+        if (mounted) {
+          final permanentlyDenied = micStatus.isPermanentlyDenied;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                permanentlyDenied
+                    ? '麦克风权限已关闭，请到系统设置中允许后再使用语音输入'
+                    : '需要麦克风权限才能使用语音输入',
+              ),
+              action: permanentlyDenied
+                  ? const SnackBarAction(
+                      label: '去设置',
+                      onPressed: openAppSettings,
+                    )
+                  : null,
             ),
-            action: permanentlyDenied
-                ? const SnackBarAction(
-                    label: '去设置',
-                    onPressed: openAppSettings,
-                  )
-                : null,
-          ),
-        );
+          );
+        }
+        return;
       }
-      return;
     }
 
     if (!mounted) return;
@@ -829,16 +846,27 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!_speechAvailable) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('语音识别不可用，请检查系统语音识别权限或设备设置'),
-            action: SnackBarAction(
-              label: '去设置',
-              onPressed: openAppSettings,
-            ),
+          SnackBar(
+            content: Text(_speechUnavailableMessage()),
+            action: kIsWeb
+                ? null
+                : const SnackBarAction(
+                    label: '去设置',
+                    onPressed: openAppSettings,
+                  ),
           ),
         );
       }
       return;
+    }
+
+    if (kIsWeb && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('正在调用浏览器语音识别，请允许麦克风权限'),
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
 
     _speechLocaleId ??= await _resolveSpeechLocaleId();
@@ -886,10 +914,46 @@ class _HomeScreenState extends State<HomeScreen> {
           _recordingStopPending = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('语音识别失败: $e')),
+          SnackBar(content: Text(_speechFailureMessage(e))),
         );
       }
     }
+  }
+
+  String _speechUnavailableMessage() {
+    if (kIsWeb) {
+      return '当前浏览器不支持语音识别。请使用 Chrome 或 Edge，并允许网页麦克风权限';
+    }
+    return '语音识别不可用。Android 请确认 Google/系统语音服务可用，iOS 请开启系统语音识别权限';
+  }
+
+  String _speechFailureMessage(Object error) {
+    final raw = error.toString().toLowerCase();
+    if (raw.contains('not-allowed') ||
+        raw.contains('service-not-allowed') ||
+        raw.contains('permission') ||
+        raw.contains('denied')) {
+      return kIsWeb
+          ? '浏览器麦克风权限被拒绝，请在地址栏允许麦克风后重试'
+          : '麦克风或语音识别权限被拒绝，请到系统设置中开启后重试';
+    }
+    if (raw.contains('no-speech') || raw.contains('no_match')) {
+      return '没有听清语音内容，请靠近麦克风后重试';
+    }
+    if (raw.contains('audio-capture')) {
+      return '没有检测到可用麦克风，请检查设备输入';
+    }
+    if (raw.contains('network')) {
+      return '语音识别网络连接失败，请稍后重试';
+    }
+    return '系统语音识别失败: $error';
+  }
+
+  String _speechNoResultMessage() {
+    if (_lastSpeechError == null) {
+      return '没有听清语音内容，请按住说完后再松开';
+    }
+    return _speechFailureMessage(_lastSpeechError!);
   }
 
   Future<void> _stopRecordingAndSend() async {
@@ -922,11 +986,8 @@ class _HomeScreenState extends State<HomeScreen> {
       if (recognizedText.isNotEmpty) {
         await _runPrompt(recognizedText);
       } else {
-        final hint = _lastSpeechError == null
-            ? '没有听清语音内容，请按住说完后再松开'
-            : '语音识别没有返回内容，请检查系统语音识别设置后重试';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(hint)),
+          SnackBar(content: Text(_speechNoResultMessage())),
         );
       }
     } catch (e) {

@@ -7,6 +7,7 @@ import 'config/app_config.dart';
 import 'screens/main_scaffold.dart';
 import 'screens/onboarding/art_interest_onboarding_screen.dart';
 import 'services/supabase_service.dart';
+import 'services/tencent_im_service.dart';
 import 'theme/artsee_app_themes.dart';
 import 'theme/artsee_theme_controller.dart';
 import 'theme/artsee_ui_colors.dart';
@@ -115,6 +116,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Future<void> _reload() async {
     if (!SupabaseService.isLoggedIn) {
+      unawaited(TencentImService.logout());
       if (mounted) {
         setState(() {
           _profile = null;
@@ -127,6 +129,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     if (mounted) setState(() => _loadingProfile = true);
     final p = await SupabaseService.fetchProfile();
     if (!mounted) return;
+    unawaited(_syncTencentImLogin());
     setState(() {
       _profile = p;
       _loadingProfile = false;
@@ -150,6 +153,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
           'has_completed_onboarding': true,
         };
       });
+    }
+  }
+
+  Future<void> _syncTencentImLogin() async {
+    try {
+      await TencentImService.ensureLoggedIn();
+    } catch (error, stackTrace) {
+      debugPrint('Tencent IM login skipped: $error');
+      debugPrintStack(stackTrace: stackTrace);
     }
   }
 

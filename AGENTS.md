@@ -1,9 +1,11 @@
 # UI reference source of truth
 
-For all frontend UI work, the latest design reference is `artiqore-艺见心-网页版前端与ui(1)/`.
+For all product frontend UI work, the live code path is the Flutter app in `app/lib/`.
 
-- Use `artiqore-艺见心-网页版前端与ui(1)/src` as the source reference for the current web and app UI.
-- The live Next.js UI is wired through `web/app/artiqore-ui/`, copied from that Chinese reference folder and adapted for Next.
+- The production public site (`/`) is Flutter Web built from `app/` and served as static files by Nginx.
+- Next.js in `web/` serves `/admin` and `/api/*` only in production.
+- `web/app/artiqore-ui/` is an older/adapted React reference shell and must not be treated as the production public frontend.
+- Use `artiqore-艺见心-网页版前端与ui(1)/src` only as a visual reference when updating Flutter UI in `app/lib/` or admin UI in `web/app/admin/`.
 - Do not use `artlink-reference/` as the current UI baseline. It is an older April 2026 reference and must not override the current 艺见心 design.
 
 # Artsee / Artiqore 艺见心 — Agent 速览
@@ -18,8 +20,8 @@ For all frontend UI work, the latest design reference is `artiqore-艺见心-网
 
 | 部分 | 路径 | 职责 |
 |------|------|------|
-| **APP** | `app/` | Flutter 客户端；登录、首页、发现、合作、学习、我的等。**优先**通过 HTTP 调 `web` 的 `/api/v1/*`（见 `lib/services/backend_api_service.dart`、`lib/config/api_config.dart`），必要时仍可直连 Supabase（如 Auth、Storage）。 |
-| **网站** | `web/` | Next.js 15：`app/` 下页面为**站点 UI**，`app/api/v1/**` 为**对外 API**（BFF）。本地开发默认端口 **9090**。 |
+| **APP / Flutter Web 主站** | `app/` | Flutter 客户端与生产主站前台；登录、首页、发现、合作、学习、我的等。**优先**通过 HTTP 调 `web` 的 `/api/v1/*`（见 `lib/services/backend_api_service.dart`、`lib/config/api_config.dart`），必要时仍可直连 Supabase（如 Auth、Storage）。 |
+| **网站后台 / BFF** | `web/` | Next.js：生产只服务 `/admin` 管理后台与 `/api/v1/**` 对外 API（BFF）。本地开发默认端口 **9090**。不要把 `web/app/artiqore-ui/` 当生产前台改。 |
 | **通用后端** | `web/app/api/` + Supabase | **业务规则与敏感写操作**放在 Next Route Handlers；数据库模式与 RLS 在 `supabase/migrations/`。不要把 `service_role` 塞进 APP。 |
 
 根目录另有脚本与健康检查：`npm run test:backend`、`npm run test:web`、`scripts/ensure-dev-test-user.mjs`。

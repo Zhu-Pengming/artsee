@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromBearer } from '@/lib/api/auth-user';
 import { createServiceClient } from '@/lib/api/supabase-service';
-import { transcribeAudioWithAI } from '@/lib/ai/audio-transcriber';
+import {
+  assertAudioTranscriptionConfigured,
+  transcribeAudioWithAI,
+} from '@/lib/ai/audio-transcriber';
 
 const MAX_SIZE = 25 * 1024 * 1024; // 25MB
 const ALLOWED_TYPES = [
@@ -57,6 +60,8 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    assertAudioTranscriptionConfigured();
 
     // 上传音频到 Supabase Storage
     const bytes = new Uint8Array(await file.arrayBuffer());
@@ -117,9 +122,10 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error('Transcribe API error:', error);
+    const message = error.message || '语音识别失败';
     return NextResponse.json(
-      { error: error.message || '语音识别失败' },
-      { status: 500 }
+      { error: message },
+      { status: message.includes('未配置语音识别服务') ? 503 : 500 }
     );
   }
 }
