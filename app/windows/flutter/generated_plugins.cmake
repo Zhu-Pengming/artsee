@@ -7,6 +7,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   file_selector_windows
   permission_handler_windows
   speech_to_text_windows
+  tencent_cloud_chat_sdk
   url_launcher_windows
 )
 

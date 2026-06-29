@@ -160,7 +160,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     try {
       await TencentImService.ensureLoggedIn();
     } catch (error) {
-      if (error is UnsupportedError && error.message?.contains('Web') == true) {
+      if (error is UnsupportedError) {
         return;
       }
       debugPrint('Tencent IM login error: $error');

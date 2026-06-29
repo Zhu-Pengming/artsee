@@ -1,4 +1,4 @@
-// Stub implementation for Web platform (Tencent IM SDK doesn't support Web)
+// Stub implementation for platforms unsupported by Tencent IM SDK.
 
 class TencentImLoginState {
   final int sdkAppId;
@@ -29,33 +29,33 @@ class TencentImService {
   TencentImService._();
 
   static Future<TencentImLoginState?> ensureLoggedIn() async {
-    throw UnsupportedError('腾讯云 IM 不支持 Web 平台');
+    throw UnsupportedError('腾讯云 IM 不支持当前平台');
   }
 
   static Future<Map<String, dynamic>> sendC2CText({
     required String peerIdentifier,
     required String text,
   }) async {
-    throw UnsupportedError('腾讯云 IM 不支持 Web 平台');
+    throw UnsupportedError('腾讯云 IM 不支持当前平台');
   }
 
   static Future<void> addTextMessageHandler(
     void Function(Map<String, dynamic>) handler,
   ) async {
-    // No-op on Web
+    // No-op on unsupported platforms.
   }
 
   static Future<void> removeTextMessageHandler(
     void Function(Map<String, dynamic>) handler,
   ) async {
-    // No-op on Web
+    // No-op on unsupported platforms.
   }
 
   static Future<void> logout() async {
-    // No-op on Web
+    // No-op on unsupported platforms.
   }
 
   static void resetLocalState() {
-    // No-op on Web
+    // No-op on unsupported platforms.
   }
 }

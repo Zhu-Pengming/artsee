@@ -2089,6 +2089,21 @@ class BackendApiService {
         .toList();
   }
 
+  static Future<List<Map<String, dynamic>>> fetchFriendCandidates({
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    final decoded = await _requestJson(
+      'GET',
+      '/api/v1/me/friends/candidates',
+      withAuth: true,
+      query: _params(limit: limit, offset: offset),
+    );
+    return (decoded['data'] as List<dynamic>? ?? [])
+        .map((item) => item as Map<String, dynamic>)
+        .toList();
+  }
+
   static Future<Map<String, dynamic>> addFriend({
     required String targetUserId,
     String? message,

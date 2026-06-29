@@ -19,7 +19,11 @@ class ForumScreen extends StatefulWidget {
   final VoidCallback? onTabChanged;
   final VoidCallback? onCreateCircle;
 
-  const ForumScreen({super.key, this.onTabChanged, this.onCreateCircle});
+  const ForumScreen({
+    super.key,
+    this.onTabChanged,
+    this.onCreateCircle,
+  });
 
   @override
   State<ForumScreen> createState() => ForumScreenState();
@@ -1099,11 +1103,11 @@ class _ChatTabState extends State<_ChatTab> {
       });
     } catch (e) {
       if (!mounted) return;
-      if (e is UnsupportedError && e.message?.contains('Web') == true) {
+      if (e is UnsupportedError) {
         setState(() {
           _imConnecting = false;
           _imReady = false;
-          _imStatusText = '即时通讯功能仅在移动端可用';
+          _imStatusText = e.message?.toString() ?? '即时通讯功能当前不可用';
         });
         return;
       }
@@ -1177,6 +1181,66 @@ class _ChatTabState extends State<_ChatTab> {
     }
   }
 
+  Future<void> _openFriendCandidates() async {
+    final loggedIn = await ensureLoggedIn(context, message: '请先登录后添加好友');
+    if (!mounted || !loggedIn) return;
+    try {
+      final candidates = await BackendApiService.fetchFriendCandidates();
+      if (!mounted) return;
+      if (candidates.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('暂无可添加的好友')),
+        );
+        return;
+      }
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => _FriendCandidateSheet(
+          candidates: candidates,
+          onAdd: _addFriendCandidate,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('加载好友候选失败：$e')),
+      );
+    }
+  }
+
+  Future<bool> _addFriendCandidate(Map<String, dynamic> candidate) async {
+    final targetId = candidate['id']?.toString();
+    if (targetId == null || targetId.isEmpty) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('用户资料还没有完成同步')),
+      );
+      return false;
+    }
+    try {
+      await BackendApiService.addFriend(
+        targetUserId: targetId,
+        message: '你好，我在 Artsee 艺见心看到了你的主页。',
+      );
+      if (!mounted) return true;
+      await _refreshAll();
+      if (!mounted) return true;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('已添加 ${_candidateName(candidate)} 为好友')),
+      );
+      return true;
+    } catch (e) {
+      if (!mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('添加好友失败：$e')),
+      );
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const LoadingIndicator();
@@ -1236,6 +1300,7 @@ class _ChatTabState extends State<_ChatTab> {
             children: [
               _MessageEmptyActions(
                 hasFriends: visibleFriends.isNotEmpty,
+                onFindFriends: _openFriendCandidates,
                 onRefresh: _refreshAll,
               ),
               const SizedBox(height: 12),
@@ -6256,6 +6321,196 @@ class _FriendShortcutChip extends StatelessWidget {
   }
 }
 
+class _FriendCandidateSheet extends StatefulWidget {
+  final List<Map<String, dynamic>> candidates;
+  final Future<bool> Function(Map<String, dynamic>) onAdd;
+
+  const _FriendCandidateSheet({
+    required this.candidates,
+    required this.onAdd,
+  });
+
+  @override
+  State<_FriendCandidateSheet> createState() => _FriendCandidateSheetState();
+}
+
+class _FriendCandidateSheetState extends State<_FriendCandidateSheet> {
+  String? _busyId;
+
+  Future<void> _add(Map<String, dynamic> candidate) async {
+    final id = candidate['id']?.toString();
+    if (id == null || id.isEmpty || _busyId != null) return;
+    setState(() => _busyId = id);
+    final ok = await widget.onAdd(candidate);
+    if (!mounted) return;
+    setState(() => _busyId = null);
+    if (ok) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.of(context).size.height * 0.72;
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: context.artC.porcelain,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 10),
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: context.artC.silver.withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '添加好友',
+                    style: TextStyle(
+                      color: context.artC.ink,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: '关闭',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 22),
+              itemCount: widget.candidates.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (_, index) {
+                final candidate = widget.candidates[index];
+                final id = candidate['id']?.toString();
+                return _FriendCandidateTile(
+                  candidate: candidate,
+                  busy: id != null && id == _busyId,
+                  disabled: _busyId != null && id != _busyId,
+                  onAdd: () => _add(candidate),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FriendCandidateTile extends StatelessWidget {
+  final Map<String, dynamic> candidate;
+  final bool busy;
+  final bool disabled;
+  final VoidCallback onAdd;
+
+  const _FriendCandidateTile({
+    required this.candidate,
+    required this.busy,
+    required this.disabled,
+    required this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final name = _candidateName(candidate);
+    final avatarUrl = candidate['avatar_url']?.toString();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: context.artC.silver.withValues(alpha: 0.32)),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: avatarUrl != null && avatarUrl.isNotEmpty
+                  ? Image.network(
+                      avatarUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _FriendShortcutFallback(name: name),
+                    )
+                  : _FriendShortcutFallback(name: name),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: context.artC.ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _candidateRoleLabel(candidate),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: context.artC.ink.withValues(alpha: 0.46),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          FilledButton(
+            onPressed: busy || disabled ? null : onAdd,
+            style: FilledButton.styleFrom(
+              backgroundColor: kCobalt,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(72, 38),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: busy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text('加好友'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _FriendShortcutFallback extends StatelessWidget {
   final String name;
 
@@ -6341,10 +6596,12 @@ class _ChatIdentityTag extends StatelessWidget {
 
 class _MessageEmptyActions extends StatelessWidget {
   final bool hasFriends;
+  final VoidCallback? onFindFriends;
   final VoidCallback onRefresh;
 
   const _MessageEmptyActions({
     required this.hasFriends,
+    this.onFindFriends,
     required this.onRefresh,
   });
 
@@ -6366,6 +6623,13 @@ class _MessageEmptyActions extends StatelessWidget {
                   : Icons.person_add_alt_1_outlined,
               title: hasFriends ? '选择好友' : '先加好友',
               subtitle: hasFriends ? '开始单聊' : '从公开主页添加',
+              onTap: hasFriends
+                  ? () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('选择上方好友即可开始单聊')),
+                      );
+                    }
+                  : onFindFriends,
             ),
           ),
           const SizedBox(width: 10),
@@ -6656,6 +6920,29 @@ String _friendRoleLabel(Map<String, dynamic> friend) {
     'business' => '机构',
     'institution' => '机构',
     _ => '好友',
+  };
+}
+
+String _candidateName(Map<String, dynamic> candidate) {
+  final nickname = candidate['nickname']?.toString().trim();
+  if (nickname != null && nickname.isNotEmpty) return nickname;
+  final id = candidate['id']?.toString();
+  if (id != null && id.length >= 8) return '用户 ${id.substring(0, 8)}';
+  return 'Artsee 用户';
+}
+
+String _candidateRoleLabel(Map<String, dynamic> candidate) {
+  final role =
+      candidate['user_role']?.toString() ?? candidate['user_type']?.toString();
+  return switch (role) {
+    'artist' => '艺术家',
+    'mentor' => '导师',
+    'student' => '学生',
+    'personal' => '个人用户',
+    'business' => '机构',
+    'institution' => '机构',
+    'study_abroad_agency' => '艺术留学机构',
+    _ => '可添加用户',
   };
 }
 
